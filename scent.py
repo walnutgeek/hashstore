@@ -20,6 +20,6 @@ def execute_test(*args):
 def execute_coverage(*args):
     return 0 == os.system( run_template % '')
 
-#@runnable
-def execute_sphinx(*args):
-    return 0 == os.system('cd docs; make')
+# #@runnable
+# def execute_sphinx(*args):
+#     return 0 == os.system('cd docs; make')
