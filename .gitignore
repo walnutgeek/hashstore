@@ -1,0 +1,8 @@
+test-out/
+.idea/
+*.pyc
+*.log
+*/*.pyc
+barbel/ui/webroot/
+node_modules/
+Notebooks/.ipynb_checkpoints/

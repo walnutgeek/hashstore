@@ -1,0 +1,3 @@
+mounts:
+- {location: "{test_dir}/files",  frequency: 1d}
+storage: { type: Hash, path: "{test_dir}/backup" }

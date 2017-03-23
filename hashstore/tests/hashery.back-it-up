@@ -1,0 +1,3 @@
+mounts:
+- {location: "{test_dir}/files",  frequency: 1d}
+storage: { type: Hashery, path: "http://localhost:9753/" }
