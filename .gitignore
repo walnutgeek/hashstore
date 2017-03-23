@@ -3,5 +3,6 @@ test-out/
 *.pyc
 *.log
 */*.pyc
+.coverage.*
 node_modules/
 Notebooks/.ipynb_checkpoints/
