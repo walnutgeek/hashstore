@@ -3,6 +3,5 @@ test-out/
 *.pyc
 *.log
 */*.pyc
-barbel/ui/webroot/
 node_modules/
 Notebooks/.ipynb_checkpoints/
