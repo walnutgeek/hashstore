@@ -18,8 +18,9 @@ def test_backup():
     hashery_dir = os.path.join(test_dir, 'hashery')
     os.makedirs(hashery_dir)
     port = 9753
-    run_bg('hashstore.hashery',[
-        '--dir', hashery_dir,
+    run_bg('hashstore.shash',[
+        'start', '--insecure'
+        '--store_dir', hashery_dir,
         '--port',str(port) ], os.path.join(test_dir, 'hashery.log') )
     time.sleep(2)
     files = os.path.join(test_dir, 'files')
@@ -38,5 +39,5 @@ def test_backup():
     b.restore(v2[files], f2)
     eq_(str(mount.MountDB(f1).scan()[1]), h1)
     eq_(str(mount.MountDB(f2).scan()[1]), h2)
-    run_bg('hashstore.hashery',[ '--shutdown', '--port',str(port)],
-           os.path.join(test_dir, 'shut.log') )
+    run_bg('hashstore.shash',[ 'stop', '--port', str(port)],
+           os.path.join(test_dir, 'shut.log') ).wait()

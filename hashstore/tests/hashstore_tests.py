@@ -3,7 +3,7 @@ import logging
 import os
 import shutil
 
-import hashstore.localstore as localstore
+import hashstore.local_store as localstore
 import hashstore.udk as udk
 import datetime
 from nose.tools import eq_,ok_,with_setup

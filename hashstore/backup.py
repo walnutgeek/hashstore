@@ -53,36 +53,13 @@ class Backup(DbFile):
         return self.datamodel.__doc__
 
     @_session
-    def backup(self,now = None,session=None):
+    def backup(self, now = None, session=None):
         if now is None:
             now = datetime.datetime.utcnow()
         versions = {}
         for mount_id, location, frequency in self.mounts:
-            m = mount.MountDB(location, scan_now=True)
-            while True:
-                push_rec = self.insert('push', quict(
-                    mount_id=mount_id,
-                    hash=m.last_hash,
-                ), session=session)
-                tree = mount.ScanTree(m)
-                count_synched_dirs, hashes_to_push = self.storage.store_directories(tree.directories)
-                push_files = len(hashes_to_push) > 0
-                if push_files:
-                    hashes_to_push = udk.UdkSet.ensure_it(hashes_to_push)
-                    for h in hashes_to_push:
-                        f = tree.file_path(h)
-                        fp = open(os.path.join(location, f))
-                        stored_as = self.storage.write_content(fp)
-                        if stored_as != h:
-                            log.warn('scaned: %s, but stored as: %s' % (f, stored_as))
-                self.update('push',quict(
-                    push_id=push_rec['_push_id'],
-                    _directory_synched=count_synched_dirs,
-                    _files_synched=len(hashes_to_push)
-                ),session=session)
-                if not push_files:
-                    break
-                m.scan()
+            m = mount.MountDB(location, scan_now=False)
+            m.push_files(self.storage)
             versions[location] = m.last_hash
         return versions
 

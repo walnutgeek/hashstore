@@ -1,3 +1,3 @@
 mounts:
 - {location: "{test_dir}/files",  frequency: 1d}
-storage: { type: Hash, path: "{test_dir}/backup" }
+storage: { type: Local, path: "{test_dir}/backup" }

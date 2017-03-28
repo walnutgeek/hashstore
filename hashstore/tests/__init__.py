@@ -113,6 +113,6 @@ def run_bg(module, args = [], outfile = None):
     for arg in args:
         command.append(arg)
     f = open(outfile, 'w') if outfile is not None else None
-    subprocess.Popen(command, stdout=f, stderr=subprocess.STDOUT)
+    return subprocess.Popen(command, stdout=f, stderr=subprocess.STDOUT)
 
 

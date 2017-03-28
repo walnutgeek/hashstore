@@ -11,7 +11,7 @@ run_template = 'coverage run -p -m nose %s; RC=$?; ' \
                'exit $RC'
 
 def execute_test(*args):
-    case = 'hashstore.tests.backup_tests'
+    case = 'hashstore.tests.shash_tests'
     # case = 'hashstore.tests.hashstore_tests'
     # case = 'hashstore.tests.udk_tests'
     return 0 == os.system(run_template % case)

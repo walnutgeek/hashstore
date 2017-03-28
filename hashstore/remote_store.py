@@ -3,11 +3,11 @@
 from __future__ import unicode_literals
 
 import os
-import sys
+import time
 import logging
 import mimetypes
 import signal
-from hashstore.localstore import HashStore
+from hashstore.local_store import HashStore
 from hashstore.udk import UDK
 import json
 from hashstore.utils import json_encoder
@@ -32,6 +32,7 @@ class HashPath:
     def udk(self):
         return UDK.ensure_it(self.path[:64])
 
+
 @tornado.web.stream_request_body
 class StreamHandler(tornado.web.RequestHandler):
     SUPPORTED_METHODS = ['POST']
@@ -53,6 +54,7 @@ class StreamHandler(tornado.web.RequestHandler):
         if buffer is not None:
             l = len(chunk)
         self.w.write(chunk)
+
 
 class HasheryHandler(tornado.web.RequestHandler):
     SUPPORTED_METHODS = ['GET','POST']
@@ -88,18 +90,24 @@ def stop_server(signum, frame):
     logging.info('Stopped!')
 
 
-def shutdown(port,do_shutdown):
+def shutdown(port, wait_until_down):
     try:
-        import urllib2
-        response = urllib2.urlopen('http://localhost:%d/.pid' % (port,))
-        pid = int(response.read())
-        logging.info('Stopping %d' % pid)
-        os.kill(pid,signal.SIGINT)
-        if not do_shutdown:
-            import time
-            time.sleep(2)
+        while True:
+            import urllib2
+            response = urllib2.urlopen('http://localhost:%d/.pid' % (port,))
+            pid = int(response.read())
+            if pid:
+                logging.info('Stopping %d' % pid)
+                os.kill(pid,signal.SIGINT)
+                if wait_until_down:
+                    time.sleep(2)
+                else:
+                    break
+            else:
+                break
     except:
         pass
+
 
 def create_handler(get_content):
     class Handler(tornado.web.RequestHandler):
@@ -109,6 +117,7 @@ def create_handler(get_content):
             self.write(get_content())
             self.finish()
     return Handler
+
 
 def run_server(store_root, port):
     logging.info('mount: %s' % store_root)
@@ -125,25 +134,3 @@ def run_server(store_root, port):
     tornado.ioloop.IOLoop.instance().start()
 
 
-def _args_parser():
-    import argparse
-
-    parser = argparse.ArgumentParser(description='Run hashery')
-    parser.add_argument('--port', metavar='N', type=int, nargs='?',
-                        default=7532, help='a port to listen')
-    parser.add_argument('--dir', metavar='dir', nargs='?',
-                        default='.', help='a directory for hashstore')
-    parser.add_argument('--shutdown', action='store_true',
-                        help='shutdown server')
-
-    return parser
-
-def main():
-    parser = _args_parser()
-    args = parser.parse_args()
-    shutdown(args.port,args.shutdown)
-    if not args.shutdown:
-        run_server(args.dir, args.port)
-
-if __name__ == '__main__':
-    main()

@@ -1,4 +1,4 @@
-import hashstore.localstore as localstore
+import hashstore.local_store as localstore
 import hashstore.udk as udk
 import requests
 import json
@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 
 methods_to_implement = ['store_directories', 'write_content', 'get_content']
 
-class HashStorage:
+class LocalStorage:
     def __init__(self, path_resolver, type, path):
         self.store = localstore.HashStore(path_resolver(path))
 
@@ -21,7 +21,7 @@ class HashStorage:
                                  (self.__class__.__name__, name) )
 
 
-class HasheryStorage:
+class RemoteStorage:
     def __init__(self, path_resolver, type, path):
         self.url = path_resolver(path)
 

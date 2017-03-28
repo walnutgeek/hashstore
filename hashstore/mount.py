@@ -1,10 +1,9 @@
 from hashstore.db import _session, DbFile
-from hashstore.udk import calc_UDK_and_length_from_stream,UDK,NamedUDKs
+from hashstore.udk import calc_UDK_and_length_from_stream,\
+    UDK,NamedUDKs,UdkSet
 from hashstore.utils import quict, path_split_all, reraise_with_msg
 from collections import defaultdict
 import os
-import six
-import json
 import fnmatch
 
 import logging
@@ -69,6 +68,20 @@ class MountDB(DbFile):
 
     def datamodel(self):
         '''
+        table:remote
+          url_id UUID4 PK
+          url TEXT AK
+          remote_key_hash TEXT
+          created TIMESTAMP INSERT_DT
+          last_push_id FK(push) NULL
+        table:push
+          push_id PK
+          scan_id FK(scan)
+          directory_synched INT NULL
+          files_synched INT NULL
+          started TIMESTAMP INSERT_DT
+          complited TIMESTAMP UPDATE_DT NULL
+          hash UDK NULL
         table:scan
           scan_id PK
           dir TEXT NOT NULL
@@ -179,6 +192,38 @@ class MountDB(DbFile):
             scan_id = self.last_id
         return self.select('file',{'scan_id':scan_id}, ' order by parent_id, name')
 
+    @_session
+    def push_files(self, storage, session=None):
+        rescan_hash = None
+        while True:
+            self.scan(session=session)
+            if rescan_hash == self.last_hash:
+                break
+            push_rec = self.insert('push', quict(
+                scan_id=self.last_id,
+                hash=self.last_hash,
+            ), session=session)
+            tree = ScanTree(self)
+            count_synched_dirs, hashes_to_push = storage.store_directories(tree.directories)
+            push_files = len(hashes_to_push) > 0
+            if push_files:
+                hashes_to_push = UdkSet.ensure_it(hashes_to_push)
+                for h in hashes_to_push:
+                    f = tree.file_path(h)
+                    fp = open(os.path.join(self.dir, f))
+                    stored_as = storage.write_content(fp)
+                    if stored_as != h:
+                        log.warn('scaned: %s, but stored as: %s' % (f, stored_as))
+            self.update('push', quict(
+                push_id=push_rec['_push_id'],
+                _directory_synched=count_synched_dirs,
+                _files_synched=len(hashes_to_push)
+            ), session=session)
+            if not push_files:
+                break
+            rescan_hash = self.last_hash
+
+
 class ScanTree:
     def __init__(self, mount, scan_id=None):
         self.directories = defaultdict(NamedUDKs)
@@ -212,16 +257,6 @@ class ScanTree:
         except:
             reraise_with_msg('%s' % str(h) )
 
-
-
-if __name__ == '__main__':
-    import sys
-    logging.basicConfig(level=logging.INFO)
-    import time
-    start_time = time.time()
-    print(MountDB(sys.argv[1]).scan())
-    elapsed_time = time.time() - start_time
-    print(elapsed_time)
 
 
 
