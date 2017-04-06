@@ -1,5 +1,6 @@
 pytz
 pyyaml
+requests
 tornado
 enum34
 argparse

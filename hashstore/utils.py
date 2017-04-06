@@ -45,16 +45,20 @@ def exception_message(e = None):
     return e.message if six.PY2 else str(e)
 
 
+if six.PY2:
+    from hashstore.py2 import _raise_it
+else:
+    def _raise_it(etype, new_exception, traceback):
+        raise new_exception.with_traceback(traceback)
+
+
 def reraise_with_msg(msg, exception=None):
     if exception is None:
         exception = sys.exc_info()[1]
     etype = type(exception)
     new_exception = etype(exception_message(exception) + '\n'+ msg)
     traceback = sys.exc_info()[2]
-    if six.PY2:
-        raise etype, new_exception, traceback
-    else:
-        raise new_exception.with_traceback(traceback)
+    _raise_it(etype,new_exception,traceback)
 
 def ensure_directory(directory):
     if not (os.path.isdir(directory)):

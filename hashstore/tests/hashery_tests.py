@@ -19,7 +19,7 @@ def test_backup():
     os.makedirs(hashery_dir)
     port = 9753
     run_bg('hashstore.shash',[
-        'start', '--insecure'
+        'start', '--insecure',
         '--store_dir', hashery_dir,
         '--port',str(port) ], os.path.join(test_dir, 'hashery.log') )
     time.sleep(2)
