@@ -26,14 +26,27 @@ import time
 
 random_bytes = lambda l: six.binary_type().join(
     six.int2byte(random.randint(0, 255)) for _ in range(l))
+
 reseed_random = lambda : int(time.clock() * 1000)
+
+
+def seed(a):
+    if six.PY2:
+        random.seed(a)
+    else:
+        random.seed(a, version=1)
 
 def random_content_fn(sz,reset_random):
     def do_content(path,abs_path):
         if reset_random is not None:
-            random.seed(reset_random)
+            seed(reset_random)
         open(abs_path,'w').write(random_bytes(sz))
     return do_content
+
+
+def random_small_caps(l):
+    return ''.join(chr(97 + random.randint(0, 25)) for _ in range(l))
+
 
 def text_fn(content):
     def do_content(path,abs_path):

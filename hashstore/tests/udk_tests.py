@@ -3,19 +3,24 @@ import base64
 import hashstore.udk
 import six
 import logging
+from hashstore.utils import ensure_bytes
+from hashstore.tests import seed,random_small_caps
+
 log = logging.getLogger(__name__)
 
 
 def test_mime64_size():
-    real_sizes = map(lambda i: len(base64.b64encode('a' * i)), range(50))
-    calc_sizes = map(hashstore.udk.mime64_size, range(50))
+    real_sizes = list(map(lambda i: len(base64.b64encode(b'a' * i)), range(50)))
+    calc_sizes = list(map(hashstore.udk.mime64_size, range(50)))
     eq_(real_sizes, calc_sizes)
 
+
 def test_biggest_size_that_smaller_then_hash():
-    real_sizes = map(lambda i: len(base64.b64encode('a' * i)), range(50))
+    real_sizes = list(map(lambda i: len(base64.b64encode(b'a' * i)), range(50)))
     hash_size = len(hashstore.udk.EMPTY_HASH)
     eq_(hash_size,64)
-    eq_(len(filter(lambda x: x < hash_size,real_sizes)),46)
+    eq_(len(list(filter(lambda x: x < hash_size,real_sizes))),46)
+
 
 def test_UDK():
     def do_test(c, s, d=None):
@@ -86,26 +91,23 @@ ssset = lambda set: ''.join( k.k[:1] for k in set)
 
 import random
 
+
 def test_Set():
     set = hashstore.udk.UdkSet()
-    random.seed(0)
-    cases = ''.join( chr(97 + random.randint(0,25)) for _ in range(100) )
+    cases = 'vtkgnkuhmpxnhtqgxzvxisxrmclpxzmwguoaskvramwgiweogzulcinycosovozpplpkoheeprmctwyvxyokshvwxpyplrzxucpm'
     log.debug(cases)
     a = ''
     for c in cases:
         k = ruudk(c)
         a += 'a' if set.add(k) else ' '
-    #      vtkgnkuhmpxnhtqgxzvxisxrmclpxzmwguoaskvramwgiweogzulcinycosovo...
     eq_(a,'aaaaa aaaaa   a  a  aa a aa    a  aa          a        a                                            ')
     eq_(ssset(set), 'aceghiklmnopqrstuvwxyz')
     ok_(uuudk('a') in set)
     ok_(zuudk('a') in set)
     ok_(uuudk('b') not in set)
     ok_(zuudk('b') not in set)
-    eq_(hashstore.udk.UdkSet(set.to_json()),set)
-
-
-    eq_(hashstore.udk.UdkSet(six.BytesIO(str(set))), set)
+    eq_(hashstore.udk.UdkSet(set.to_json()), set)
+    eq_(hashstore.udk.UdkSet(six.BytesIO(ensure_bytes(str(set)))), set)
     eq_(hashstore.udk.UdkSet(str(set)), set)
     eq_(hash(hashstore.udk.UdkSet(str(set))), hash(set))
     eq_(hash(hashstore.udk.UdkSet(str(set))), hash(set))
@@ -116,5 +118,7 @@ def test_Set():
     del set[0]
     eq_(i-1, len(set))
     eq_(ssset(set), 'ceghiklmnopqrstuvwxyz')
+
+
 
 

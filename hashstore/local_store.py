@@ -3,10 +3,10 @@ import os
 import shutil
 import datetime
 import six
-import db
+import hashstore.db as db
 import logging
-from utils import quict,ensure_directory,to_binary,read_in_chunks
-import udk
+from hashstore.utils import quict,ensure_directory,to_binary,read_in_chunks
+import hashstore.udk as udk
 
 SHARD_SIZE = 3
 SQLITE_EXT = '.sqlite3'

@@ -70,6 +70,21 @@ get_if_defined = lambda o, k: getattr(o, k) if hasattr(o, k) else None
 
 call_if_defined = lambda o, k, *args: getattr(o,k)(*args) if hasattr(o,k) else None
 
+
+def ensure_bytes(s):
+    if type(s) == six.binary_type:
+        return s
+    else:
+        return six.binary_type(s, 'utf-8')
+
+
+def ensure_string(s):
+    if isinstance(s,six.string_types):
+        return s
+    else:
+        return s.decode('utf-8')
+
+
 def create_path_resover(substitutions = {}):
     substitutions = dict(substitutions)
     for k in os.environ:
@@ -123,6 +138,7 @@ class Jsonable:
     serialize in json
     '''
     pass
+
 
 class StringableEncoder(json.JSONEncoder):
     def default(self, o):

@@ -9,7 +9,7 @@ db_max=65535
 EMPTY_HASH = hashlib.sha256().hexdigest()
 
 def mime64_size(sz):
-    code_size = ((sz * 4) / 3);
+    code_size = int((sz * 4) / 3)
     mod = sz % 3
     padding_size = 4 - mod if mod > 0 else 0
     return code_size + padding_size
@@ -48,9 +48,8 @@ def calc_UDK_and_length_from_stream(fd, respect_inline_max=True,
 
 
 def UDK_from_digest_and_inline_data(digest, buffer, respect_inline_max):
-    if respect_inline_max and buffer is not None \
-            and len(buffer) < inline_max:
-        return UDK('M' + base64.b64encode(buffer))
+    if respect_inline_max and buffer is not None and len(buffer) < inline_max:
+        return UDK('M' + utils.ensure_string(base64.b64encode(buffer)))
     else:
         return UDK(digest.hexdigest())
 
@@ -60,7 +59,7 @@ def UDK_from_stream(fd, respect_inline_max=True):
 
 
 def UDK_from_string(s, respect_inline_max=True):
-    return UDK_from_stream(six.BytesIO(s), respect_inline_max)
+    return UDK_from_stream(six.BytesIO(utils.ensure_bytes(s)), respect_inline_max)
 
 
 def UDK_from_file(file, respect_inline_max=True):
@@ -105,7 +104,7 @@ class UDK(utils.Stringable):
         try:
             return self.digest
         except:
-            sha256,_,_ = process_stream(six.BytesIO(self.data()))
+            sha256,_,_ = process_stream(six.BytesIO(utils.ensure_bytes(self.data())))
             self.digest = sha256.hexdigest()
         return self.digest
 
@@ -169,7 +168,7 @@ class NamedUDKs(utils.Jsonable):
         return self.inverse[UDK.ensure_it(k)]
 
     def keys(self):
-        names = self.store.keys()
+        names = list(self.store.keys())
         names.sort()
         return names
 
@@ -187,7 +186,7 @@ class NamedUDKs(utils.Jsonable):
 
     def udk_content(self):
         content = str(self)
-        k, size = calc_UDK_and_length_from_stream(six.BytesIO(content))
+        k, size = calc_UDK_and_length_from_stream(six.BytesIO(utils.ensure_bytes(content)))
         return k.set_bundle(), size, content
 
 
@@ -222,20 +221,20 @@ class UdkSet(utils.Jsonable):
             lo = 0
             hi = l - 1
             while True:
-                i = lo + (hi-lo)/2
+                i = lo + int((hi-lo)/2)
                 s = self.store[i].k
                 if s == k.k:
                     return i
                 if s > k.k:
-                    if i == lo :
+                    if i == lo:
                         i = -1-i
                         break
                     hi = max(lo, i-1)
                 else:
-                    if i == hi :
-                        i= -1-(i+1)
+                    if i == hi:
+                        i = -1-(i+1)
                         break
-                    lo =  min(hi,i + 1)
+                    lo = min(hi, i+1)
             return i
 
     def add(self,k):

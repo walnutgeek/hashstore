@@ -16,15 +16,21 @@ run_template = 'PATH=%s:$PATH; ' \
                'coverage combine; coverage report -m; rm .coverage; ' \
                'exit $RC'
 
-def execute_test(*args):
-    case = 'hashstore.tests.shash_tests'
-    # case = 'hashstore.tests.hashstore_tests'
-    # case = 'hashstore.tests.udk_tests'
-    return 0 == os.system(run_template % (add_to_path,case) )
+
+def run(case):
+    return 0 == os.system(run_template % (add_to_path, case))
+
+
+def execute_one_test(*args):
+    #case = 'hashstore.tests.shash_tests'
+    #case = 'hashstore.tests.hashstore_tests'
+    case = 'hashstore.tests.udk_tests'
+    return run(case)
+
 
 @runnable
-def execute_coverage(*args):
-    return 0 == os.system( run_template % (add_to_path,''))
+def execute_all_tests(*args):
+    return run('')
 
 # #@runnable
 # def execute_sphinx(*args):
