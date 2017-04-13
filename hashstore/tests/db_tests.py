@@ -3,15 +3,12 @@ import six
 import shutil
 from hashstore.db import _session, Session, DbFile
 import logging
-from .. import content
 from .. import utils
+from hashstore.tests import TestSetup
 from nose.tools import eq_,ok_,with_setup
 
-test_dir = os.path.join(os.path.abspath("test-out"),__name__)
-if os.path.isdir(test_dir):
-    shutil.rmtree(test_dir)
-
-log = logging.getLogger(__name__)
+test = TestSetup(__name__,ensure_empty=True)
+log = test.log
 
 class TestDB(DbFile):
     def datamodel(self):
@@ -45,7 +42,7 @@ class TestDB(DbFile):
         return self.datamodel.__doc__
 
 def test_db2():
-    c = TestDB(os.path.join(test_dir,'abc.sqlite3'))
+    c = TestDB(os.path.join(test.dir,'abc.sqlite3'))
     eq_('TEXT',c.schema.tables['host'].columns['host_meta'].type)
     eq_('BLOB',c.schema.tables['content'].columns['content'].type)
     eq_(['host_id', 'host_name'],list(c.schema.tables['host'].all_column_names()))
@@ -56,11 +53,11 @@ def test_db2():
     eq_(['mount_id', 'content_id', 'host_id', 'mount_meta'],list(c.schema.tables['mount'].all_column_names(exclude_role=None)))
     c.ensure_db()
     c.compare_tables()
-    c = TestDB(os.path.join(test_dir, 'abc.sqlite3')).ensure_db()
+    c = TestDB(os.path.join(test.dir, 'abc.sqlite3')).ensure_db()
     eq_('TEXT',c.schema.tables['host'].columns['host_meta'].type)
-    c2 = TestDB(os.path.join(test_dir, 'abc2.sqlite3')).ensure_db()
-    c3 = TestDB(os.path.join(test_dir, 'abc3.sqlite3')).create_db(lambda dbf,session:None)
-    csame = TestDB(os.path.join(test_dir, 'abc.sqlite3'))
+    c2 = TestDB(os.path.join(test.dir, 'abc2.sqlite3')).ensure_db()
+    c3 = TestDB(os.path.join(test.dir, 'abc3.sqlite3')).create_db(lambda dbf,session:None)
+    csame = TestDB(os.path.join(test.dir, 'abc.sqlite3'))
     eq_({'name': 'a', '_abc_id': 1},c.insert('abc',{'name':'a'}))
     d=c.insert('ubc', {'name': 'a'})
     did = d['_ubc_id']
@@ -86,7 +83,13 @@ def test_db2():
         c.store('abc', utils.quict(abc_id = 1, name='c', _parent_id=1))
         ok_(False)
     except ValueError as e:
-        eq_("did not update any thing even pkey was provided. where: name=:name and abc_id=:abc_id: {'_parent_id': 1, 'name': 'c', 'abc_id': 1}",e.message)
+        message = utils.exception_message(e)
+        ok_( "did not update any thing even pkey was provided. where: " in message)
+        ok_( " name=:name" in message)
+        ok_( " abc_id=:abc_id" in message)
+        ok_( "'_parent_id': 1" in message)
+        ok_( "'name': 'c'" in message)
+        ok_( "'abc_id': 1" in message)
     cont_id = c.store('content',{'key':{'b':5, 'a':3}, '_content_meta': ['x','a','z'] })
     eq_({'b':5, 'a':3},c.select_one('content',{'content_id':cont_id})['key'])
     eq_(cont_id, c.store('content',{'key':{'a':3, 'b':5}, '_content_meta': ['x','a','z'] }))

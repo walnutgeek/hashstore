@@ -1,16 +1,18 @@
 from nose.tools import eq_,ok_,with_setup
 import sys
-from hashstore.tests import zzzetup
+from hashstore.tests import TestSetup
 import hashstore.utils as u
 from os import environ
-log,test_dir = zzzetup(__name__)
 
-substitutions = {'{test_dir}': test_dir, '{q}': 'q'}
+test = TestSetup(__name__,ensure_empty=True)
+log = test.log
+
+substitutions = {'{test_dir}': test.dir, '{q}': 'q'}
 
 
 def test_path_resolver():
     r = u.create_path_resover(substitutions)
-    eq_(r('{test_dir}/x/y/z'), test_dir + '/x/y/z')
+    eq_(r('{test_dir}/x/y/z'), test.dir + '/x/y/z')
     eq_(r('x/{q}/y/z'), 'x/q/y/z')
     eq_(r('/x/{q}/y/z'), '/x/q/y/z')
     eq_(r('/x/{q}/y/z/'), '/x/q/y/z/')

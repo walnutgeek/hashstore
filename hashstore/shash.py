@@ -14,7 +14,8 @@ def args_parser():
     server_group.add_argument('--port', metavar='port', type=int, nargs='?',
                               default=7532, help='a port to listen.')
     server_group.add_argument('--insecure', dest="secure", action='store_false',
-                             help='start insecure server that does not requre mounts to register')
+                             help='start insecure server that does not require '
+                                  'mounts to register for backup')
     server_group.add_argument('--store_dir', metavar='store_dir',
                              nargs='?', default='.',
                              help='a directory where local hashstore will reside')
@@ -33,7 +34,6 @@ def args_parser():
 def main():
     parser = args_parser()
     args = parser.parse_args()
-
     doing_start = args.command == 'start'
     doing_stop = args.command == 'stop'
     if doing_start or doing_stop:

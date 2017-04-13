@@ -21,6 +21,11 @@ log = logging.getLogger(__name__)
 def nop_process_buffer(read_buffer):
     pass
 
+def quick_hash(v):
+    h = hashlib.sha256()
+    h.update( utils.ensure_bytes(v) )
+    return h.hexdigest()
+
 
 def process_stream(fd, process_buffer=nop_process_buffer):
     inline_data = six.binary_type()

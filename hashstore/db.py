@@ -1,12 +1,12 @@
-from session import Session, _session
+from hashstore.session import Session, _session
 import os
 import re
 import six
 import uuid
 import datetime
 import json
-import udk
-from utils import quict,LazyVars,none2str,get_if_defined,call_if_defined
+import hashstore.udk as udk
+from hashstore.utils import quict,LazyVars,none2str,get_if_defined,call_if_defined
 
 SHARD_SIZE = 3
 SQLITE_EXT = '.sqlite3'
@@ -16,34 +16,15 @@ import logging
 log = logging.getLogger(__name__)
 
 
-
+def to_blob(v):
+    if six.PY2:
+        return buffer(v)
+    else:
+        return v if isinstance(v, bytes) else memoryview(v)
 
 def _join(data, expression, delim=',', filter_keys=lambda key: True):
-    return delim.join(expression(key) for key in data if filter_keys(key))
+    return delim.join(map( expression, filter(filter_keys, data)))
 
-#---
-
-def extract_model_from_classdoc(cls):
-    import sys
-    from inspect import isclass
-    if not(isclass(cls)):
-        cls = cls.__class__
-    pkg = sys.modules[cls.__module__].__dict__
-    doc = cls.__doc__.format(**pkg)
-    model = ''
-    ignore=True
-    for l in doc.split('\n'):
-        l = l.strip()
-        if len(l) > 0:
-            if ignore:
-                if '```dbf' == l:
-                    ignore = False
-            else:
-                if '```' == l:
-                    ignore = True
-                else:
-                    model += l +'\n'
-    return model
 
 
 '''
@@ -77,43 +58,46 @@ def _define_roles():
     class PK:
         type = DEFAULT_PK_TYPE
         @staticmethod
-        def column_ddl(cstrt):
+        def column_ddl(constraint):
             return 'PRIMARY KEY'
         @staticmethod
-        def init_column(cstrt):
-            cstrt.column.table.primarykey = cstrt.column
+        def init_column(column, constraint):
+            column.table.primarykey = column
 
     class AK:
         @staticmethod
-        def init_column(cstrt):
-            index_name = cstrt.param
-            table = cstrt.column.table
+        def init_column(column, constraint):
+            index_name = constraint.param
+            table = column.table
             if index_name is not None:
                 index = Index.get_index(table,index_name)
-                index.columns.append(cstrt.column.name)
+                index.columns.append(constraint.column.name)
             else:
-                table.altkey = cstrt.column
+                table.altkey = constraint.column
         @staticmethod
-        def column_ddl(cstrt):
-            return 'UNIQUE NOT NULL' if cstrt.param is None else ''
+        def column_ddl(constraint):
+            return 'UNIQUE NOT NULL' if constraint.param is None else ''
 
     class OPTIONS:
         @staticmethod
-        def column_ddl(cstrt):
-            return 'CHECK(%s in (%s))' % (cstrt.column.name, cstrt.param )
+        def column_ddl(constraint):
+            return 'CHECK(%s in (%s))' % (constraint.column.name, constraint.param )
 
     class FK:
         @staticmethod
-        def init_column(cstrt):
-            column = cstrt.column
-            column.fk = lambda: column.table.schema.tables[cstrt.param]
+        def deffered_init_column(column,constraint):
+            column.fk = lambda: column.table.schema.tables[constraint.param]
+            if not(column.type):
+                for fk_constrain in column.fk().primarykey.constraints:
+                    if fk_constrain.is_type():
+                        fk_constrain.clone(column).init_constraint(column)
+                        break
+
         @staticmethod
-        def column_ddl(cstrt):
-            column = cstrt.column
+        def column_ddl(constraint):
+            column = constraint.column
             fk_table = column.fk()
-            add_type = ''
-            if column.type is None:
-                add_type = fk_table.primarykey.type
+            add_type = fk_table.primarykey.type if column.type is None else ''
             return '%s references %s(%s)' % (add_type, fk_table.name, fk_table.primarykey.name)
 
     class BIG:
@@ -122,60 +106,60 @@ def _define_roles():
     class UUID1:
         type = 'UUID1'
         @staticmethod
-        def column_ddl(cstrt): return ''
+        def column_ddl(constraint): return ''
         @staticmethod
-        def on_INSERT(cstrt, vars):
-            if 'PK' in cstrt.column.roles:
+        def on_INSERT(constraint, vars):
+            if 'PK' in constraint.column.roles:
                 return uuid.uuid1()
         @staticmethod
-        def on_GET(cstrt, value):
-            return uuid.UUID(bytes=value)
+        def on_GET(constraint, value):
+            return None if value is None else uuid.UUID(bytes=value)
         @staticmethod
-        def on_SET(cstrt, value):
-            return buffer(value.bytes)
+        def on_SET(constraint, value):
+            return to_blob(value.bytes)
 
 
     class UUID4:
         type = 'UUID4'
         @staticmethod
-        def column_ddl(cstrt): return ''
+        def column_ddl(constraint): return ''
         @staticmethod
-        def on_INSERT(cstrt, vars):
-            if 'PK' in cstrt.column.roles:
+        def on_INSERT(constraint, vars):
+            if 'PK' in constraint.column.roles:
                 return uuid.uuid4()
         @staticmethod
-        def on_GET(cstrt, value):
-            return uuid.UUID(bytes=value)
+        def on_GET(constraint, value):
+            return None if value is None else uuid.UUID(bytes=value)
         @staticmethod
-        def on_SET(cstrt, value):
-            return buffer(value.bytes)
+        def on_SET(constraint, value):
+            return to_blob(value.bytes)
 
     class JSON:
         type = 'TEXT'
         @staticmethod
-        def on_GET(cstrt, value):
+        def on_GET(constraint, value):
             return json.loads(value)
         @staticmethod
-        def on_SET(cstrt, value):
+        def on_SET(constraint, value):
             return json.dumps(value)
 
     class SORTED_DICT:
         type = 'TEXT'
         @staticmethod
-        def on_GET(cstrt, value):
+        def on_GET(constraint, value):
             return json.loads(value)
         @staticmethod
-        def on_SET(cstrt, d):
+        def on_SET(constraint, d):
             k2json = lambda k: json.dumps(k)+':'+json.dumps(d[k])
             return '{' + ','.join( map(k2json, sorted(d.keys())) ) + '}'
 
     class UDK:
         type = 'TEXT'
         @staticmethod
-        def on_GET(cstrt, value):
+        def on_GET(constraint, value):
             return udk.UDK(value)
         @staticmethod
-        def on_SET(cstrt, d):
+        def on_SET(constraint, d):
             return str(d)
 
     class DT:
@@ -183,12 +167,12 @@ def _define_roles():
 
     class INSERT_DT(DT):
         @staticmethod
-        def on_INSERT(cstrt, vars):
+        def on_INSERT(constraint, vars):
             return datetime.datetime.utcnow()
 
     class UPDATE_DT(DT):
         @staticmethod
-        def on_UPDATE(cstrt, vars):
+        def on_UPDATE(constraint, vars):
             return datetime.datetime.utcnow()
 
     return locals()
@@ -199,24 +183,48 @@ ACTIONS = ['GET','SET','INSERT','UPDATE']
 
 
 class Constraint:
-    def __init__(self,column,i,p):
+    def __init__(self,column,i,p,to_be_cloned=None):
         self.column = column
-        self.param = None
-        self.name = p
-        self.role = None
-        m = re.match(r'(\w+)\(([,\'\w]+)\)', p)
-        if not(m):
-            m = re.match(r'(\w+)()', p)
-        if m :
-            n = m.group(1)
-            if n in ROLES:
-                self.name = n
-                self.role = ROLES[n]
-                if m.group(2):
-                    self.param = m.group(2)
-        if i == 0 and not(self.role):
-            self.role = type('', (), {})()
-            self.role.type = self.name
+        if to_be_cloned is None:
+            self.param = None
+            self.name = p
+            self.role = None
+            m = re.match(r'(\w+)\(([,\'\w]+)\)', p)
+            if not(m):
+                m = re.match(r'(\w+)()', p)
+            if m :
+                n = m.group(1)
+                if n in ROLES:
+                    self.name = n
+                    self.role = ROLES[n]
+                    if m.group(2):
+                        self.param = m.group(2)
+            if i == 0 and not(self.role):
+                self.role = type('', (), {})()
+                self.role.type = self.name
+        else:
+            self.param = to_be_cloned.param
+            self.name = to_be_cloned.name
+            self.role = to_be_cloned.role
+            # self.column.constraints.append(self)
+            # self.column.roles[self.name] = self
+
+    def clone(self,column):
+        return Constraint(column,None,None,to_be_cloned=self)
+
+    def init_constraint(self, column):
+        if column.type is None and hasattr(self.role, 'type'):
+            column.type = self.role.type
+        for action in ACTIONS:
+            method_name = 'on_' + action
+            if hasattr(self.role, method_name):
+                if action not in column.actions:
+                    def set_action(action_method):
+                        column.actions[action] = lambda x: action_method(self, x)
+                    set_action(getattr(self.role, method_name))
+
+    def is_type(self):
+        return hasattr(self.role,'type')
 
     def __str__(self):
         return none2str(call_if_defined(self.role, 'column_ddl', self)) if self.role else self.name
@@ -228,27 +236,25 @@ class Column:
         parts = re.split(r'\s+',line)
         self.name = parts[0]
         self.constraints = [Constraint(self, i, p) for i,p in enumerate(parts[1:])]
-        self.roles = {}
+        self.roles= {}
+        self.role = None
         self.type = None
         self.unique = False
         self.actions = {}
-        for cstrt in self.constraints:
-            if cstrt.role:
-                if self.type is None and hasattr(cstrt.role, 'type'):
-                    self.type = cstrt.role.type
-                def remember_if_there(cstrt,action):
-                    method_name = 'on_' + action
-                    if hasattr(cstrt.role, method_name):
-                        if action not in self.actions:
-                            self.actions[action] = lambda x: getattr(cstrt.role, method_name)(cstrt, x)
-                for action in ACTIONS:
-                    remember_if_there(cstrt,action)
-            self.roles[cstrt.name] = cstrt
-        for _,cstrt in six.iteritems(self.roles):
-            if hasattr(cstrt.role, 'init_column'):
-                cstrt.role.init_column(cstrt)
+        for constraint in self.constraints:
+            if constraint.role:
+                constraint.init_constraint(self)
+            self.roles[constraint.name] = constraint
+        for constraint in self.constraints:
+            if hasattr(constraint.role, 'init_column'):
+                constraint.role.init_column(self,constraint)
         self.table.column_names.append(self.name)
         self.table.columns[self.name] = self
+
+    def init_column(self):
+        for _,constraint in six.iteritems(self.roles):
+            if hasattr(constraint.role, 'deffered_init_column'):
+                constraint.role.deffered_init_column(self,constraint)
 
     def get_type(self):
         if self.type is not None:
@@ -292,6 +298,10 @@ class Table:
         self.column_names = []
         self.columns = {}
         self.indexes = {}
+
+    def init_columns(self):
+        for col_name in self.column_names:
+            self.columns[col_name].init_column()
 
     def __str__(self):
         cols_defn = ','.join(str(self.columns[c]) for c in self.column_names)
@@ -340,6 +350,8 @@ class Schema:
                     table = Table(self, l[6:].strip())
                 elif table:
                     Column(table,l)
+        for table in six.itervalues(self.tables):
+            table.init_columns()
 
     def create_statments(self):
         for table_name, table in six.iteritems(self.tables):

@@ -1,7 +1,10 @@
 from nose.tools import eq_,ok_,with_setup
 import hashstore.shash as shash
+from hashstore.tests import TestSetup
 import sys
 
+test = TestSetup(__name__,ensure_empty=True)
+log = test.log
 
 def test_args_parser():
     p = shash.args_parser()

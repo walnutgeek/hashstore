@@ -39,16 +39,16 @@ def test_UDK():
             eq_(c,u1.data())
 
 
-    do_test('', 'M', hashstore.udk.EMPTY_HASH)
-    do_test('a' * 1, 'MYQ==',
+    do_test(b'', 'M', hashstore.udk.EMPTY_HASH)
+    do_test(b'a' * 1, 'MYQ==',
             'ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb')
-    do_test('a' * 2, 'MYWE=',
+    do_test(b'a' * 2, 'MYWE=',
             '961b6dd3ede3cb8ecbaacbd68de040cd78eb2ed5889130cceb4c49268ea4d506')
-    do_test('a' * 3, 'MYWFh',
+    do_test(b'a' * 3, 'MYWFh',
             '9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0')
-    do_test('a' * 45, 'MYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFh',
+    do_test(b'a' * 45, 'MYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFh',
             '52789e3423b72beeb898456a4f49662e46b0cbb960784c5ef4b1399d327e7c27')
-    do_test('a' * 46, '6643110c5628fff59edf76d82d5bf573bf800f16a4d65dfb1e5d6f1a46296d0b')
+    do_test(b'a' * 46, '6643110c5628fff59edf76d82d5bf573bf800f16a4d65dfb1e5d6f1a46296d0b')
 
     # ok_(False)
 
@@ -62,11 +62,12 @@ def test_Bundle():
     eq_(u1,u2)
     ok_(u1 == u2)
     b1['a'] = inline_udk
-    eq_(str(b1), '[["a"], ["%s"]]' % inline_udk)
+    udk_bundle_str = '[["a"], ["%s"]]' % inline_udk
+    eq_(str(b1), udk_bundle_str)
     u1, _, c = b1.udk_content()
     ok_(u1 != u2)
-    b2.parse(six.BytesIO(c))
-    eq_(str(b2), '[["a"], ["%s"]]' % inline_udk)
+    b2.parse(six.BytesIO(ensure_bytes(c)))
+    eq_(str(b2), udk_bundle_str)
     u2, _, c = b2.udk_content()
     eq_(u1, u2)
     del b2['a']
@@ -81,31 +82,30 @@ def test_Bundle():
     eq_(hashstore.udk.NamedUDKs(b1.to_json()),b1)
     eq_(hashstore.udk.NamedUDKs.ensure_it(b1.to_json()),b1)
     eq_(len(b1),1)
-    eq_(hash(b1), 3188952409802495007)
+    eq_(str(b1),udk_bundle_str)
+    eq_(hash(b1),hash(udk_bundle_str))
 
 uuudk = lambda ch: ch * 64
 zuudk = lambda ch: hashstore.udk.UDK(uuudk(ch))
-ruudk = lambda ch: (uuudk if random.randint(0, 1) == 1 else zuudk)(ch)
+u_or_z_uudk = lambda i, ch: (uuudk if i % 2 == 1 else zuudk)(ch)
 ssset = lambda set: ''.join( k.k[:1] for k in set)
 
 
-import random
-
-
 def test_Set():
+    seed(0)
+    cases = random_small_caps(100)
     set = hashstore.udk.UdkSet()
-    cases = 'vtkgnkuhmpxnhtqgxzvxisxrmclpxzmwguoaskvramwgiweogzulcinycosovozpplpkoheeprmctwyvxyokshvwxpyplrzxucpm'
-    log.debug(cases)
     a = ''
-    for c in cases:
-        k = ruudk(c)
+    for i,c in enumerate(cases):
+        k = u_or_z_uudk(i,c)
         a += 'a' if set.add(k) else ' '
-    eq_(a,'aaaaa aaaaa   a  a  aa a aa    a  aa          a        a                                            ')
-    eq_(ssset(set), 'aceghiklmnopqrstuvwxyz')
+    eq_( cases, 'mpvaddhjtvsexgyymbghxoyrfnijutqtfppasdyrtttohabjakuxdlsxcaaevfgiurpejkybbhjdgxlosaodvmkulegepudmeuio')
+    eq_(a,      'aaaaa aaa aaaaa  a   a aaaa a a                  a   a  a                                           ')
+    eq_(ssset(set), 'abcdefghijklmnopqrstuvxy')
     ok_(uuudk('a') in set)
     ok_(zuudk('a') in set)
-    ok_(uuudk('b') not in set)
-    ok_(zuudk('b') not in set)
+    ok_(uuudk('z') not in set)
+    ok_(zuudk('z') not in set)
     eq_(hashstore.udk.UdkSet(set.to_json()), set)
     eq_(hashstore.udk.UdkSet(six.BytesIO(ensure_bytes(str(set)))), set)
     eq_(hashstore.udk.UdkSet(str(set)), set)
@@ -117,7 +117,7 @@ def test_Set():
     i = len(set)
     del set[0]
     eq_(i-1, len(set))
-    eq_(ssset(set), 'ceghiklmnopqrstuvwxyz')
+    eq_(ssset(set), 'bcdefghijklmnopqrstuvxy')
 
 
 

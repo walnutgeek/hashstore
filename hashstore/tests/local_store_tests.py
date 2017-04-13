@@ -1,9 +1,10 @@
 import sys
+import uuid
 import logging
 import os
 import shutil
-
-import hashstore.local_store as localstore
+from hashstore.tests import TestSetup, seed, random_bytes
+from hashstore.local_store import HashStore
 import hashstore.udk as udk
 import datetime
 from nose.tools import eq_,ok_,with_setup
@@ -13,28 +14,65 @@ import six
 # to test if sniffer is not hanging uncomment next line & save
 # raise Exception()
 
-test_dir = os.path.join(os.path.abspath("test-out"),__name__)
-if os.path.isdir(test_dir):
-    shutil.rmtree(test_dir)
-os.makedirs(test_dir)
+test = TestSetup(__name__,ensure_empty=True)
+log = test.log
 
-log = logging.getLogger(__name__)
 
-import random
-random_bytes = lambda l: six.binary_type().join(
-    six.int2byte(random.randint(0, 255)) for _ in range(l))
 
-inline_udk = 'M2MJrQoJnyE16leiBSMGeQOj7z+ZPuuaveBlvnOn3et1CzowDuGbTqw=='
-db_udk = '61a9a406b2e5790c6e80f5a33d6c773c456b8923deef63ace57192ab71e6cb98'
-file_udk = 'f05c654b8b74611f575658ec4e9d26147b6395113be29d33f207f572a5057ea1'
+inline_udk = 'MrC91wEP7w2cJ0xXyJFdG2FiMOsHmJ1euWFGlGU1ICZRz0PPF/k+vwA=='
+db_udk = '92bef2cc149396cc1cd6f3fcbe458084f34eec66c75c115ce65bee082621c898'
+file_udk = '32a987ad3ced40abe090804cf1da7cefc42722b5211bdbeed62430314646ecd5'
 
 
 def test_HashStore():
-    hs = localstore.HashStore(os.path.join(test_dir,'test_HashStore'),True)
-    not_existent = six.binary_type('afebac2a37799077d70427c6a28ed1d99754363e1f5dd0a2b28b962d8ae15263')
+    hs = HashStore(os.path.join(test.dir,'test_HashStore'),True)
+
+    def select_all(tbl):
+        return hs.dbf.select(tbl, {}, '1=1')
+
+    not_existent = 'afebac2a37799077d70427c6a28ed1d99754363e1f5dd0a2b28b962d8ae15263'
+
+    invitation = hs.create_invitation("body")
+    eq_(uuid.UUID, type(invitation))
+    i_rs = select_all('invitation')
+    eq_(1,len(i_rs))
+    eq_(invitation,i_rs[0]['invitation_id'])
+    eq_(False,i_rs[0]['used'])
+    eq_('body',i_rs[0]['invitation_body'])
+
+    remote_uuid = uuid.uuid4()
+    mount_id = hs.register(remote_uuid, invitation)
+    eq_(uuid.UUID, type(mount_id))
+    i_rs = select_all( 'invitation')
+    eq_(1,len(i_rs))
+    eq_(invitation,i_rs[0]['invitation_id'])
+    eq_(True,i_rs[0]['used'])
+
+    m_rs = select_all('mount')
+    eq_(1,len(m_rs))
+    log.info(m_rs)
+    eq_(mount_id,m_rs[0]['mount_id'])
+    eq_(udk.quick_hash(remote_uuid),m_rs[0]['mount_session'])
+
+    mount_id_none = hs.register(uuid.uuid4(),invitation) # invitation should work only once
+    eq_(None, mount_id_none)
+    m_rs = select_all('mount')
+    eq_(1,len(m_rs)) # only one mount still
+
+    mount_id_another = hs.register(uuid.uuid4(),hs.create_invitation()) # with another invitation
+    ok_(mount_id_another is not None)
+
+    m_rs = select_all('mount')
+    eq_(2,len(m_rs)) # second mount created
+
+    push_sess = hs.login(remote_uuid)
+    log.info(push_sess)
+
+    # ok_(False)
+
 
     def store():
-        random.seed(0)
+        seed(0)
         s = random_bytes(40)
         eq_(len(s), 40)
         w0 = hs.writer()
@@ -67,7 +105,7 @@ def test_HashStore():
         return r0, r1, r2
     r0, r1, r2 = store()
     #test recall
-    random.seed(0)
+    seed(0)
     o0 = hs.get_content(r0)
     eq_(o0.read(40), random_bytes(40))
     eq_(0, len(o0.read()))
@@ -85,7 +123,7 @@ def test_HashStore():
     eq_(None, hs.get_content(not_existent))
     udks = list(hs.iterate_udks())
     eq_(2,len(udks))
-    random.seed(0)
+    seed(0)
     eq_(str(udk.UDK_from_string(random_bytes(40))), inline_udk)
     eq_(str(udk.UDK_from_file(os.path.join(hs.root, file_udk[0:3], file_udk[3:]))), file_udk)
     for u in udks:
@@ -95,5 +133,8 @@ def test_HashStore():
     udks = list(hs.iterate_udks())
     eq_(0,len(udks))
     # ok_(False)
+
+
+
 
 

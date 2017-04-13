@@ -11,7 +11,7 @@ def quict(**kwargs):
     r.update(**kwargs)
     return r
 
-to_binary = lambda s: s if type(s) == six.binary_type else s.encode('utf8')
+
 
 class LazyVars(Mapping):
     def __init__(self, **kw ):
@@ -60,22 +60,37 @@ def reraise_with_msg(msg, exception=None):
     traceback = sys.exc_info()[2]
     _raise_it(etype,new_exception,traceback)
 
+
 def ensure_directory(directory):
     if not (os.path.isdir(directory)):
         os.makedirs(directory)
 
-none2str = lambda s: '' if s is None else s
 
-get_if_defined = lambda o, k: getattr(o, k) if hasattr(o, k) else None
+def none2str(s):
+    return '' if s is None else s
 
-call_if_defined = lambda o, k, *args: getattr(o,k)(*args) if hasattr(o,k) else None
 
+def get_if_defined( o, k):
+    return getattr(o, k) if hasattr(o, k) else None
+
+
+def call_if_defined (o, k, *args):
+    return getattr(o,k)(*args) if hasattr(o,k) else None
+
+
+def to_binary(s):
+    return s if type(s) == six.binary_type else s.encode('utf8')
 
 def ensure_bytes(s):
-    if type(s) == six.binary_type:
-        return s
-    else:
-        return six.binary_type(s, 'utf-8')
+    while True:
+        if isinstance(s, six.binary_type):
+            return s
+        if isinstance(s, six.string_types):
+            break
+        else:
+            s = str(s)
+    return six.binary_type(s, encoding='utf-8')
+
 
 
 def ensure_string(s):

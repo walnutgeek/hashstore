@@ -4,40 +4,40 @@ from nose.tools import eq_,ok_,with_setup
 
 import hashstore.mount as mount
 
-from hashstore.tests import zzzetup, file_set1, file_set2, prep_mount, run_bg
+from hashstore.tests import TestSetup, file_set1, file_set2, prep_mount, fileset1_udk, fileset2_udk
 
-log,test_dir = zzzetup(__name__,ensure_enpty=True)
+test = TestSetup(__name__,ensure_empty=True)
+log = test.log
 
 
 test_config = os.path.join(os.path.dirname(__file__), 'hashery.back-it-up')
-substitutions = {'{test_dir}': test_dir}
+substitutions = {'{test_dir}': test.dir}
 
 import hashstore.backup
 
 def test_backup():
-    hashery_dir = os.path.join(test_dir, 'hashery')
+    hashery_dir = os.path.join(test.dir, 'hashery')
     os.makedirs(hashery_dir)
     port = 9753
-    run_bg('hashstore.shash',[
-        'start', '--insecure',
-        '--store_dir', hashery_dir,
-        '--port',str(port) ], os.path.join(test_dir, 'hashery.log') )
+    test.run_shash( 'start --insecure --store_dir %s --port %d' % (hashery_dir, port), 'hashery.log')
     time.sleep(2)
-    files = os.path.join(test_dir, 'files')
+    files = os.path.join(test.dir, 'files')
     prep_mount(files, file_set1)
-    b = hashstore.backup.Backup(test_config, os.path.join(test_dir,'backup.db'), substitutions)
+    b = hashstore.backup.Backup(test_config, os.path.join(test.dir,'backup.db'), substitutions)
     v1 = b.backup()
     prep_mount(files, file_set2)
     v2 = b.backup()
-    h1 = 'X88a9b058784619c42e4d630812a8d0a20cd112a1b97d9735c4542bf7ac0664c5'
-    eq_(str(v1[files]), h1)
-    h2 = 'X2f55b6a35d6b1b528262d45a3b57363867b3ce5e7ab77cb2ed3ec663173ae712'
-    eq_(str(v2[files]), h2)
-    f1 = os.path.join(test_dir, 'files1')
+    eq_(str(v1[files]), fileset1_udk)
+    eq_(str(v2[files]), fileset2_udk)
+    f1 = os.path.join(test.dir, 'files1')
     b.restore(v1[files], f1)
-    f2 = os.path.join(test_dir, 'files2')
+    f2 = os.path.join(test.dir, 'files2')
     b.restore(v2[files], f2)
-    eq_(str(mount.MountDB(f1).scan()[1]), h1)
-    eq_(str(mount.MountDB(f2).scan()[1]), h2)
-    run_bg('hashstore.shash',[ 'stop', '--port', str(port)],
-           os.path.join(test_dir, 'shut.log') ).wait()
+    eq_(str(mount.MountDB(f1).scan()[1]), fileset1_udk)
+    eq_(str(mount.MountDB(f2).scan()[1]), fileset2_udk)
+    test.run_shash('stop --port %d' % port, 'shut.log').wait()
+
+def test_dummies():
+    test.run_shash('register')
+    test.run_shash('backup')
+    test.run_shash('nonsense')

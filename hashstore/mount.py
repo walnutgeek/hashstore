@@ -1,10 +1,12 @@
 from hashstore.db import _session, DbFile
 from hashstore.udk import calc_UDK_and_length_from_stream,\
-    UDK,NamedUDKs,UdkSet
+    UDK,NamedUDKs,UdkSet,quick_hash
+from hashstore.storage import RemoteStorage
 from hashstore.utils import quict, path_split_all, reraise_with_msg
 from collections import defaultdict
 import os
 import fnmatch
+import uuid
 
 import logging
 log = logging.getLogger(__name__)
@@ -39,7 +41,7 @@ class IgnoreEntry:
         return False
 
 def parse_ignore_specs(cur_dir, files, initial_ignore_entries):
-    ignore_specs = filter(pick_ignore_specs, files)
+    ignore_specs = list(filter(pick_ignore_specs, files))
     if len(ignore_specs) > 0:
         ignore_entries = list(initial_ignore_entries)
         for spec in ignore_specs:
@@ -69,9 +71,10 @@ class MountDB(DbFile):
     def datamodel(self):
         '''
         table:remote
-          url_id UUID4 PK
-          url TEXT AK
-          remote_key_hash TEXT
+          remote_id PK
+          url_uuid UUID4
+          url_text TEXT
+          mount_session TEXT
           created TIMESTAMP INSERT_DT
           last_push_id FK(push) NULL
         table:push
@@ -154,7 +157,7 @@ class MountDB(DbFile):
                     k,size = read_dir(path_to_file, dir_rec, ignore_entries)
                     cumulative_size += size
                 else:
-                    k,size = calc_UDK_and_length_from_stream(open(path_to_file))
+                    k,size = calc_UDK_and_length_from_stream(open(path_to_file,'rb'))
                     rec = self.insert('file', quict(
                         name=f,
                         parent_id=cur_id,
@@ -190,7 +193,24 @@ class MountDB(DbFile):
     def scan_select(self,scan_id = None):
         if scan_id is None:
             scan_id = self.last_id
-        return self.select('file',{'scan_id':scan_id}, ' order by parent_id, name')
+        return self.select('file', {'scan_id':scan_id}, ' order by parent_id, name')
+
+    @_session
+    def register(self, url, invitation = None, storage = None, session=None):
+        remote = self.select_one('remote', quict(
+            remote_id = 1
+        ), session=session)
+        if remote is not None and url == remote['url'] :
+            url_uuid = uuid.uuid4()
+            if storage is None:
+                storage = RemoteStorage(url)
+            mount_uuid = storage.register(url_uuid)
+            self.insert('remote', quict(
+                url_uuid=url_uuid,
+                url_text=url,
+                mount_session=quick_hash(mount_uuid)
+            ), session=session)
+
 
     @_session
     def push_files(self, storage, session=None):
@@ -204,13 +224,14 @@ class MountDB(DbFile):
                 hash=self.last_hash,
             ), session=session)
             tree = ScanTree(self)
-            count_synched_dirs, hashes_to_push = storage.store_directories(tree.directories)
+            count_synched_dirs, hashes_to_push = storage.store_directories(
+                tree.directories)
             push_files = len(hashes_to_push) > 0
             if push_files:
                 hashes_to_push = UdkSet.ensure_it(hashes_to_push)
                 for h in hashes_to_push:
                     f = tree.file_path(h)
-                    fp = open(os.path.join(self.dir, f))
+                    fp = open(os.path.join(self.dir, f), 'rb')
                     stored_as = storage.write_content(fp)
                     if stored_as != h:
                         log.warn('scaned: %s, but stored as: %s' % (f, stored_as))

@@ -1,16 +1,22 @@
 import logging
 import os
 import shutil
-import six
 import subprocess
 
+class TestSetup:
+    def __init__(self, name, ensure_empty = False):
+        self.log = logging.getLogger(name)
+        self.dir = os.path.join(os.path.abspath("test-out"), name)
+        if ensure_empty:
+            ensure_no_dir(self.dir)
+            ensure_dir(self.dir)
 
-def zzzetup(n,ensure_enpty = False):
-    test_dir = os.path.join(os.path.abspath("test-out"), n)
-    if ensure_enpty:
-        ensure_no_dir(test_dir)
-        ensure_dir(test_dir)
-    return logging.getLogger(n), test_dir
+    def run_shash(self, cmd, log_file = None):
+        if log_file is None:
+            log_file = cmd.split()[0]+'.log'
+        popen = run_bg('hashstore.shash', cmd.split(), os.path.join(self.dir, log_file))
+        return popen
+
 
 def makedir(path, abs_path):
     os.makedirs(abs_path)
@@ -21,31 +27,28 @@ def make_recursive_link(path, abs_path):
     except:
         os.system('ls -l %s' % os.path.dirname(abs_path))
 
-import random
+import numpy.random as np_rnd
 import time
+import array
 
-random_bytes = lambda l: six.binary_type().join(
-    six.int2byte(random.randint(0, 255)) for _ in range(l))
+random_bytes = lambda l: array.array('B', np_rnd.randint(0, 255,l)).tostring()
 
 reseed_random = lambda : int(time.clock() * 1000)
 
 
 def seed(a):
-    if six.PY2:
-        random.seed(a)
-    else:
-        random.seed(a, version=1)
+    np_rnd.seed(a)
 
 def random_content_fn(sz,reset_random):
     def do_content(path,abs_path):
         if reset_random is not None:
             seed(reset_random)
-        open(abs_path,'w').write(random_bytes(sz))
+        open(abs_path,'wb').write(random_bytes(sz))
     return do_content
 
 
 def random_small_caps(l):
-    return ''.join(chr(97 + random.randint(0, 25)) for _ in range(l))
+    return ''.join(map(chr, 97 + np_rnd.randint(0, 25, l)))
 
 
 def text_fn(content):
@@ -102,6 +105,8 @@ def prep_mount(dir,file_set):
         ensure_dir(d)
         fn(path,abs_path)
 
+fileset1_udk = 'X43bc953618b4d3d627fce6a0cb348e3ca48276783e6d9716fb7ca08c3901255c'
+fileset2_udk = 'X6daf310cc565d3741521b8858cb6694039fd6825d1277de0271da0adcef467f8'
 
 def ensure_dir(d):
     if not os.path.isdir(d):
@@ -117,7 +122,6 @@ def ensure_no_dir(dir):
                 shutil.rmtree(dir)
             else:
                 break
-
 
 
 def run_bg(module, args = [], outfile = None):

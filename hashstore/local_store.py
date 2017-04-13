@@ -5,7 +5,7 @@ import datetime
 import six
 import hashstore.db as db
 import logging
-from hashstore.utils import quict,ensure_directory,to_binary,read_in_chunks
+from hashstore.utils import quict,ensure_directory,ensure_bytes,read_in_chunks
 import hashstore.udk as udk
 
 SHARD_SIZE = 3
@@ -25,7 +25,7 @@ class Lookup:
         self.store = store
 
     def found(self):
-        return self.size >= 0
+        return self.size is not None and self.size >= 0
 
     def stream(self):
         return None
@@ -37,7 +37,7 @@ NULL_LOOKUP = Lookup(None, None)
 
 class InlineLookup(Lookup):
     def __init__(self, store, sha):
-        Lookup.__init__(self,store,sha);
+        Lookup.__init__(self,store,sha)
         if self.sha.has_data():
             self.size = len(self.sha.data())
 
@@ -81,7 +81,7 @@ class DbLookup(Lookup):
         if not self.found():
             self.dbf.ensure_db(compare=False)
             self.dbf.insert( 'blob',
-                quict(sha=self.sha, content=buffer(content)) )
+                quict(sha=self.sha, content=db.to_blob(content)) )
 
     def stream(self):
         if not self.found():
@@ -110,7 +110,7 @@ class FileLookup(Lookup):
                  raise
 
     def stream(self):
-        return open(self.file)
+        return open(self.file,'rb')
 
     def delete(self):
         if self.found():
@@ -124,7 +124,7 @@ class IncommingFile:
         self.store = store
         self.incoming_id = self.store.dbf.insert('incoming', {})['_incoming_id']
         self.file = os.path.join(self.store.incoming, '%d.tmp' % self.incoming_id)
-        self.fd = open(self.file, 'w')
+        self.fd = open(self.file, 'wb')
 
     def save_as(self, k):
         self.fd.close()
@@ -150,12 +150,35 @@ class HashStore:
         self.inline_data_in_udk = inline_data_in_udk
         self.incoming = os.path.join(root,'incoming')
         ensure_directory(self.incoming)
-        model = '''table:incoming
-                    incoming_id PK
-                    sha UDK
-                    new BOOL
-                    created_dt INSERT_DT
-                    updated_dt UPDATE_DT'''
+        model = '''
+        table:incoming
+            incoming_id PK
+            sha UDK
+            new BOOL
+            created_dt INSERT_DT
+            updated_dt UPDATE_DT
+        table:mount
+            mount_id UUID4 PK
+            mount_session TEXT AK
+            created_dt INSERT_DT
+        table:invitation
+            invitation_id UUID4 PK
+            invitation_body TEXT
+            used BOOL
+            created_dt INSERT_DT
+            update_dt UPDATE_DT NULL
+        table:push_session
+            push_session_id UUID4 PK
+            mount_id FK(mount)
+            active BOOL
+            created_dt INSERT_DT
+            update_dt UPDATE_DT NULL
+        table:push
+            push_id PK
+            push_session_id FK(push_session)
+            mount_hash UDK
+            created_dt INSERT_DT
+        '''
         self.dbf = db.DbFile(self.incoming + SQLITE_EXT,
                              model).ensure_db()
 
@@ -174,14 +197,54 @@ class HashStore:
                         yield udk.UDK(row[0])
                     session.close()
 
+    def create_invitation(self, body=None):
+        return self.dbf.insert("invitation", quict(
+            used = False,
+            invitation_body=body
+        ))['_invitation_id']
+
+    def register(self, remote_uuid, invitation, mount_meta=None):
+        rc = self.dbf.update('invitation', quict(
+            invitation_id = invitation,
+            used=False,
+            _used=True,
+        ))
+        if rc == 1:
+            mount_session = udk.quick_hash(remote_uuid)
+            return self.dbf.resolve_ak('mount', mount_session)
+        return None
+
+    def login(self, remote_uuid):
+        mount_session = udk.quick_hash(remote_uuid)
+        mount = self.dbf.select_one('mount', quict(mount_session=mount_session))
+        if mount is not None:
+            mount_id = mount['mount_id']
+            push_session = self.dbf.insert('push_session', quict(mount_id=mount_id, active=True))
+            return push_session
+
+    def logout(self, push_session_id):
+        return self.dbf.update('push_session', quict(
+            push_session_id = push_session_id, _active = False))
+
+    def check_push_session(self, push_session_id):
+        n = self.dbf.select_one('push_session', quict(
+            push_session_id = push_session_id, active = True))
+        if n is not None:
+            raise ValueError("authetification error")
+
+    def log_push(self,push_session_id, mount_hash):
+        self.dbf.insert('push', quict(push_session_id=push_session_id,
+                                      mount_hash=mount_hash))
+
     def write_content(self, fp):
         w = self.writer()
         for buffer in read_in_chunks(fp):
             w.write(buffer)
         return w.done()
 
-
-    def store_directories(self, directories):
+    def store_directories(self, directories, push_session_id = None, mount_hash=None):
+        if push_session_id is not None and mount_hash is not None:
+            self.log_push(push_session_id,mount_hash)
         unseen_file_hashes = udk.UdkSet()
         dirs_stored = udk.UdkSet()
         dirs_mismatch = udk.UdkSet()
@@ -232,7 +295,7 @@ class HashStore:
                 self.k = None
 
             def write(self,content,done = False):
-                content = to_binary(content)
+                content = ensure_bytes(content)
                 self.digest.update(content)
                 if self.buffer is not None:
                     if udk.db_max > len(self.buffer) + len(content):

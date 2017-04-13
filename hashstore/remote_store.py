@@ -50,9 +50,6 @@ class StreamHandler(tornado.web.RequestHandler):
         self.w = self.store.writer()
 
     def data_received(self, chunk):
-        l = 0
-        if buffer is not None:
-            l = len(chunk)
         self.w.write(chunk)
 
 
@@ -67,6 +64,11 @@ class HasheryHandler(tornado.web.RequestHandler):
         if path == 'store_directories' :
             r = self.store.store_directories(json.loads(self.request.body))
             self.write(json_encoder.encode(r))
+        elif path == 'register':
+            x_real_ip = self.request.headers.get("X-Real-IP")
+            remote_ip = x_real_ip or self.request.remote_ip
+            mount_uuid,mount_path = json.loads(self.request.body)
+            self.store.register(mount_uuid,mount_path,remote_ip)
         self.finish()
 
     def get(self, path):
@@ -91,13 +93,13 @@ def stop_server(signum, frame):
 
 
 def shutdown(port, wait_until_down):
+    import requests
     try:
         while True:
-            import urllib2
-            response = urllib2.urlopen('http://localhost:%d/.pid' % (port,))
-            pid = int(response.read())
+            response = requests.get('http://localhost:%d/.pid' % (port,))
+            pid = int(response.content)
             if pid:
-                logging.info('Stopping %d' % pid)
+                log.warn('Stopping %d' % pid)
                 os.kill(pid,signal.SIGINT)
                 if wait_until_down:
                     time.sleep(2)
