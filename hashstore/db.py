@@ -6,7 +6,7 @@ import uuid
 import datetime
 import json
 import hashstore.udk as udk
-from hashstore.utils import quict,LazyVars,none2str,get_if_defined,call_if_defined
+from hashstore.utils import reraise_with_msg,LazyVars,none2str,call_if_defined
 
 SHARD_SIZE = 3
 SQLITE_EXT = '.sqlite3'
@@ -116,6 +116,8 @@ def _define_roles():
             return None if value is None else uuid.UUID(bytes=value)
         @staticmethod
         def on_SET(constraint, value):
+            if not(isinstance(value, uuid.UUID)):
+                value = uuid.UUID(value)
             return to_blob(value.bytes)
 
 
@@ -132,6 +134,8 @@ def _define_roles():
             return None if value is None else uuid.UUID(bytes=value)
         @staticmethod
         def on_SET(constraint, value):
+            if not(isinstance(value, uuid.UUID)):
+                value = uuid.UUID(value)
             return to_blob(value.bytes)
 
     class JSON:
@@ -537,15 +541,19 @@ class DbFile:
     def select(self, table_name, data, where='', select=None, selectors = None,
                session=None, q=SELECT_TMPL):
         vars = DbFile.SmartVars(self, table_name, data, select=select)
-        if selectors is not None:
-            vars.values['selectors'] = selectors
-        result = session.query(q.format(**vars) + where, vars['data'], as_dicts=True)
-        if len(result) > 0 and selectors is None:
-            actions = vars.table.get_actions('GET', vars['columns'])
-            if len(actions) > 0 :
-                for row in result:
-                    for column_name in actions:
-                        row[column_name] = actions[column_name](row[column_name])
+        try:
+            if selectors is not None:
+                vars.values['selectors'] = selectors
+            result = session.query(vars.format(q) + where, vars['data'], as_dicts=True)
+            if len(result) > 0 and selectors is None:
+                actions = vars.table.get_actions('GET', vars['columns'])
+                if len(actions) > 0 :
+                    for row in result:
+                        for column_name in actions:
+                            row[column_name] = actions[column_name](row[column_name])
+        except:
+            reraise_with_msg('%s <- %r' % (q+where, vars))
+
         return result
 
 

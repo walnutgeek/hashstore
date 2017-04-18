@@ -145,8 +145,9 @@ class IncommingFile:
 
 
 class HashStore:
-    def __init__(self, root, inline_data_in_udk=True):
+    def __init__(self, root, inline_data_in_udk=True, secure=False):
         self.root = root
+        self.secure = secure
         self.inline_data_in_udk = inline_data_in_udk
         self.incoming = os.path.join(root,'incoming')
         ensure_directory(self.incoming)
@@ -182,7 +183,8 @@ class HashStore:
         self.dbf = db.DbFile(self.incoming + SQLITE_EXT,
                              model).ensure_db()
 
-    def iterate_udks(self):
+    def iterate_udks(self, auth = None):
+        self.check_push_session(auth)
         for f in os.listdir(self.root):
             shard_path = os.path.join(self.root,f)
             if os.path.isdir(shard_path) and len(f) == SHARD_SIZE:
@@ -220,29 +222,34 @@ class HashStore:
         if mount is not None:
             mount_id = mount['mount_id']
             push_session = self.dbf.insert('push_session', quict(mount_id=mount_id, active=True))
-            return push_session
+            return push_session['_push_session_id']
 
     def logout(self, push_session_id):
         return self.dbf.update('push_session', quict(
             push_session_id = push_session_id, _active = False))
 
     def check_push_session(self, push_session_id):
-        n = self.dbf.select_one('push_session', quict(
-            push_session_id = push_session_id, active = True))
-        if n is not None:
-            raise ValueError("authetification error")
+        if self.secure:
+            if push_session_id is None:
+                raise ValueError("push_session is required")
+            n = self.dbf.select_one('push_session', quict(
+                push_session_id = push_session_id, active = True))
+            if n is None:
+                raise ValueError("authetification error")
 
     def log_push(self,push_session_id, mount_hash):
         self.dbf.insert('push', quict(push_session_id=push_session_id,
                                       mount_hash=mount_hash))
 
-    def write_content(self, fp):
-        w = self.writer()
+    def write_content(self, fp ,push_session = None):
+        self.check_push_session(push_session)
+        w = self.writer(push_session)
         for buffer in read_in_chunks(fp):
             w.write(buffer)
         return w.done()
 
     def store_directories(self, directories, push_session_id = None, mount_hash=None):
+        self.check_push_session(push_session_id)
         if push_session_id is not None and mount_hash is not None:
             self.log_push(push_session_id,mount_hash)
         unseen_file_hashes = udk.UdkSet()
@@ -271,7 +278,8 @@ class HashStore:
             raise ValueError('could not store directories: %r' % dirs_mismatch)
         return len(dirs_stored), unseen_file_hashes
 
-    def lookup(self, k):
+    def lookup(self, k, auth = None):
+        self.check_push_session(auth)
         k = ensure_udk(k)
         for lookup_contr in (InlineLookup, FileLookup, DbLookup):
             l = lookup_contr(self, k)
@@ -279,13 +287,16 @@ class HashStore:
                 return l
         return NULL_LOOKUP
 
-    def get_content(self, k):
-        return self.lookup(k).stream()
+    def get_content(self, k, auth = None):
+        self.check_push_session(auth)
+        return self.lookup(k,auth).stream()
 
-    def delete(self, k):
+    def delete(self, k, auth = None):
+        self.check_push_session(auth)
         return self.lookup(k).delete()
 
-    def writer(self_store):
+    def writer(self_store, auth = None):
+        self_store.check_push_session(auth)
         class Writer:
             def __init__(self):
                 self.store = self_store

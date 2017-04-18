@@ -24,7 +24,7 @@ def test_biggest_size_that_smaller_then_hash():
 
 def test_UDK():
     def do_test(c, s, d=None):
-        u1 = hashstore.udk.UDK_from_string(c)
+        u1 = hashstore.udk.UDK.from_string(c)
         eq_(s, str(u1))
         u1n = hashstore.udk.UDK(str(u1))
         eq_(u1.k, u1n.k)

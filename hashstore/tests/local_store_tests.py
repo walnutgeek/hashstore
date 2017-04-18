@@ -5,6 +5,7 @@ import os
 import shutil
 from hashstore.tests import TestSetup, seed, random_bytes
 from hashstore.local_store import HashStore
+from hashstore.utils import exception_message
 import hashstore.udk as udk
 import datetime
 from nose.tools import eq_,ok_,with_setup
@@ -23,9 +24,8 @@ inline_udk = 'MrC91wEP7w2cJ0xXyJFdG2FiMOsHmJ1euWFGlGU1ICZRz0PPF/k+vwA=='
 db_udk = '92bef2cc149396cc1cd6f3fcbe458084f34eec66c75c115ce65bee082621c898'
 file_udk = '32a987ad3ced40abe090804cf1da7cefc42722b5211bdbeed62430314646ecd5'
 
-
-def test_HashStore():
-    hs = HashStore(os.path.join(test.dir,'test_HashStore'),True)
+def test_SecureStore():
+    hs = HashStore(os.path.join(test.dir,'test_SecureStore'),True, secure=True)
 
     def select_all(tbl):
         return hs.dbf.select(tbl, {}, '1=1')
@@ -68,8 +68,33 @@ def test_HashStore():
     push_sess = hs.login(remote_uuid)
     log.info(push_sess)
 
-    # ok_(False)
+    seed(1)
+    s4k = random_bytes(4000)
+    h4k = hs.writer(auth=str(push_sess)).write(s4k, done=True)
+    try:
+        hs.writer().write(s4k, done=True)
+        ok_(False)
+    except:
+        eq_(exception_message(),'push_session is required')
+    p100k = hs.writer(push_sess)
+    for _ in range(10):
+        p100k.write(random_bytes(10000))
+    h100k = p100k.done()
+    eq_(s4k, hs.get_content(h4k,auth = push_sess).read())
+    eq_(['5694182274e5a6cab47ce45024b72f94dcfd7de584f2b4432fb3556ebb870fad',
+         'b99268b77ce16d561a78b9a533349e46882f2df0b735e73d7441943074e214e5'],
+        [str(k) for k in hs.iterate_udks(auth=push_sess)])
+    hs.logout(push_session_id=push_sess)
+    try:
+        hs.writer(push_sess).write(s4k, done=True)
+        ok_(False)
+    except:
+        eq_(exception_message(),'authetification error')
 
+
+def test_HashStore():
+    hs = HashStore(os.path.join(test.dir,'test_HashStore'),True, secure=False)
+    not_existent = 'afebac2a37799077d70427c6a28ed1d99754363e1f5dd0a2b28b962d8ae15263'
 
     def store():
         seed(0)
@@ -124,8 +149,8 @@ def test_HashStore():
     udks = list(hs.iterate_udks())
     eq_(2,len(udks))
     seed(0)
-    eq_(str(udk.UDK_from_string(random_bytes(40))), inline_udk)
-    eq_(str(udk.UDK_from_file(os.path.join(hs.root, file_udk[0:3], file_udk[3:]))), file_udk)
+    eq_(str(udk.UDK.from_string(random_bytes(40))), inline_udk)
+    eq_(str(udk.UDK.from_file(os.path.join(hs.root, file_udk[0:3], file_udk[3:]))), file_udk)
     for u in udks:
         hs.delete(u)
     eq_(hs.delete(not_existent),False)

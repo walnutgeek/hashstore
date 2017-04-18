@@ -18,7 +18,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def nop_process_buffer(read_buffer):
+def NOP_process_buffer(read_buffer):
     pass
 
 def quick_hash(v):
@@ -27,7 +27,7 @@ def quick_hash(v):
     return h.hexdigest()
 
 
-def process_stream(fd, process_buffer=nop_process_buffer):
+def process_stream(fd, process_buffer=NOP_process_buffer):
     inline_data = six.binary_type()
     digest = hashlib.sha256()
     length = 0
@@ -47,7 +47,7 @@ def process_stream(fd, process_buffer=nop_process_buffer):
 
 
 def calc_UDK_and_length_from_stream(fd, respect_inline_max=True,
-                                    process_buffer=nop_process_buffer):
+                                    process_buffer=NOP_process_buffer):
     digest, length, inline_data = process_stream(fd, process_buffer)
     return UDK_from_digest_and_inline_data(digest, inline_data, respect_inline_max),length
 
@@ -57,18 +57,6 @@ def UDK_from_digest_and_inline_data(digest, buffer, respect_inline_max):
         return UDK('M' + utils.ensure_string(base64.b64encode(buffer)))
     else:
         return UDK(digest.hexdigest())
-
-
-def UDK_from_stream(fd, respect_inline_max=True):
-    return calc_UDK_and_length_from_stream(fd, respect_inline_max)[0]
-
-
-def UDK_from_string(s, respect_inline_max=True):
-    return UDK_from_stream(six.BytesIO(utils.ensure_bytes(s)), respect_inline_max)
-
-
-def UDK_from_file(file, respect_inline_max=True):
-    return UDK_from_stream(open(file, 'rb'),respect_inline_max)
 
 
 class UDK(utils.Stringable):
@@ -83,6 +71,18 @@ class UDK(utils.Stringable):
             self.digest = k
         elif l > 64 or k[0] != 'M':
             raise ValueError('invalid udk: %r ' % k)
+
+    @staticmethod
+    def from_stream(fd, respect_inline_max=True):
+        return calc_UDK_and_length_from_stream(fd, respect_inline_max)[0]
+
+    @staticmethod
+    def from_string(s, respect_inline_max=True):
+        return UDK.from_stream(six.BytesIO(utils.ensure_bytes(s)), respect_inline_max)
+
+    @staticmethod
+    def from_file(file, respect_inline_max=True):
+        return UDK.from_stream(open(file, 'rb'), respect_inline_max)
 
     def set_bundle(self):
         self.named_udk_bundle = True
@@ -117,13 +117,6 @@ class UDK(utils.Stringable):
             if not isinstance(other, UDK):
                 return False
             return self.hexdigest() == other.hexdigest()
-
-    @staticmethod
-    def ensure_it(o):
-        if isinstance(o, UDK):
-            return o
-        return UDK(o)
-
 
 
 class NamedUDKs(utils.Jsonable):
@@ -161,12 +154,6 @@ class NamedUDKs(utils.Jsonable):
     def __len__(self):
         return len(self.store)
 
-    def __hash__(self):
-        return hash(str(self))
-
-    def __eq__(self, other):
-        return str(self) == str(other)
-
     def get_name_by_udk(self, k):
         if self.inverse is None:
             self.inverse = { v : k for k,v in six.iteritems(self.store)}
@@ -186,20 +173,11 @@ class NamedUDKs(utils.Jsonable):
         keys = self.keys()
         return [keys, self.get_udks(keys)]
 
-    def __str__(self):
-        return utils.json_encoder.encode(self.to_json())
-
     def udk_content(self):
         content = str(self)
         k, size = calc_UDK_and_length_from_stream(six.BytesIO(utils.ensure_bytes(content)))
         return k.set_bundle(), size, content
 
-
-    @staticmethod
-    def ensure_it(o):
-        if isinstance(o, NamedUDKs):
-            return o
-        return NamedUDKs(o)
 
 class UdkSet(utils.Jsonable):
     def __init__(self,o=None):
@@ -245,11 +223,11 @@ class UdkSet(utils.Jsonable):
     def add(self,k):
         k = UDK.ensure_it(k).strip_bundle()
         i = self._index_of(k)
-        added = i < 0
-        if added:
+        to_add = i < 0
+        if to_add:
             at = -(i + 1)
             self.store.insert(at, k)
-        return added
+        return to_add
 
     def __contains__(self, k):
         k = UDK.ensure_it(k).strip_bundle()
@@ -270,17 +248,4 @@ class UdkSet(utils.Jsonable):
     def to_json(self):
         return self.store
 
-    def __str__(self):
-        return utils.json_encoder.encode(self.to_json())
 
-    def __hash__(self):
-        return hash(str(self))
-
-    def __eq__(self, other):
-        return str(self) == str(other)
-
-    @staticmethod
-    def ensure_it(o):
-        if isinstance(o, UdkSet):
-            return o
-        return UdkSet(o)

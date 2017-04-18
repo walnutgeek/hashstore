@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import requests
 import os
 import time
 import logging
@@ -93,7 +94,6 @@ def stop_server(signum, frame):
 
 
 def shutdown(port, wait_until_down):
-    import requests
     try:
         while True:
             response = requests.get('http://localhost:%d/.pid' % (port,))

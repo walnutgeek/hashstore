@@ -140,19 +140,35 @@ def path_split_all(path, ensure_trailing_slash = None):
                 parts = parts[:-1]
     return parts
 
-class Stringable:
+class EnsureIt:
+    @classmethod
+    def ensure_it(cls, o):
+        if isinstance(o, cls):
+            return o
+        return cls(o)
+
+class Stringable(EnsureIt):
     '''
     Marker to inform json_encoder to use `str(o)` to
     serialize in json
     '''
     pass
 
-class Jsonable:
+class Jsonable(EnsureIt):
     '''
     Marker to inform json_encoder to use `o.to_json()` to
     serialize in json
     '''
-    pass
+
+    def __str__(self):
+        return json_encoder.encode(self.to_json())
+
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def __eq__(self, other):
+        return str(self) == str(other)
 
 
 class StringableEncoder(json.JSONEncoder):

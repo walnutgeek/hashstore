@@ -12,8 +12,8 @@ env_template = '. activate %s; coverage run -p -m nose %s'
 combine_cmd = '. activate py2; coverage combine; coverage report -m; rm .coverage'
 
 
-def run(case):
-    env_states = [0 == os.system(env_template % (e, case)) for e in run_envs]
+def run(case,envs=run_envs):
+    env_states = [0 == os.system(env_template % (e, case)) for e in envs]
     print(dict(zip(run_envs,env_states)))
     os.system(combine_cmd)
     return all(env_states)
@@ -21,11 +21,12 @@ def run(case):
 
 def execute_one_test(*args):
     #case = 'hashstore.tests.shash_tests'
-    case = 'hashstore.tests.mount_tests'
+    # case = 'hashstore.tests.mount_tests'
     # case = 'hashstore.tests.hashery_tests'
-    #case = 'hashstore.tests.hashstore_tests'
+    case = 'hashstore.tests.local_store_tests'
+    # case = 'hashstore.tests.utils_tests'
     #case = 'hashstore.tests.udk_tests'
-    return run(case)
+    return run(case,['py2'])
 
 
 @runnable

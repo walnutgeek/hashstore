@@ -65,6 +65,8 @@ def test_LazyVars():
     eq_(1, read_count)
     eq_('b', lv['b'])
     eq_(str(lv),"{'a': 'v=a', 'b': 'b'}")
+    lv = u.LazyVars( a = val_a, b = 'b')
+    eq_('{a} -- {b}'.format(**lv),'v=a -- b')
 
 def test_json_encoder_force_default_call():
     class q:
