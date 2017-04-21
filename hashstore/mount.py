@@ -1,5 +1,5 @@
 from hashstore.db import _session, DbFile
-from hashstore.udk import calc_UDK_and_length_from_stream,\
+from hashstore.udk import process_stream,\
     UDK,NamedUDKs,UdkSet,quick_hash
 from hashstore.storage import RemoteStorage
 from hashstore.utils import quict, path_split_all, reraise_with_msg
@@ -157,7 +157,8 @@ class MountDB(DbFile):
                     k,size = read_dir(path_to_file, dir_rec, ignore_entries)
                     cumulative_size += size
                 else:
-                    k,size = calc_UDK_and_length_from_stream(open(path_to_file,'rb'))
+                    digest, size, inline_data = process_stream(open(path_to_file,'rb'))
+                    k = UDK.from_digest_and_inline_data(digest, inline_data)
                     rec = self.insert('file', quict(
                         name=f,
                         parent_id=cur_id,

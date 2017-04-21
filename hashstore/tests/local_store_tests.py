@@ -105,7 +105,7 @@ def test_HashStore():
         r0 = w0.write(s, done=True)
         eq_(inline_udk, str(r0))
         digest,_,_ = udk.process_stream(six.BytesIO(s))
-        r0a = udk.UDK(digest.hexdigest())
+        r0a = udk.UDK(digest)
         eq_(r0, r0a)
         eq_(False, r0 == 0 )
         eq_(False, r0a == 0 )

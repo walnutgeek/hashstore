@@ -77,12 +77,7 @@ def process_stream(fd, process_buffer=NOP_process_buffer):
     fd.close()
     if length >= inline_max:
         inline_data = None
-    return (digest,length,inline_data)
-
-
-def calc_UDK_and_length_from_stream(fd,  process_buffer=NOP_process_buffer):
-    digest, length, inline_data = process_stream(fd, process_buffer)
-    return UDK.from_digest_and_inline_data(digest, inline_data),length
+    return digest.hexdigest(),length,inline_data
 
 
 class UDK(utils.Stringable):
@@ -101,15 +96,16 @@ class UDK(utils.Stringable):
             raise ValueError('invalid udk: %r ' % k)
 
     @staticmethod
-    def from_digest_and_inline_data(digest, buffer):
+    def from_digest_and_inline_data(hexdigest, buffer, bundle = False):
         if buffer is not None and len(buffer) < inline_max:
-            return UDK('M' + utils.ensure_string(base64.b64encode(buffer)))
+            return UDK('M' + utils.ensure_string(base64.b64encode(buffer)), bundle=bundle)
         else:
-            return UDK(digest.hexdigest())
+            return UDK(hexdigest, bundle=bundle)
 
     @staticmethod
     def from_stream(fd):
-        return calc_UDK_and_length_from_stream(fd)[0]
+        digest, _, inline_data = process_stream(fd)
+        return UDK.from_digest_and_inline_data(digest, inline_data)
 
     @staticmethod
     def from_string(s):
@@ -208,9 +204,10 @@ class NamedUDKs(utils.Jsonable):
 
     def udk_content(self):
         content = str(self)
-        k, size = calc_UDK_and_length_from_stream(six.BytesIO(utils.ensure_bytes(content)))
-        return k.ensure_bundle(), size, content
-
+        in_bytes = utils.ensure_bytes(content)
+        digest = quick_hash(in_bytes)
+        size = len(in_bytes)
+        return UDK.from_digest_and_inline_data(digest, in_bytes, bundle=True), size, content
 
 class UdkSet(utils.Jsonable):
     def __init__(self,o=None):

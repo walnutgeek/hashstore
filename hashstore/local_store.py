@@ -328,7 +328,7 @@ class HashStore:
 
             def done(self):
                 if self.buffer is not None:
-                    self.k = udk.UDK.from_digest_and_inline_data(self.digest,self.buffer)
+                    self.k = udk.UDK.from_digest_and_inline_data(self.digest.hexdigest(),self.buffer)
                     if self.k.has_data():
                         log.debug('no need to store: %s' % self.k)
                     else:

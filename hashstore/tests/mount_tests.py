@@ -32,6 +32,6 @@ def test_mount():
 def test_group_by():
     for k,v in six.iteritems(mount.ScanTree(m).directories):
         digest = udk.process_stream(six.BytesIO(ensure_bytes(json_encoder.encode(v))))[0]
-        ok_(k,digest.hexdigest())
+        ok_(k,digest)
 
     # ok_(False)
