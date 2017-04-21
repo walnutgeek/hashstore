@@ -9,15 +9,22 @@ log = test.log
 
 substitutions = {'{test_dir}': test.dir, '{q}': 'q'}
 
+u.ensure_directory(test.dir)
 
 def test_path_resolver():
-    r = u.create_path_resover(substitutions)
+    r = u.create_path_resolver(substitutions)
     eq_(r('{test_dir}/x/y/z'), test.dir + '/x/y/z')
     eq_(r('x/{q}/y/z'), 'x/q/y/z')
     eq_(r('/x/{q}/y/z'), '/x/q/y/z')
     eq_(r('/x/{q}/y/z/'), '/x/q/y/z/')
     eq_(r('{env.HOME}/y/z/'), environ.get('HOME') + '/y/z/')
     eq_(r('~/y/z/'), environ.get('HOME') + '/y/z/')
+
+    #override environment variable
+    r = u.create_path_resolver({'{env.HOME}' : 'other'})
+    eq_(r('{env.HOME}/y/z/'), 'other/y/z/')
+    eq_(r('~/y/z/'), environ.get('HOME') + '/y/z/')
+
 
 def test_split_all():
     eq_(u.path_split_all('/a/b/c'), ['/', 'a', 'b', 'c'])
@@ -36,17 +43,20 @@ def test_split_all():
 read_count = 0
 
 def test_reraise():
-    try:
+    for i in range(2):
         try:
-            raise ValueError("hello")
+            try:
+                raise ValueError("hello")
+            except:
+                if i == 0 :
+                    u.reraise_with_msg('bye')
+                else:
+                    u.reraise_with_msg('bye', sys.exc_info()[1])
         except:
-            u.reraise_with_msg('bye')
-    except:
-        e = sys.exc_info()[1]
-        msg = u.exception_message(e)
-        ok_('hello' in msg)
-        ok_('bye' in msg)
-
+            e = sys.exc_info()[1]
+            msg = u.exception_message(e)
+            ok_('hello' in msg)
+            ok_('bye' in msg)
 
 
 def test_LazyVars():
@@ -76,3 +86,17 @@ def test_json_encoder_force_default_call():
         ok_(False)
     except:
         ok_('is not JSON serializable' in u.exception_message())
+
+
+def test_if_defined():
+    class O:
+        def __init__(self):
+            self.x = 5
+
+        def y(self):
+            return -5
+    o = O()
+    eq_(u.get_if_defined( o, 'x'), 5)
+    eq_(u.get_if_defined( o, 'z'), None)
+    eq_(u.call_if_defined( o, 'y'), -5)
+    eq_(u.call_if_defined( o, 'z'), None)

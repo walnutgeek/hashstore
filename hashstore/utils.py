@@ -1,4 +1,3 @@
-
 from collections import Mapping
 import six
 import os
@@ -10,7 +9,6 @@ def quict(**kwargs):
     r = {}
     r.update(**kwargs)
     return r
-
 
 
 class LazyVars(Mapping):
@@ -38,6 +36,7 @@ class LazyVars(Mapping):
 
     def __repr__(self):
         return "LazyVars({0})".format(repr(self.values))
+
 
 def exception_message(e = None):
     if e is None:
@@ -70,7 +69,7 @@ def none2str(s):
     return '' if s is None else s
 
 
-def get_if_defined( o, k):
+def get_if_defined(o, k):
     return getattr(o, k) if hasattr(o, k) else None
 
 
@@ -78,19 +77,15 @@ def call_if_defined (o, k, *args):
     return getattr(o,k)(*args) if hasattr(o,k) else None
 
 
-def to_binary(s):
-    return s if type(s) == six.binary_type else s.encode('utf8')
-
 def ensure_bytes(s):
     while True:
         if isinstance(s, six.binary_type):
             return s
-        if isinstance(s, six.string_types):
+        elif isinstance(s, six.string_types):
             break
         else:
             s = str(s)
-    return six.binary_type(s, encoding='utf-8')
-
+    return s.encode()
 
 
 def ensure_string(s):
@@ -100,13 +95,14 @@ def ensure_string(s):
         return s.decode('utf-8')
 
 
-def create_path_resover(substitutions = {}):
+def create_path_resolver(substitutions = {}):
     substitutions = dict(substitutions)
     for k in os.environ:
         env_key = '{env.' + k + '}'
         if env_key not in substitutions:
             substitutions[env_key] = os.environ[k]
-    def path_resover(p):
+
+    def path_resolver(p):
         split =  path_split_all(p)
         updated = False
         if '~' == split[0] :
@@ -117,7 +113,8 @@ def create_path_resover(substitutions = {}):
                 split[i] = substitutions[s]
                 updated = True
         return os.path.join(*split) if updated else p
-    return path_resover
+
+    return path_resolver
 
 def path_split_all(path, ensure_trailing_slash = None):
     def tails(head):
@@ -179,7 +176,9 @@ class StringableEncoder(json.JSONEncoder):
             return o.to_json()
         return json.JSONEncoder.default(self,o)
 
+
 json_encoder = StringableEncoder()
+
 
 def read_in_chunks(fp, chunk_size=65535):
     while True:

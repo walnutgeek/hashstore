@@ -5,7 +5,7 @@ from hashstore.db import _session, Session, DbFile
 import logging
 from .. import utils
 from hashstore.tests import TestSetup
-from nose.tools import eq_,ok_,with_setup
+from nose.tools import eq_,ok_
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log

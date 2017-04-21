@@ -3,6 +3,7 @@ import os
 import shutil
 import datetime
 import six
+from hashstore.session import _session
 import hashstore.db as db
 import logging
 from hashstore.utils import quict,ensure_directory,ensure_bytes,read_in_chunks
@@ -12,6 +13,7 @@ SHARD_SIZE = 3
 SQLITE_EXT = '.sqlite3'
 
 log = logging.getLogger(__name__)
+
 
 def ensure_udk(k):
     return udk.UDK.ensure_it(k).strip_bundle()
@@ -55,8 +57,10 @@ def _blob_dbf_instance(file):
     '''
     return db.DbFile(file, _blob_dbf_instance.__doc__)
 
+
 def _blob_db_filename(directory):
     return os.path.join(directory, 'blob' + SQLITE_EXT)
+
 
 def _blob_dbf(store, sha):
     directory = os.path.join(store.root, sha.k[:SHARD_SIZE])
@@ -145,10 +149,9 @@ class IncommingFile:
 
 
 class HashStore:
-    def __init__(self, root, inline_data_in_udk=True, secure=False):
+    def __init__(self, root,  secure=False):
         self.root = root
         self.secure = secure
-        self.inline_data_in_udk = inline_data_in_udk
         self.incoming = os.path.join(root,'incoming')
         ensure_directory(self.incoming)
         model = '''
@@ -168,23 +171,23 @@ class HashStore:
             used BOOL
             created_dt INSERT_DT
             update_dt UPDATE_DT NULL
-        table:push_session
-            push_session_id UUID4 PK
+        table:auth_session
+            auth_session_id UUID4 PK
             mount_id FK(mount)
             active BOOL
             created_dt INSERT_DT
             update_dt UPDATE_DT NULL
         table:push
             push_id PK
-            push_session_id FK(push_session)
+            auth_session_id FK(auth_session)
             mount_hash UDK
             created_dt INSERT_DT
         '''
         self.dbf = db.DbFile(self.incoming + SQLITE_EXT,
                              model).ensure_db()
 
-    def iterate_udks(self, auth = None):
-        self.check_push_session(auth)
+    def iterate_udks(self, auth_session = None):
+        self.check_auth_session(auth_session)
         for f in os.listdir(self.root):
             shard_path = os.path.join(self.root,f)
             if os.path.isdir(shard_path) and len(f) == SHARD_SIZE:
@@ -221,37 +224,39 @@ class HashStore:
         mount = self.dbf.select_one('mount', quict(mount_session=mount_session))
         if mount is not None:
             mount_id = mount['mount_id']
-            push_session = self.dbf.insert('push_session', quict(mount_id=mount_id, active=True))
-            return push_session['_push_session_id']
+            auth_session = self.dbf.insert('auth_session', quict(mount_id=mount_id, active=True))
+            return auth_session['_auth_session_id']
 
-    def logout(self, push_session_id):
-        return self.dbf.update('push_session', quict(
-            push_session_id = push_session_id, _active = False))
+    def logout(self, auth_session):
+        return self.dbf.update('auth_session', quict(
+            auth_session_id = auth_session, _active = False))
 
-    def check_push_session(self, push_session_id):
-        if self.secure:
-            if push_session_id is None:
-                raise ValueError("push_session is required")
-            n = self.dbf.select_one('push_session', quict(
-                push_session_id = push_session_id, active = True))
-            if n is None:
-                raise ValueError("authetification error")
+    def check_auth_session(self, auth_session, push_hash = None):
+        if self.secure or auth_session:
+            if auth_session is None:
+                raise ValueError("auth_session is required")
+            @_session
+            def tx(self, session=None):
+                n = self.dbf.select_one('auth_session', quict(
+                    auth_session_id = auth_session, active = True),
+                                        session=session)
+                if n is None:
+                    raise ValueError("authetification error")
+                if push_hash is not None:
+                    self.dbf.insert('push', quict(auth_session_id=auth_session,
+                                                  mount_hash=push_hash),
+                                    session=session)
+            tx(self)
 
-    def log_push(self,push_session_id, mount_hash):
-        self.dbf.insert('push', quict(push_session_id=push_session_id,
-                                      mount_hash=mount_hash))
-
-    def write_content(self, fp ,push_session = None):
-        self.check_push_session(push_session)
-        w = self.writer(push_session)
+    def write_content(self, fp ,auth_session = None):
+        self.check_auth_session(auth_session)
+        w = self.writer(auth_session)
         for buffer in read_in_chunks(fp):
             w.write(buffer)
         return w.done()
 
-    def store_directories(self, directories, push_session_id = None, mount_hash=None):
-        self.check_push_session(push_session_id)
-        if push_session_id is not None and mount_hash is not None:
-            self.log_push(push_session_id,mount_hash)
+    def store_directories(self, directories, auth_session = None, mount_hash=None):
+        self.check_auth_session(auth_session, mount_hash)
         unseen_file_hashes = udk.UdkSet()
         dirs_stored = udk.UdkSet()
         dirs_mismatch = udk.UdkSet()
@@ -278,8 +283,8 @@ class HashStore:
             raise ValueError('could not store directories: %r' % dirs_mismatch)
         return len(dirs_stored), unseen_file_hashes
 
-    def lookup(self, k, auth = None):
-        self.check_push_session(auth)
+    def lookup(self, k, auth_session = None):
+        self.check_auth_session(auth_session)
         k = ensure_udk(k)
         for lookup_contr in (InlineLookup, FileLookup, DbLookup):
             l = lookup_contr(self, k)
@@ -287,16 +292,16 @@ class HashStore:
                 return l
         return NULL_LOOKUP
 
-    def get_content(self, k, auth = None):
-        self.check_push_session(auth)
-        return self.lookup(k,auth).stream()
+    def get_content(self, k, auth_session = None):
+        self.check_auth_session(auth_session)
+        return self.lookup(k,auth_session).stream()
 
-    def delete(self, k, auth = None):
-        self.check_push_session(auth)
+    def delete(self, k, auth_session = None):
+        self.check_auth_session(auth_session)
         return self.lookup(k).delete()
 
-    def writer(self_store, auth = None):
-        self_store.check_push_session(auth)
+    def writer(self_store, auth_session = None):
+        self_store.check_auth_session(auth_session)
         class Writer:
             def __init__(self):
                 self.store = self_store
@@ -323,7 +328,7 @@ class HashStore:
 
             def done(self):
                 if self.buffer is not None:
-                    self.k = udk.UDK_from_digest_and_inline_data(self.digest,self.buffer,self.store.inline_data_in_udk)
+                    self.k = udk.UDK.from_digest_and_inline_data(self.digest,self.buffer)
                     if self.k.has_data():
                         log.debug('no need to store: %s' % self.k)
                     else:

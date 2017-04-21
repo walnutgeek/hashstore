@@ -1,7 +1,7 @@
 import os
 import yaml
 from hashstore.db import _session, DbFile
-from hashstore.utils import create_path_resover,\
+from hashstore.utils import create_path_resolver,\
     read_in_chunks,ensure_directory,reraise_with_msg
 import datetime
 import hashstore.mount as mount
@@ -22,7 +22,7 @@ class Backup(DbFile):
             db_location = config+'.db'
         DbFile.__init__(self, db_location )
         self.ensure_db()
-        path_resover = create_path_resover(substitutions)
+        path_resover = create_path_resolver(substitutions)
         self.mounts = []
         for m in self.config['mounts']:
             location,frequency = (m[k] for k in ['location','frequency'])

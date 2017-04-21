@@ -1,13 +1,9 @@
-import sys
 import uuid
-import logging
 import os
-import shutil
 from hashstore.tests import TestSetup, seed, random_bytes
 from hashstore.local_store import HashStore
 from hashstore.utils import exception_message
 import hashstore.udk as udk
-import datetime
 from nose.tools import eq_,ok_,with_setup
 import six
 
@@ -25,7 +21,7 @@ db_udk = '92bef2cc149396cc1cd6f3fcbe458084f34eec66c75c115ce65bee082621c898'
 file_udk = '32a987ad3ced40abe090804cf1da7cefc42722b5211bdbeed62430314646ecd5'
 
 def test_SecureStore():
-    hs = HashStore(os.path.join(test.dir,'test_SecureStore'),True, secure=True)
+    hs = HashStore(os.path.join(test.dir,'test_SecureStore'), secure=True)
 
     def select_all(tbl):
         return hs.dbf.select(tbl, {}, '1=1')
@@ -65,35 +61,40 @@ def test_SecureStore():
     m_rs = select_all('mount')
     eq_(2,len(m_rs)) # second mount created
 
-    push_sess = hs.login(remote_uuid)
-    log.info(push_sess)
+    auth_session = hs.login(remote_uuid)
+    log.info(auth_session)
 
     seed(1)
     s4k = random_bytes(4000)
-    h4k = hs.writer(auth=str(push_sess)).write(s4k, done=True)
+    h4k = hs.writer(auth_session=str(auth_session)).write(s4k, done=True)
     try:
         hs.writer().write(s4k, done=True)
         ok_(False)
     except:
-        eq_(exception_message(),'push_session is required')
-    p100k = hs.writer(push_sess)
+        eq_(exception_message(),'auth_session is required')
+    p100k = hs.writer(auth_session)
     for _ in range(10):
         p100k.write(random_bytes(10000))
     h100k = p100k.done()
-    eq_(s4k, hs.get_content(h4k,auth = push_sess).read())
+    try:
+        hs.get_content(h4k)
+        ok_(False)
+    except:
+        eq_(exception_message(),'auth_session is required')
+    eq_(s4k, hs.get_content(h4k, auth_session=auth_session).read())
     eq_(['5694182274e5a6cab47ce45024b72f94dcfd7de584f2b4432fb3556ebb870fad',
          'b99268b77ce16d561a78b9a533349e46882f2df0b735e73d7441943074e214e5'],
-        [str(k) for k in hs.iterate_udks(auth=push_sess)])
-    hs.logout(push_session_id=push_sess)
+        [str(k) for k in hs.iterate_udks(auth_session=auth_session)])
+    hs.logout(auth_session=auth_session)
     try:
-        hs.writer(push_sess).write(s4k, done=True)
+        hs.writer(auth_session).write(s4k, done=True)
         ok_(False)
     except:
         eq_(exception_message(),'authetification error')
 
 
 def test_HashStore():
-    hs = HashStore(os.path.join(test.dir,'test_HashStore'),True, secure=False)
+    hs = HashStore(os.path.join(test.dir,'test_HashStore'), secure=False)
     not_existent = 'afebac2a37799077d70427c6a28ed1d99754363e1f5dd0a2b28b962d8ae15263'
 
     def store():

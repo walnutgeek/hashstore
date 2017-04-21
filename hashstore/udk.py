@@ -19,15 +19,49 @@ log = logging.getLogger(__name__)
 
 
 def NOP_process_buffer(read_buffer):
+    '''
+    Does noting
+
+    >>> NOP_process_buffer(b'')
+
+    :param read_buffer: take bytes
+    :return: nothing
+    '''
     pass
 
-def quick_hash(v):
+
+def quick_hash(data):
+    '''
+    Calculate hash on data buffer passed
+
+    >>> quick_hash(b'abc')
+    'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
+    >>> quick_hash(u'abc')
+    'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
+    >>> quick_hash(5.7656)
+    '8e1910dd62c329847e693ebe4c8a089696a57352308c7fd7ec0f6112fb41b9a3'
+    >>> quick_hash('5.7656')
+    '8e1910dd62c329847e693ebe4c8a089696a57352308c7fd7ec0f6112fb41b9a3'
+
+    :param data: in bytes, or if not it will be converted to string first
+                 and then to byte
+    :return: hexdigest
+    '''
     h = hashlib.sha256()
-    h.update( utils.ensure_bytes(v) )
+    h.update(utils.ensure_bytes(data))
     return h.hexdigest()
 
 
 def process_stream(fd, process_buffer=NOP_process_buffer):
+    '''
+    process stream to calculate hash, length of data,
+    and if it is smaller then hash size, holds on to stream
+    content to use it instead of hash.
+    It allows
+    :param fd: stream
+    :param process_buffer: function  called on every chan
+    :return:
+    '''
     inline_data = six.binary_type()
     digest = hashlib.sha256()
     length = 0
@@ -41,55 +75,55 @@ def process_stream(fd, process_buffer=NOP_process_buffer):
         if length < inline_max:
             inline_data += read_buffer
     fd.close()
-    if length >= inline_max :
+    if length >= inline_max:
         inline_data = None
-    return (digest, length, inline_data )
+    return (digest,length,inline_data)
 
 
-def calc_UDK_and_length_from_stream(fd, respect_inline_max=True,
-                                    process_buffer=NOP_process_buffer):
+def calc_UDK_and_length_from_stream(fd,  process_buffer=NOP_process_buffer):
     digest, length, inline_data = process_stream(fd, process_buffer)
-    return UDK_from_digest_and_inline_data(digest, inline_data, respect_inline_max),length
-
-
-def UDK_from_digest_and_inline_data(digest, buffer, respect_inline_max):
-    if respect_inline_max and buffer is not None and len(buffer) < inline_max:
-        return UDK('M' + utils.ensure_string(base64.b64encode(buffer)))
-    else:
-        return UDK(digest.hexdigest())
+    return UDK.from_digest_and_inline_data(digest, inline_data),length
 
 
 class UDK(utils.Stringable):
-    def __init__(self, k):
+    def __init__(self, k , bundle = False):
         self.named_udk_bundle = False
         if k[:1] == 'X':
             self.named_udk_bundle = True
             k = k[1:]
+        elif bundle:
+            self.named_udk_bundle = True
         l = len(k)
         self.k = k
-        if l == 64 :
+        if l == 64:
             self.digest = k
         elif l > 64 or k[0] != 'M':
             raise ValueError('invalid udk: %r ' % k)
 
     @staticmethod
-    def from_stream(fd, respect_inline_max=True):
-        return calc_UDK_and_length_from_stream(fd, respect_inline_max)[0]
+    def from_digest_and_inline_data(digest, buffer):
+        if buffer is not None and len(buffer) < inline_max:
+            return UDK('M' + utils.ensure_string(base64.b64encode(buffer)))
+        else:
+            return UDK(digest.hexdigest())
 
     @staticmethod
-    def from_string(s, respect_inline_max=True):
-        return UDK.from_stream(six.BytesIO(utils.ensure_bytes(s)), respect_inline_max)
+    def from_stream(fd):
+        return calc_UDK_and_length_from_stream(fd)[0]
 
     @staticmethod
-    def from_file(file, respect_inline_max=True):
-        return UDK.from_stream(open(file, 'rb'), respect_inline_max)
+    def from_string(s):
+        return UDK.from_stream(six.BytesIO(utils.ensure_bytes(s)))
 
-    def set_bundle(self):
-        self.named_udk_bundle = True
-        return self
+    @staticmethod
+    def from_file(file):
+        return UDK.from_stream(open(file, 'rb'))
 
     def strip_bundle(self):
         return UDK(self.k) if self.named_udk_bundle else self
+
+    def ensure_bundle(self):
+        return self if self.named_udk_bundle else UDK(self.k, True)
 
     def __str__(self):
         return 'X'+self.k if self.named_udk_bundle else self.k
@@ -109,8 +143,7 @@ class UDK(utils.Stringable):
         try:
             return self.digest
         except:
-            sha256,_,_ = process_stream(six.BytesIO(utils.ensure_bytes(self.data())))
-            self.digest = sha256.hexdigest()
+            self.digest = quick_hash(self.data())
         return self.digest
 
     def __eq__(self, other):
@@ -176,7 +209,7 @@ class NamedUDKs(utils.Jsonable):
     def udk_content(self):
         content = str(self)
         k, size = calc_UDK_and_length_from_stream(six.BytesIO(utils.ensure_bytes(content)))
-        return k.set_bundle(), size, content
+        return k.ensure_bundle(), size, content
 
 
 class UdkSet(utils.Jsonable):
@@ -231,7 +264,7 @@ class UdkSet(utils.Jsonable):
 
     def __contains__(self, k):
         k = UDK.ensure_it(k).strip_bundle()
-        return  self._index_of(k) >= 0
+        return self._index_of(k) >= 0
 
     def __iter__(self):
         return iter(self.store)

@@ -60,15 +60,18 @@ class Session:
         return self.query("select * from sqlite_master where type='table'",
                           as_dicts=True)
 
+    def _tx_action(self, commit_or_rollback):
+        msg = commit_or_rollback + ':' + self.file
+        if self.trace_stack is not None:
+            msg += '\n' + ''.join(traceback.format_stack(limit=self.trace_stack))
+        log.debug(msg)
+        getattr(self.conn,commit_or_rollback)()
+
     def commit(self):
-        stack = '\n' + ''.join(traceback.format_stack(limit=self.trace_stack)) if self.trace_stack is not None else ''
-        self.conn.commit()
-        log.debug('COMMIT: %s%s' % (self.file,stack))
+        self._tx_action('commit')
 
     def rollback(self):
-        stack = '\n' + ''.join(traceback.format_stack(limit=self.trace_stack)) if self.trace_stack is not None else ''
-        self.conn.rollback()
-        log.info('ROLLBACK: %s%s' % (self.file,stack))
+        self._tx_action('rollback')
 
     def close(self):
         if self.success:
@@ -77,21 +80,26 @@ class Session:
             self.rollback()
         self.conn.close()
 
+def _session(fn):
+    return _session_dbf(lambda args: args[0].dbf)(fn)
 
 
-def _session(f):
-    def decorated(self, *args, **kwargs):
-        if kwargs.get('session'):
-            return f(self, *args, **kwargs)
-        else:
-            session = Session(self.dbf)
-            try:
-                kwargs['session'] = session
-                return f(self, *args, **kwargs)
-            except:
-                session.set_for_rollback()
-                raise
-            finally:
-                session.close()
-    return decorated
+def _session_dbf(dbf_factory):
+    def decorate(fn):
+        def decorated(*args, **kwargs):
+            if kwargs.get('session'):
+                return fn(*args, **kwargs)
+            else:
+                dbf = dbf_factory(args) if callable(dbf_factory) else dbf_factory
+                session = Session(dbf)
+                try:
+                    kwargs['session'] = session
+                    return fn(*args, **kwargs)
+                except:
+                    session.set_for_rollback()
+                    raise
+                finally:
+                    session.close()
+        return decorated
+    return decorate
 

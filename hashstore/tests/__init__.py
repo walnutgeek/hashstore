@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 
+
 class TestSetup:
     def __init__(self, name, ensure_empty = False):
         self.log = logging.getLogger(name)
@@ -48,6 +49,16 @@ def random_content_fn(sz,reset_random):
 
 
 def random_small_caps(l):
+    '''
+    produce string of random small caps letters
+
+    >>> seed(0)
+    >>> random_small_caps(5)
+    'mpvad'
+
+    :param l: length
+    :return:
+    '''
     return ''.join(map(chr, 97 + np_rnd.randint(0, 25, l)))
 
 

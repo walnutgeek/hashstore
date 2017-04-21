@@ -6,8 +6,15 @@ import logging
 from hashstore.utils import ensure_bytes
 from hashstore.tests import seed,random_small_caps
 
+
 log = logging.getLogger(__name__)
 
+def test_docs():
+    import doctest
+    import hashstore.udk
+    r = doctest.testmod(hashstore.udk)
+    ok_(r.attempted > 0)
+    eq_(r.failed,0)
 
 def test_mime64_size():
     real_sizes = list(map(lambda i: len(base64.b64encode(b'a' * i)), range(50)))
