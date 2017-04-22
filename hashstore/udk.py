@@ -81,6 +81,35 @@ def process_stream(fd, process_buffer=NOP_process_buffer):
 
 
 class UDK(utils.Stringable):
+    '''
+    Stands for Unique Data Key.
+
+    It is content adressing scheme useing SHA256. For small
+    content data is embeded in UDK using base64 encoding.
+
+    >>> short_content = 'The quick brown fox jumps over the lazy dog'
+    >>> short_udk = UDK.from_string(short_content)
+    >>> str(short_udk)
+    'MVGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZw=='
+    >>> short_udk.has_data()
+    True
+
+    In string representation there is 'M' in the beginging. It is used
+    to mark that data packed inside of UDK.
+
+    >>> str(short_udk)
+    'MVGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZw=='
+
+    For longer content SHA256 hexdigest is used:
+
+    >>> longer_content = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
+    >>> longer_udk = UDK.from_string(longer_content)
+    >>> longer_udk.has_data()
+    False
+    >>> str(longer_udk)
+    '973153f86ec2da1748e63f0cf85b89835b42f8ee8018c549868a1308a19f6ca3'
+
+    '''
     def __init__(self, k , bundle = False):
         self.named_udk_bundle = False
         if k[:1] == 'X':
@@ -103,17 +132,17 @@ class UDK(utils.Stringable):
             return UDK(hexdigest, bundle=bundle)
 
     @staticmethod
-    def from_stream(fd):
+    def from_stream(fd, bundle = False):
         digest, _, inline_data = process_stream(fd)
-        return UDK.from_digest_and_inline_data(digest, inline_data)
+        return UDK.from_digest_and_inline_data(digest, inline_data, bundle=bundle)
 
     @staticmethod
-    def from_string(s):
-        return UDK.from_stream(six.BytesIO(utils.ensure_bytes(s)))
+    def from_string(s, bundle = False):
+        return UDK.from_stream(six.BytesIO(utils.ensure_bytes(s)), bundle=bundle)
 
     @staticmethod
-    def from_file(file):
-        return UDK.from_stream(open(file, 'rb'))
+    def from_file(file, bundle = False):
+        return UDK.from_stream(open(file, 'rb'), bundle=bundle)
 
     def strip_bundle(self):
         return UDK(self.k) if self.named_udk_bundle else self
@@ -149,6 +178,34 @@ class UDK(utils.Stringable):
 
 
 class NamedUDKs(utils.Jsonable):
+    '''
+    sorted list of names and corresponding UDKs
+
+    >>> short_udk = UDK.from_string('The quick brown fox jumps over the lazy dog')
+    >>> longer_udk = UDK.from_string('Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.')
+
+    >>> udks = NamedUDKs()
+    >>> udks['short'] = short_udk
+    >>> udks['longer'] = longer_udk
+    >>> len(udks)
+    2
+
+    >>> udks.keys()
+    ['longer', 'short']
+    >>> udks_udk, size, content = udks.udk_content()
+    >>> str(udks_udk)
+    'X4453e495c259e32294f47a8592b5c187901c9ea13bdcc517e0994aa6f556986d'
+    >>> content
+    '[["longer", "short"], ["973153f86ec2da1748e63f0cf85b89835b42f8ee8018c549868a1308a19f6ca3", "MVGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZw=="]]'
+    >>> no_bundle_marker = udks_udk.strip_bundle()
+    >>> str(no_bundle_marker)
+    '4453e495c259e32294f47a8592b5c187901c9ea13bdcc517e0994aa6f556986d'
+    >>> udks_udk == no_bundle_marker
+    True
+    >>> str(no_bundle_marker.ensure_bundle())
+    'X4453e495c259e32294f47a8592b5c187901c9ea13bdcc517e0994aa6f556986d'
+
+    '''
     def __init__(self,o=None):
         self.store = {}
         self.inverse = None
@@ -205,9 +262,7 @@ class NamedUDKs(utils.Jsonable):
     def udk_content(self):
         content = str(self)
         in_bytes = utils.ensure_bytes(content)
-        digest = quick_hash(in_bytes)
-        size = len(in_bytes)
-        return UDK.from_digest_and_inline_data(digest, in_bytes, bundle=True), size, content
+        return UDK.from_digest_and_inline_data(quick_hash(in_bytes), in_bytes, bundle=True), len(in_bytes), content
 
 class UdkSet(utils.Jsonable):
     def __init__(self,o=None):
