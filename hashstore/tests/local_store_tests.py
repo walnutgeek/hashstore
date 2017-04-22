@@ -37,6 +37,11 @@ def test_SecureStore():
     eq_('body',i_rs[0]['invitation_body'])
 
     remote_uuid = uuid.uuid4()
+    try:
+        hs.login(remote_uuid)
+        ok_(False)
+    except:
+        eq_(exception_message(),'authentication error')
     mount_id = hs.register(remote_uuid, invitation)
     eq_(uuid.UUID, type(mount_id))
     i_rs = select_all( 'invitation')
@@ -85,12 +90,26 @@ def test_SecureStore():
     eq_(['5694182274e5a6cab47ce45024b72f94dcfd7de584f2b4432fb3556ebb870fad',
          'b99268b77ce16d561a78b9a533349e46882f2df0b735e73d7441943074e214e5'],
         [str(k) for k in hs.iterate_udks(auth_session=auth_session)])
+
+    d = udk.UDKBundle()
+    d['100k'] = h100k
+    d['4k'] = h4k
+    hd, size, content = d.udk_content()
+    eq_(str(hd),'X2183f19bce1c1cb3f91fbdfc8ec15fe6ce89aafa4b43de154205237a824d9666')
+    eq_(content,'[["100k", "4k"], ["b99268b77ce16d561a78b9a533349e46882f2df0b735e73d7441943074e214e5", "5694182274e5a6cab47ce45024b72f94dcfd7de584f2b4432fb3556ebb870fad"]]')
+    hs.store_directories({hd:d},auth_session=auth_session,mount_hash=hd)
+
     hs.logout(auth_session=auth_session)
     try:
         hs.writer(auth_session).write(s4k, done=True)
         ok_(False)
     except:
-        eq_(exception_message(),'authetification error')
+        eq_(exception_message(),'authentication error')
+    try:
+        hs.store_directories({hd: d}, auth_session=auth_session, mount_hash=hd)
+        ok_(False)
+    except:
+        eq_(exception_message(), 'authentication error')
 
 
 def test_HashStore():
@@ -153,11 +172,13 @@ def test_HashStore():
     eq_(str(udk.UDK.from_string(random_bytes(40))), inline_udk)
     eq_(str(udk.UDK.from_file(os.path.join(hs.root, file_udk[0:3], file_udk[3:]))), file_udk)
     for u in udks:
-        hs.delete(u)
+        ok_(hs.delete(u))
+        ok_(not(hs.delete(u)))
     eq_(hs.delete(not_existent),False)
     eq_(hs.delete(inline_udk),False)
     udks = list(hs.iterate_udks())
     eq_(0,len(udks))
+
     # ok_(False)
 
 

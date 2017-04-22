@@ -15,10 +15,6 @@ SQLITE_EXT = '.sqlite3'
 log = logging.getLogger(__name__)
 
 
-def ensure_udk(k):
-    return udk.UDK.ensure_it(k).strip_bundle()
-
-
 class Lookup:
     def __init__(self, store, sha):
         self.size = None
@@ -88,22 +84,18 @@ class DbLookup(Lookup):
                 quict(sha=self.sha, content=db.to_blob(content)) )
 
     def stream(self):
-        if not self.found():
-            return None
         row = self.dbf.select_one(
                 'blob', quict(sha=self.sha.k), select='BIG')
         return six.BytesIO(row['content'])
 
     def delete(self):
-        if self.found():
-            self.dbf.delete( 'blob', quict(sha=self.sha) )
-            return True
-        return False
+        self.dbf.delete( 'blob', quict(sha=self.sha) )
+        return True
 
 
 class FileLookup(Lookup):
     def __init__(self, store, sha):
-        Lookup.__init__(self,store,sha)
+        Lookup.__init__(self, store, sha)
         self.dir = os.path.join(store.root, sha.k[:SHARD_SIZE] )
         self.file = os.path.join(self.dir, sha.k[SHARD_SIZE:])
         try:
@@ -111,16 +103,14 @@ class FileLookup(Lookup):
             self.created_dt=datetime.datetime.utcfromtimestamp(ctime)
         except OSError as e:
             if e.errno != 2:  # No such file
-                 raise
+                 raise # pragma: no cover
 
     def stream(self):
         return open(self.file,'rb')
 
     def delete(self):
-        if self.found():
-            os.remove( self.file )
-            return True
-        return False
+        os.remove( self.file )
+        return True
 
 
 class IncommingFile:
@@ -133,7 +123,7 @@ class IncommingFile:
     def save_as(self, k):
         self.fd.close()
         self.fd = None
-        dest = FileLookup(self.store,ensure_udk(k))
+        dest = FileLookup(self.store,udk.UDK.nomalize(k))
         new = not dest.found()
         if new:
             ensure_directory(dest.dir)
@@ -226,6 +216,8 @@ class HashStore:
             mount_id = mount['mount_id']
             auth_session = self.dbf.insert('auth_session', quict(mount_id=mount_id, active=True))
             return auth_session['_auth_session_id']
+        else:
+            raise ValueError("authentication error")
 
     def logout(self, auth_session):
         return self.dbf.update('auth_session', quict(
@@ -237,15 +229,15 @@ class HashStore:
                 raise ValueError("auth_session is required")
             @_session
             def tx(self, session=None):
-                n = self.dbf.select_one('auth_session', quict(
-                    auth_session_id = auth_session, active = True),
-                                        session=session)
+                n = self.dbf.select_one('auth_session',
+                    quict( auth_session_id = auth_session, active = True),
+                    session=session)
                 if n is None:
-                    raise ValueError("authetification error")
+                    raise ValueError("authentication error")
                 if push_hash is not None:
-                    self.dbf.insert('push', quict(auth_session_id=auth_session,
-                                                  mount_hash=push_hash),
-                                    session=session)
+                    self.dbf.insert('push',
+                        quict(auth_session_id=auth_session, mount_hash=push_hash),
+                        session=session)
             tx(self)
 
     def write_content(self, fp ,auth_session = None):
@@ -266,12 +258,12 @@ class HashStore:
             dir_content_dump = str(dir_contents)
             lookup = self.lookup(dir_hash)
             if not lookup.found() :
-                w = self.writer()
+                w = self.writer(auth_session=auth_session)
                 w.write(dir_content_dump, done=True)
                 lookup = self.lookup(dir_hash)
                 if lookup.found() :
                     dirs_stored.add(dir_hash)
-                else:
+                else: # pragma: no cover
                     dirs_mismatch.add(dir_hash)
             for file_name in dir_contents:
                 file_hash = dir_contents[file_name]
@@ -279,13 +271,12 @@ class HashStore:
                     lookup = self.lookup(file_hash)
                     if not lookup.found():
                         unseen_file_hashes.add(file_hash)
-        if len(dirs_mismatch) > 0:
-            raise ValueError('could not store directories: %r' % dirs_mismatch)
+        if len(dirs_mismatch) > 0: # pragma: no cover
+            raise AssertionError('could not store directories: %r' % dirs_mismatch)
         return len(dirs_stored), unseen_file_hashes
 
-    def lookup(self, k, auth_session = None):
-        self.check_auth_session(auth_session)
-        k = ensure_udk(k)
+    def lookup(self, k):
+        k = udk.UDK.nomalize(k)
         for lookup_contr in (InlineLookup, FileLookup, DbLookup):
             l = lookup_contr(self, k)
             if l.found():
@@ -294,7 +285,7 @@ class HashStore:
 
     def get_content(self, k, auth_session = None):
         self.check_auth_session(auth_session)
-        return self.lookup(k,auth_session).stream()
+        return self.lookup(k).stream()
 
     def delete(self, k, auth_session = None):
         self.check_auth_session(auth_session)

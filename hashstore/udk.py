@@ -152,6 +152,10 @@ class UDK(utils.Stringable):
     def ensure_bundle(self):
         return self if self.named_udk_bundle else UDK(self.k, True)
 
+    @staticmethod
+    def nomalize(k):
+        return UDK.ensure_it(k).strip_bundle()
+
     def __str__(self):
         return 'X'+self.k if self.named_udk_bundle else self.k
 
