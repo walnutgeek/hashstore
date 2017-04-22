@@ -262,7 +262,7 @@ class HashStore:
         dirs_mismatch = udk.UdkSet()
         for dir_hash, dir_contents in six.iteritems(directories):
             dir_hash = udk.UDK.ensure_it(dir_hash)
-            dir_contents = udk.NamedUDKs.ensure_it(dir_contents)
+            dir_contents = udk.UDKBundle.ensure_it(dir_contents)
             dir_content_dump = str(dir_contents)
             lookup = self.lookup(dir_hash)
             if not lookup.found() :

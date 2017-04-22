@@ -1,6 +1,6 @@
 from hashstore.db import _session, DbFile
 from hashstore.udk import process_stream,\
-    UDK,NamedUDKs,UdkSet,quick_hash
+    UDK,UDKBundle,UdkSet,quick_hash
 from hashstore.storage import RemoteStorage
 from hashstore.utils import quict, path_split_all, reraise_with_msg
 from collections import defaultdict
@@ -136,7 +136,7 @@ class MountDB(DbFile):
                 return True
             files = sorted(filter(ignore_files, os.listdir(cur_dir)))
             ignore_entries = parse_ignore_specs(cur_dir, files, ignore_entries)
-            dir_content = NamedUDKs()
+            dir_content = UDKBundle()
             cur_id = cur_rec['_file_id']
             cumulative_size = 0
             for f in files:
@@ -248,7 +248,7 @@ class MountDB(DbFile):
 
 class ScanTree:
     def __init__(self, mount, scan_id=None):
-        self.directories = defaultdict(NamedUDKs)
+        self.directories = defaultdict(UDKBundle)
         self.file_to_dir_hashes = {}
         id_to_hash = {}
         for r in mount.scan_select(scan_id):

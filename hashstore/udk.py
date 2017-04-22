@@ -5,7 +5,9 @@ import hashstore.utils as utils
 import json
 
 inline_max=46
+
 db_max=65535
+
 EMPTY_HASH = hashlib.sha256().hexdigest()
 
 def mime64_size(sz):
@@ -177,14 +179,14 @@ class UDK(utils.Stringable):
             return self.hexdigest() == other.hexdigest()
 
 
-class NamedUDKs(utils.Jsonable):
+class UDKBundle(utils.Jsonable):
     '''
-    sorted list of names and corresponding UDKs
+    sorted dictionary of names and corresponding UDKs
 
     >>> short_udk = UDK.from_string('The quick brown fox jumps over the lazy dog')
     >>> longer_udk = UDK.from_string('Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.')
 
-    >>> udks = NamedUDKs()
+    >>> udks = UDKBundle()
     >>> udks['short'] = short_udk
     >>> udks['longer'] = longer_udk
     >>> len(udks)

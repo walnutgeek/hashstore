@@ -68,7 +68,7 @@ class Backup(DbFile):
         if k.named_udk_bundle:
             content = self.storage.get_content(k)
             log.info('%r'%content)
-            bundle = udk.NamedUDKs(content)
+            bundle = udk.UDKBundle(content)
             ensure_directory(path)
             for n in bundle:
                 file_path = os.path.join(path, n)

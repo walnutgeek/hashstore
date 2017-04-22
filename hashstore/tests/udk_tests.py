@@ -61,10 +61,10 @@ def test_UDK():
 
 def test_Bundle():
     inline_udk = 'M2MJrQoJnyE16leiBSMGeQOj7z+ZPuuaveBlvnOn3et1CzowDuGbTqw=='
-    b1 = hashstore.udk.NamedUDKs()
+    b1 = hashstore.udk.UDKBundle()
     u1, _, c = b1.udk_content()
     u0 = u1
-    b2 = hashstore.udk.NamedUDKs().parse(c)
+    b2 = hashstore.udk.UDKBundle().parse(c)
     u2, _, c = b2.udk_content()
     eq_(u1,u2)
     ok_(u1 == u2)
@@ -86,8 +86,8 @@ def test_Bundle():
     eq_([k for k in b2], [])
     eq_(b1.get_name_by_udk(inline_udk), 'a')
     eq_(b1.get_name_by_udk(hashstore.udk.UDK(inline_udk).hexdigest()), 'a')
-    eq_(hashstore.udk.NamedUDKs(b1.to_json()),b1)
-    eq_(hashstore.udk.NamedUDKs.ensure_it(b1.to_json()),b1)
+    eq_(hashstore.udk.UDKBundle(b1.to_json()), b1)
+    eq_(hashstore.udk.UDKBundle.ensure_it(b1.to_json()), b1)
     eq_(len(b1),1)
     eq_(str(b1),udk_bundle_str)
     eq_(hash(b1),hash(udk_bundle_str))
