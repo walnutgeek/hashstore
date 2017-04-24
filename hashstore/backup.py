@@ -21,8 +21,9 @@ class Backup(DbFile):
         self.mounts = []
         for location in mount_locations:
             mount_id = self.resolve_ak('mount', location)
-            self.mounts.append( [mount_id, location] )
-            log.info(mount_id,location )
+            entry = (mount_id, location)
+            self.mounts.append(entry)
+            log.info(entry)
         self.storage = storage.factory(storage_config)
 
     @staticmethod

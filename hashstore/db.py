@@ -262,15 +262,6 @@ class Column:
             if hasattr(constraint.role, 'deffered_init_column'):
                 constraint.role.deffered_init_column(self,constraint)
 
-    def get_type(self):
-        if self.type is None:
-            try:
-                return self.fk().primarykey.type
-            except:
-                return None
-        else:
-            return self.type
-
     def __str__(self):
         return '%s %s %s ' % (self.name, none2str(self.type), ' '.join(str(p) for p in self.constraints))
 
@@ -433,7 +424,7 @@ class DbFile:
                                 'Column names does not match: table:%s ' % tablename):
                     for c in columns:
                         col_in_code = table_in_code.columns[c['name']]
-                        type_in_code = col_in_code.get_type()
+                        type_in_code = col_in_code.type
                         if type_in_code != c['type']:
                             warnings.append('type mismatch col %s.%s %r != %r' % (tablename, c['name'],type_in_code, c['type']))
                         if c['pk']:
@@ -555,7 +546,6 @@ class DbFile:
             reraise_with_msg('%s <- %r' % (q+where, vars))
 
         return result
-
 
     @_session
     def select_one(self, table_name, data, where='', select=None, selectors = None,
