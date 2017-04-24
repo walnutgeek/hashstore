@@ -6,10 +6,11 @@ def args_parser():
 
     parser = argparse.ArgumentParser(description='shash - hashstore backup server and client')
 
-    parser.add_argument('command', choices='start stop register backup'.split())
+    parser.add_argument('command', choices='start stop invite register backup'.split())
 
     parser.set_defaults(secure=True)
-    server_group = parser.add_argument_group('server', 'Start and stop remote hashstore')
+    server_group = parser.add_argument_group('server', 'Server oprations: '
+                                                       'Start/stop or invite')
 
     server_group.add_argument('--port', metavar='port', type=int, nargs='?',
                               default=7532, help='a port to listen.')
@@ -19,6 +20,7 @@ def args_parser():
     server_group.add_argument('--store_dir', metavar='store_dir',
                              nargs='?', default='.',
                              help='a directory where local hashstore will reside')
+
 
     backup_group = parser.add_argument_group('backup', 'Register directory for backup on remote store and execute backup')
 
@@ -40,6 +42,8 @@ def main():
         remote_store.shutdown(args.port, doing_stop)
         if doing_start:
             remote_store.run_server(args.store_dir, args.port)
+    elif args.command == 'invite':
+        print(str(remote_store.create_invitation(args.store_dir)))
     elif args.command == 'register':
         pass
     elif args.command == 'backup':

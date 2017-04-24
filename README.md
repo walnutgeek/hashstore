@@ -1,9 +1,21 @@
 # hashstore
 
-Tested with 2.7 and 3.x
+Content Addressable Storage written in python
 
-You have to have miniconda3 instaled in path. set_devenv.sh will v2 and
-v3 virtual environments with dependencies. sniffer will run tests on both
+See more: https://en.wikipedia.org/wiki/Content-addressable_storage
+
+## Usage
+
+TBD
+
+### Use case: Backup
+
+TBD
+
+## Developer Environment
+
+You have to have miniconda3 instaled in path. set_devenv.sh will create 'py2' and
+'py3' virtual environments with dependencies. sniffer will run tests on both
 continuously.
 
 ```

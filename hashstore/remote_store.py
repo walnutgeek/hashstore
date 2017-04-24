@@ -121,6 +121,9 @@ def create_handler(get_content):
     return Handler
 
 
+def create_invitation(store_root,message = ''):
+    return str(HashStore(store_root).create_invitation(message))
+
 def run_server(store_root, port):
     logging.info('mount: %s' % store_root)
     store = HashStore(store_root)

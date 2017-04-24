@@ -128,7 +128,7 @@ class MountDB(DbFile):
 
             def ignore_files(n):
                 if n in ['.svn', '.git', '.DS_Store', '.vol',
-                         '.hotfiles.btree']:
+                         '.hotfiles.btree', '.ssh' ]:
                     return False
                 for t in ['.shamo', '.Spotlight', '._', '.Trash']:
                     if n.startswith(t):

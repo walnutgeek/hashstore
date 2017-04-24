@@ -15,8 +15,15 @@ class TestSetup:
     def run_shash(self, cmd, log_file = None):
         if log_file is None:
             log_file = cmd.split()[0]+'.log'
-        popen = run_bg('hashstore.shash', cmd.split(), os.path.join(self.dir, log_file))
+        if os.path.isabs(log_file):
+            path = log_file
+        else:
+            path = self.full_log_path(log_file)
+        popen = run_bg('hashstore.shash', cmd.split(), path)
         return popen
+
+    def full_log_path(self, log_file):
+        return os.path.join(self.dir, log_file)
 
 
 def makedir(path, abs_path):

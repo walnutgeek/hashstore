@@ -19,7 +19,7 @@ def test_backup():
     hashery_dir = os.path.join(test.dir, 'insecure')
     os.makedirs(hashery_dir)
     port = 9753
-    test.run_shash( 'start --insecure --store_dir %s --port %d' % (hashery_dir, port), 'hashery.log')
+    test.run_shash( 'start --insecure --store_dir %s --port %d' % (hashery_dir, port), 'noauth_start.log')
     time.sleep(2)
     files = os.path.join(test.dir, 'files')
     prep_mount(files, file_set1)
@@ -36,6 +36,35 @@ def test_backup():
     eq_(str(mount.MountDB(f1).scan()[1]), fileset1_udk)
     eq_(str(mount.MountDB(f2).scan()[1]), fileset2_udk)
     test.run_shash('stop --port %d' % port, 'shut.log').wait()
+    time.sleep(.5)
+
+
+def test_secure():
+    hashery_dir = os.path.join(test.dir, 'secure')
+    os.makedirs(hashery_dir)
+    invite_log = test.full_log_path('invite.log')
+    test.run_shash( 'invite --store_dir %s' % (hashery_dir), invite_log).wait()
+    invitation = open(invite_log).read().strip()
+    time.sleep(.1)
+    log.info(invitation)
+    port = 9753
+    test.run_shash( 'start --store_dir %s --port %d' % (hashery_dir, port), 'secure_start.log')
+    time.sleep(2)
+    # files = os.path.join(test.dir, 'sfiles')
+    # prep_mount(files, file_set1)
+    # b = hashstore.backup.Backup.from_config(test_config, os.path.join(test.dir,'backup.db'), substitutions)
+    # v1 = b.backup()
+    # prep_mount(files, file_set2)
+    # v2 = b.backup()
+    # eq_(str(v1[files]), fileset1_udk)
+    # eq_(str(v2[files]), fileset2_udk)
+    # f1 = os.path.join(test.dir, 'sfiles1')
+    # b.restore(v1[files], f1)
+    # f2 = os.path.join(test.dir, 'sfiles2')
+    # b.restore(v2[files], f2)
+    # eq_(str(mount.MountDB(f1).scan()[1]), fileset1_udk)
+    # eq_(str(mount.MountDB(f2).scan()[1]), fileset2_udk)
+    test.run_shash('stop --port %d' % port, 'secure_shut.log').wait()
 
 
 def test_dummies():
