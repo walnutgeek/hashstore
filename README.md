@@ -12,10 +12,10 @@ TBD
 
 TBD
 
-## Developer Environment
+## Developer environment setup
 
-You have to have miniconda3 instaled in path. set_devenv.sh will create 'py2' and
-'py3' virtual environments with dependencies. sniffer will run tests on both
+You have to have miniconda3 instaled in path. `set_devenv.sh` will create 'py2' and
+'py3' virtual environments with dependencies. `sniffer` will run tests on both
 continuously.
 
 ```
