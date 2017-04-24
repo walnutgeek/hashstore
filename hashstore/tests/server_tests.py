@@ -43,13 +43,17 @@ def test_secure():
     hashery_dir = os.path.join(test.dir, 'secure')
     os.makedirs(hashery_dir)
     invite_log = test.full_log_path('invite.log')
-    test.run_shash( 'invite --store_dir %s' % (hashery_dir), invite_log).wait()
+    rc = test.run_shash( 'invite --store_dir %s' % (hashery_dir), invite_log).wait()
+    eq_(rc, 0)
     invitation = open(invite_log).read().strip()
+    eq_(len(invitation),36)
+    eq_(sum(1 for c in invitation if '-' == c), 4)
     time.sleep(.1)
     log.info(invitation)
     port = 9753
     test.run_shash( 'start --store_dir %s --port %d' % (hashery_dir, port), 'secure_start.log')
     time.sleep(2)
+
     # files = os.path.join(test.dir, 'sfiles')
     # prep_mount(files, file_set1)
     # b = hashstore.backup.Backup.from_config(test_config, os.path.join(test.dir,'backup.db'), substitutions)

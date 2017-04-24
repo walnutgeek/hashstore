@@ -44,7 +44,6 @@ def main():
         doing = dict(zip(SERVER_COMMANDS,server_cmd_picked))
         server = remote_store.StoreServer(args.store_dir, args.port,
                                           args.secure)
-        print(doing)
         if doing['invite']:
             print(str(server.create_invitation()))
         else:

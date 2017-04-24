@@ -107,7 +107,7 @@ def stop_server(signum, frame):
 
 class StoreServer:
     def __init__(self, store_root, port, secure):
-        self.store = HashStore(store_root, secure=secure)
+        self.store = HashStore(store_root, secure=secure, init=False)
         self.port = port
 
     def create_invitation(self, message = ''):
@@ -131,6 +131,7 @@ class StoreServer:
             pass
 
     def run_server(self):
+        self.store.initialize()
         application = tornado.web.Application([
             (r'/\.hashery/write_content$', StreamHandler, {'store': self.store}),
             (r'/\.hashery/(.*)$', HasheryHandler, {'store': self.store}),
@@ -139,7 +140,7 @@ class StoreServer:
         signal.signal(signal.SIGINT, stop_server)
         http_server = tornado.httpserver.HTTPServer(application)
         http_server.listen(self.port)
-        logging.info('Serving HTTP on 0.0.0.0 port %d ...' % self.port)
+        logging.info('StoreServer({0.store.root},secure={0.store.secure}) listening=0.0.0.0:{0.port}'.format(self) )
         tornado.ioloop.IOLoop.instance().start()
 
 

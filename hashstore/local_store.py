@@ -139,10 +139,16 @@ class IncommingFile:
 
 
 class HashStore:
-    def __init__(self, root,  secure=False):
+    def __init__(self, root,  secure=False, init=True):
         self.root = root
         self.secure = secure
-        self.incoming = os.path.join(root,'incoming')
+        if init:
+            self.initialize()
+
+    def initialize(self):
+        if hasattr(self, 'incoming'):
+            return
+        self.incoming = os.path.join(self.root,'incoming')
         ensure_directory(self.incoming)
         model = '''
         table:incoming
@@ -193,6 +199,7 @@ class HashStore:
                     session.close()
 
     def create_invitation(self, body=None):
+        self.initialize()
         return self.dbf.insert("invitation", quict(
             used = False,
             invitation_body=body
