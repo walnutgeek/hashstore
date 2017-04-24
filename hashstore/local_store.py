@@ -247,7 +247,7 @@ class HashStore:
             w.write(buffer)
         return w.done()
 
-    def store_directories(self, directories, auth_session = None, mount_hash=None):
+    def store_directories(self, directories, mount_hash=None, auth_session = None):
         self.check_auth_session(auth_session, mount_hash)
         unseen_file_hashes = udk.UdkSet()
         dirs_stored = udk.UdkSet()

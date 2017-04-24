@@ -16,7 +16,7 @@ import hashstore.backup
 def test_backup():
     files = os.path.join(test.dir, 'files')
     prep_mount(files, file_set1)
-    b = hashstore.backup.Backup(test_config, os.path.join(test.dir,'backup.db'), substitutions)
+    b = hashstore.backup.Backup.from_config(test_config, os.path.join(test.dir,'backup.db'), substitutions)
     v1 = b.backup()
     prep_mount(files, file_set2)
     v2 = b.backup()

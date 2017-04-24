@@ -10,8 +10,8 @@ log = logging.getLogger(__name__)
 methods_to_implement = ['store_directories', 'write_content', 'get_content']
 
 class LocalStorage:
-    def __init__(self, path_resolver, type, path):
-        self.store = localstore.HashStore(path_resolver(path))
+    def __init__(self, type, path):
+        self.store = localstore.HashStore(path)
 
     def __getattr__(self, name):
         if name in methods_to_implement:
@@ -22,10 +22,10 @@ class LocalStorage:
 
 
 class RemoteStorage:
-    def __init__(self, path_resolver, type, path):
-        self.url = path_resolver(path)
+    def __init__(self, type, url):
+        self.url = url
 
-    def store_directories(self,directories):
+    def store_directories(self,directories,mount_hash=None,auth_session=None):
         data = json_encoder.encode({ str(k): v for k,v in six.iteritems(directories) } )
         url_store_directories = self.url + '.hashery/store_directories'
         r = requests.post(url_store_directories, data=data)
@@ -47,7 +47,7 @@ class RemoteStorage:
 
 
 
-def factory(path_resolver, config_dict):
+def factory(config_dict):
     '''
 
     :param path_resolver:
@@ -55,4 +55,4 @@ def factory(path_resolver, config_dict):
     :return: destination instance
     '''
     constructor = globals()[config_dict['type'] + 'Storage']
-    return constructor(path_resolver, **config_dict)
+    return constructor(**config_dict)

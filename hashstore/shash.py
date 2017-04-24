@@ -44,6 +44,8 @@ def main():
         pass
     elif args.command == 'backup':
         pass
+    else:
+        raise AssertionError(args.command)
 
 if __name__ == '__main__':
     main()

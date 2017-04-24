@@ -6,7 +6,6 @@ from hashstore.utils import create_path_resolver,\
 import datetime
 import hashstore.mount as mount
 import hashstore.udk as udk
-from hashstore.utils import quict
 import hashstore.storage as storage
 
 import logging
@@ -16,22 +15,28 @@ default_config = os.path.join(os.environ['HOME'],'.back-it-up')
 
 
 class Backup(DbFile):
-    def __init__(self, config=default_config, db_location = None, substitutions = {}):
-        self.config=yaml.load(open(config))
-        if db_location is None:
-            db_location = config+'.db'
+    def __init__(self, db_location , mount_locations, storage_config):
         DbFile.__init__(self, db_location )
         self.ensure_db()
-        path_resover = create_path_resolver(substitutions)
         self.mounts = []
-        for m in self.config['mounts']:
-            location,frequency = (m[k] for k in ['location','frequency'])
-            location = path_resover(location)
+        for location in mount_locations:
             mount_id = self.resolve_ak('mount', location)
-            self.mounts.append([mount_id, location, frequency] )
-            log.info( (mount_id,location,frequency) )
-        self.storage = storage.factory(path_resover, self.config['storage'])
+            self.mounts.append( [mount_id, location] )
+            log.info(mount_id,location )
+        self.storage = storage.factory(storage_config)
 
+    @staticmethod
+    def from_config(config=default_config, db_location = None, substitutions = {}):
+        config = yaml.load(open(config))
+        if db_location is None:
+            db_location = config + '.db'
+        path_resolver = create_path_resolver(substitutions)
+        mount_locations = [path_resolver(m['location']) for m in config['mounts']]
+        storage_config = config['storage']
+        for var_name in [ 'path' , 'url']:
+            if var_name in storage_config:
+                storage_config[var_name] = path_resolver(storage_config[var_name])
+        return Backup(db_location,mount_locations,storage_config)
 
     def datamodel(self):
         '''
@@ -57,7 +62,7 @@ class Backup(DbFile):
         if now is None:
             now = datetime.datetime.utcnow()
         versions = {}
-        for mount_id, location, frequency in self.mounts:
+        for mount_id, location in self.mounts:
             m = mount.MountDB(location, scan_now=False)
             m.push_files(self.storage)
             versions[location] = m.last_hash
@@ -84,6 +89,3 @@ class Backup(DbFile):
                         out_fp.close()
                     except:
                         reraise_with_msg("%s -> %s" % (file_k,file_path) )
-
-
-

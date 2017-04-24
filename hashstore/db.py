@@ -54,6 +54,12 @@ Data types and  data:
 DEFAULT_PK_TYPE = 'INTEGER'
 
 
+def ensure_uuid(value):
+    if not (isinstance(value, uuid.UUID)):
+        value = uuid.UUID(value)
+    return to_blob(value.bytes)
+
+
 def _define_roles():
     class PK:
         type = DEFAULT_PK_TYPE
@@ -116,9 +122,7 @@ def _define_roles():
             return None if value is None else uuid.UUID(bytes=value)
         @staticmethod
         def on_SET(constraint, value):
-            if not(isinstance(value, uuid.UUID)):
-                value = uuid.UUID(value)
-            return to_blob(value.bytes)
+            return ensure_uuid(value)
 
 
     class UUID4:
@@ -134,9 +138,7 @@ def _define_roles():
             return None if value is None else uuid.UUID(bytes=value)
         @staticmethod
         def on_SET(constraint, value):
-            if not(isinstance(value, uuid.UUID)):
-                value = uuid.UUID(value)
-            return to_blob(value.bytes)
+            return ensure_uuid(value)
 
     class JSON:
         type = 'TEXT'
@@ -261,13 +263,13 @@ class Column:
                 constraint.role.deffered_init_column(self,constraint)
 
     def get_type(self):
-        if self.type is not None:
-            return self.type
-        else:
+        if self.type is None:
             try:
                 return self.fk().primarykey.type
             except:
                 return None
+        else:
+            return self.type
 
     def __str__(self):
         return '%s %s %s ' % (self.name, none2str(self.type), ' '.join(str(p) for p in self.constraints))
@@ -363,8 +365,6 @@ class Schema:
             for index_name, index in six.iteritems(table.indexes):
                 yield str(index)
 
-    def __str__(self):
-        return '\n'.join(self.create_statments())
 
 
 old_value_key = lambda key: key[:1] != '_'

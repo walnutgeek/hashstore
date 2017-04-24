@@ -16,14 +16,14 @@ substitutions = {'{test_dir}': test.dir}
 import hashstore.backup
 
 def test_backup():
-    hashery_dir = os.path.join(test.dir, 'hashery')
+    hashery_dir = os.path.join(test.dir, 'insecure')
     os.makedirs(hashery_dir)
     port = 9753
     test.run_shash( 'start --insecure --store_dir %s --port %d' % (hashery_dir, port), 'hashery.log')
     time.sleep(2)
     files = os.path.join(test.dir, 'files')
     prep_mount(files, file_set1)
-    b = hashstore.backup.Backup(test_config, os.path.join(test.dir,'backup.db'), substitutions)
+    b = hashstore.backup.Backup.from_config(test_config, os.path.join(test.dir,'backup.db'), substitutions)
     v1 = b.backup()
     prep_mount(files, file_set2)
     v2 = b.backup()
@@ -36,6 +36,7 @@ def test_backup():
     eq_(str(mount.MountDB(f1).scan()[1]), fileset1_udk)
     eq_(str(mount.MountDB(f2).scan()[1]), fileset2_udk)
     test.run_shash('stop --port %d' % port, 'shut.log').wait()
+
 
 def test_dummies():
     test.run_shash('register')

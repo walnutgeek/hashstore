@@ -46,17 +46,25 @@ def test_db2():
     eq_('TEXT',c.schema.tables['host'].columns['host_meta'].type)
     eq_('BLOB',c.schema.tables['content'].columns['content'].type)
     eq_(['host_id', 'host_name'],list(c.schema.tables['host'].all_column_names()))
-    eq_(['host_meta'],list(c.schema.tables['host'].all_column_names(include_only_role='BIG')))
-    eq_(['content_id', 'parent_id', 'key', 'content_meta', 'update_dt', 'create_dt'],list(c.schema.tables['content'].all_column_names()))
-    eq_(['mount_id', 'content_id', 'host_id', 'mount_meta'],list(c.schema.tables['mount'].all_column_names()))
-    eq_(['content_id', 'parent_id', 'key', 'content_meta', 'content', 'update_dt', 'create_dt'],list(c.schema.tables['content'].all_column_names(exclude_role=None)))
-    eq_(['mount_id', 'content_id', 'host_id', 'mount_meta'],list(c.schema.tables['mount'].all_column_names(exclude_role=None)))
+    eq_(['host_meta'],list(c.schema.tables['host'].all_column_names(
+        include_only_role='BIG')))
+    eq_(['content_id', 'parent_id', 'key', 'content_meta',
+         'update_dt', 'create_dt'],
+        list(c.schema.tables['content'].all_column_names()))
+    eq_(['mount_id', 'content_id', 'host_id', 'mount_meta'],
+        list(c.schema.tables['mount'].all_column_names()))
+    eq_(['content_id', 'parent_id', 'key', 'content_meta',
+         'content', 'update_dt', 'create_dt'],
+        list(c.schema.tables['content'].all_column_names(exclude_role=None)))
+    eq_(['mount_id', 'content_id', 'host_id', 'mount_meta'],
+        list(c.schema.tables['mount'].all_column_names(exclude_role=None)))
     c.ensure_db()
     c.compare_tables()
     c = TestDB(os.path.join(test.dir, 'abc.sqlite3')).ensure_db()
     eq_('TEXT',c.schema.tables['host'].columns['host_meta'].type)
     c2 = TestDB(os.path.join(test.dir, 'abc2.sqlite3')).ensure_db()
-    c3 = TestDB(os.path.join(test.dir, 'abc3.sqlite3')).create_db(lambda dbf,session:None)
+    c3 = TestDB(os.path.join(test.dir, 'abc3.sqlite3')).create_db(
+        lambda dbf,session:None)
     csame = TestDB(os.path.join(test.dir, 'abc.sqlite3'))
     eq_({'name': 'a', '_abc_id': 1},c.insert('abc',{'name':'a'}))
     d=c.insert('ubc', {'name': 'a'})
@@ -72,7 +80,8 @@ def test_db2():
     eq_({'parent_id': None, 'name': u'a'},from_db)
     eq_(None,c.select_one('abc', {'abc_id': 2}))
     eq_(2, csame.resolve_ak('abc','b'))
-    eq_({'parent_id': None, 'name': u'b', 'abc_id': 2}, c.select_one('abc', {'abc_id': 2}))
+    eq_({'parent_id': None, 'name': u'b', 'abc_id': 2},
+        c.select_one('abc', {'abc_id': 2}))
     eq_(2, c.resolve_ak('abc', 'b'))
     eq_(1, c.update('abc',{'abc_id':2,'_parent_id':1}))
     eq_(1, c.delete('abc', {'name': 'b'}))
@@ -90,9 +99,11 @@ def test_db2():
         ok_( "'_parent_id': 1" in message)
         ok_( "'name': 'c'" in message)
         ok_( "'abc_id': 1" in message)
-    cont_id = c.store('content',{'key':{'b':5, 'a':3}, '_content_meta': ['x','a','z'] })
+    cont_id = c.store('content',{'key':{'b':5, 'a':3},
+                                 '_content_meta': ['x','a','z'] })
     eq_({'b':5, 'a':3},c.select_one('content',{'content_id':cont_id})['key'])
-    eq_(cont_id, c.store('content',{'key':{'a':3, 'b':5}, '_content_meta': ['x','a','z'] }))
+    eq_(cont_id, c.store('content',{'key':{'a':3, 'b':5},
+                                    '_content_meta': ['x','a','z'] }))
     v = {'a': 3, 'b': 5}
     mount_id = c.insert('mount', {'_mount_meta': v })['_mount_id']
     eq_(v , c.select_one('mount',{'mount_id' : mount_id})['mount_meta'])
