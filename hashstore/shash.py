@@ -1,12 +1,14 @@
-import hashstore.remote_store as remote_store
+import hashstore.server as remote_store
 
+COMMANDS = 'start stop invite register backup'.split()
+SERVER_COMMANDS = COMMANDS[:3]
 
 def args_parser():
     import argparse
 
     parser = argparse.ArgumentParser(description='shash - hashstore backup server and client')
 
-    parser.add_argument('command', choices='start stop invite register backup'.split())
+    parser.add_argument('command', choices=COMMANDS)
 
     parser.set_defaults(secure=True)
     server_group = parser.add_argument_group('server', 'Server oprations: '
@@ -36,20 +38,28 @@ def args_parser():
 def main():
     parser = args_parser()
     args = parser.parse_args()
-    doing_start = args.command == 'start'
-    doing_stop = args.command == 'stop'
-    if doing_start or doing_stop:
-        remote_store.shutdown(args.port, doing_stop)
-        if doing_start:
-            remote_store.run_server(args.store_dir, args.port)
-    elif args.command == 'invite':
-        print(str(remote_store.create_invitation(args.store_dir)))
+
+    server_cmd_picked = [args.command == n for n in SERVER_COMMANDS]
+    if any(server_cmd_picked):
+        doing = dict(zip(SERVER_COMMANDS,server_cmd_picked))
+        server = remote_store.StoreServer(args.store_dir, args.port,
+                                          args.secure)
+        print(doing)
+        if doing['invite']:
+            print(str(server.create_invitation()))
+        else:
+            server.shutdown(doing['stop'])
+            if doing['start']:
+                server.run_server()
+
+    # mount commands
     elif args.command == 'register':
         pass
     elif args.command == 'backup':
         pass
     else:
-        raise AssertionError(args.command)
+        raise AssertionError('should never happen: %s' % args.command)
+
 
 if __name__ == '__main__':
     main()

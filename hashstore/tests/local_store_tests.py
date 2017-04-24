@@ -55,12 +55,14 @@ def test_SecureStore():
     eq_(mount_id,m_rs[0]['mount_id'])
     eq_(udk.quick_hash(remote_uuid),m_rs[0]['mount_session'])
 
-    mount_id_none = hs.register(uuid.uuid4(),invitation) # invitation should work only once
+    mount_id_none = hs.register(uuid.uuid4(),invitation)
+    # invitation should work only once
     eq_(None, mount_id_none)
     m_rs = select_all('mount')
     eq_(1,len(m_rs)) # only one mount still
 
-    mount_id_another = hs.register(uuid.uuid4(),hs.create_invitation()) # with another invitation
+    mount_id_another = hs.register(uuid.uuid4(),hs.create_invitation())
+    # with another invitation
     ok_(mount_id_another is not None)
 
     m_rs = select_all('mount')

@@ -68,8 +68,11 @@ class HasheryHandler(tornado.web.RequestHandler):
         elif path == 'register':
             x_real_ip = self.request.headers.get("X-Real-IP")
             remote_ip = x_real_ip or self.request.remote_ip
-            mount_uuid,mount_path = json.loads(self.request.body)
-            self.store.register(mount_uuid,mount_path,remote_ip)
+            mount_uuid,mount_path,invitation = json.loads(self.request.body)
+            self.store.register(mount_uuid,  invitation,
+                                json.dumps({
+                                    'remote_ip': remote_ip,
+                                    'mount_path': mount_path}))
         self.finish()
 
     def get(self, path):
@@ -87,30 +90,6 @@ class HasheryHandler(tornado.web.RequestHandler):
             self.write(chunk)
         self.finish()
 
-
-def stop_server(signum, frame):
-    tornado.ioloop.IOLoop.instance().stop()
-    logging.info('Stopped!')
-
-
-def shutdown(port, wait_until_down):
-    try:
-        while True:
-            response = requests.get('http://localhost:%d/.pid' % (port,))
-            pid = int(response.content)
-            if pid:
-                log.warn('Stopping %d' % pid)
-                os.kill(pid,signal.SIGINT)
-                if wait_until_down:
-                    time.sleep(2)
-                else:
-                    break
-            else:
-                break
-    except:
-        pass
-
-
 def create_handler(get_content):
     class Handler(tornado.web.RequestHandler):
         SUPPORTED_METHODS = ['GET']
@@ -121,21 +100,46 @@ def create_handler(get_content):
     return Handler
 
 
-def create_invitation(store_root,message = ''):
-    return str(HashStore(store_root).create_invitation(message))
+def stop_server(signum, frame):
+    tornado.ioloop.IOLoop.instance().stop()
+    logging.info('Stopped!')
 
-def run_server(store_root, port):
-    logging.info('mount: %s' % store_root)
-    store = HashStore(store_root)
-    application = tornado.web.Application([
-        (r'/\.hashery/write_content$', StreamHandler, {'store': store}),
-        (r'/\.hashery/(.*)$', HasheryHandler, {'store': store}),
-        (r'/(\.pid)$', create_handler(lambda: '%d' % os.getpid()),),
-    ])
-    signal.signal(signal.SIGINT, stop_server)
-    http_server = tornado.httpserver.HTTPServer(application)
-    http_server.listen(port)
-    logging.info('Serving HTTP on 0.0.0.0 port %d ...' % port)
-    tornado.ioloop.IOLoop.instance().start()
+
+class StoreServer:
+    def __init__(self, store_root, port, secure):
+        self.store = HashStore(store_root, secure=secure)
+        self.port = port
+
+    def create_invitation(self, message = ''):
+        return str(self.store.create_invitation(message))
+
+    def shutdown(self, wait_until_down):
+        try:
+            while True:
+                response = requests.get('http://localhost:%d/.pid' % (self.port,))
+                pid = int(response.content)
+                if pid:
+                    log.warn('Stopping %d' % pid)
+                    os.kill(pid,signal.SIGINT)
+                    if wait_until_down:
+                        time.sleep(2)
+                    else:
+                        break
+                else:
+                    break
+        except:
+            pass
+
+    def run_server(self):
+        application = tornado.web.Application([
+            (r'/\.hashery/write_content$', StreamHandler, {'store': self.store}),
+            (r'/\.hashery/(.*)$', HasheryHandler, {'store': self.store}),
+            (r'/(\.pid)$', create_handler(lambda: '%d' % os.getpid()),),
+        ])
+        signal.signal(signal.SIGINT, stop_server)
+        http_server = tornado.httpserver.HTTPServer(application)
+        http_server.listen(self.port)
+        logging.info('Serving HTTP on 0.0.0.0 port %d ...' % self.port)
+        tornado.ioloop.IOLoop.instance().start()
 
 

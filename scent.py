@@ -22,10 +22,10 @@ def run(case,envs=run_envs):
 def execute_one_test(*args):
     # case = 'hashstore.tests.shash_tests'
     # case = 'hashstore.tests.mount_tests'
-    # case = 'hashstore.tests.hashery_tests'
+    case = 'hashstore.tests.hashery_tests'
     # case = 'hashstore.tests.local_store_tests'
     # case = 'hashstore.tests.utils_tests'
-    case = 'hashstore.tests.udk_tests'
+    # case = 'hashstore.tests.udk_tests'
     # case = 'hashstore.tests.doc_tests'
     return run(case,[
         'py2'
