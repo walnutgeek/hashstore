@@ -18,7 +18,7 @@ import tornado.template
 import tornado.ioloop
 import tornado.httpserver
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 
@@ -48,7 +48,8 @@ class StreamHandler(tornado.web.RequestHandler):
         self.finish()
 
     def prepare(self):
-        self.w = self.store.writer()
+        auth_session = self.request.headers.get("Auth_session")
+        self.w = self.store.writer(auth_session)
 
     def data_received(self, chunk):
         self.w.write(chunk)
@@ -61,18 +62,33 @@ class HasheryHandler(tornado.web.RequestHandler):
         self.store = store
 
     def post(self, path):
-        log.info("post: %s" % path)
+        print("post: %s" % path)
+        auth_session = self.request.headers.get("Auth_session")
+        remote_ip = self.request.headers.get( "X-Real-IP") or \
+                    self.request.remote_ip
+        req = json.loads(self.request.body)
         if path == 'store_directories' :
-            r = self.store.store_directories(json.loads(self.request.body))
-            self.write(json_encoder.encode(r))
+            resp = self.store.store_directories(
+                req['directories'],
+                mount_hash=req.get('root', None),
+                auth_session=auth_session)
+            self.write(json_encoder.encode(resp))
         elif path == 'register':
-            x_real_ip = self.request.headers.get("X-Real-IP")
-            remote_ip = x_real_ip or self.request.remote_ip
-            mount_uuid,mount_path,invitation = json.loads(self.request.body)
-            self.store.register(mount_uuid,  invitation,
-                                json.dumps({
-                                    'remote_ip': remote_ip,
-                                    'mount_path': mount_path}))
+            mount_meta =  {}
+            if req['meta']:
+                mount_meta.update(**req['meta'])
+            mount_meta['remote_ip'] = remote_ip
+            server_uuid = self.store.register(
+                req['mount_uuid'], req['invitation'],
+                json.dumps(mount_meta))
+            self.write(json_encoder.encode(server_uuid))
+        elif path == 'login':
+            auth_session,server_uuid=self.store.login(req['mount_uuid'])
+            json_data = json_encoder.encode({'auth_session': auth_session,
+                                          'server_uuid': server_uuid})
+            self.write(json_data)
+        elif path == 'logout':
+            self.store.logout(auth_session=auth_session)
         self.finish()
 
     def get(self, path):
@@ -89,6 +105,7 @@ class HasheryHandler(tornado.web.RequestHandler):
                 break
             self.write(chunk)
         self.finish()
+
 
 def create_handler(get_content):
     class Handler(tornado.web.RequestHandler):

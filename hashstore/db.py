@@ -525,7 +525,7 @@ class DbFile:
         def get_pk(self):
             n = self.table.primarykey.name
             if n in self.data:
-                return  self.data[n]
+                return self.data[n]
             return self.data['_' + n ]
 
     @_session
@@ -568,15 +568,14 @@ class DbFile:
                 rowcount=session.rowcount(), **vars))
         try:
             rec_id = vars.get_pk()
-            if session.rowcount() == 0:
-                raise ValueError('did not update any thing even pkey was provided. where: {conditions}: {data}'.format(**vars))
         except KeyError:
-            if session.rowcount() == 1:
-                rec_id = vars.select_pk(session)
-            else:
-                vars = DbFile.SmartVars(self, table_name, data, op='INSERT')
-                session.execute(vars.format(INSERT_TMPL), vars['data'])
-                rec_id = vars.ensure_rowid(session)
+            pass
+        if session.rowcount() == 1:
+            rec_id = vars.select_pk(session)
+        else:
+            vars = DbFile.SmartVars(self, table_name, data, op='INSERT')
+            session.execute(vars.format(INSERT_TMPL), vars['data'])
+            rec_id = vars.ensure_rowid(session)
         return rec_id
 
 

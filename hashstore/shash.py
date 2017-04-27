@@ -1,7 +1,6 @@
-import hashstore.server as remote_store
+from hashstore.server import StoreServer
+from hashstore.mount import MountDB
 
-COMMANDS = 'start stop invite register backup'.split()
-SERVER_COMMANDS = COMMANDS[:3]
 
 def args_parser():
     import argparse
@@ -24,25 +23,32 @@ def args_parser():
                              help='a directory where local hashstore will reside')
 
 
-    backup_group = parser.add_argument_group('backup', 'Register directory for backup on remote store and execute backup')
+    backup_group = parser.add_argument_group('backup', 'Register '
+                   'directory for  backup on remote store and execute '
+                   'backup')
 
     backup_group.add_argument('--url', metavar='url', nargs='?',
                                 default=None,
                                 help='a url where server is running')
+    backup_group.add_argument('--invitation', metavar='invitation', nargs='?',
+                                default=None,
+                                help='invitation recieved from server')
     backup_group.add_argument('--dir', metavar='dir', nargs='?',
                         default='.',
                         help='directory to be backed up')
     return parser
 
+COMMANDS = 'start stop invite register backup'.split()
+SERVER_COMMANDS = lambda cmds: cmds[:3]
+MOUNT_COMMANDS = lambda cmds: cmds[3:]
 
 def main():
     parser = args_parser()
     args = parser.parse_args()
-
-    server_cmd_picked = [args.command == n for n in SERVER_COMMANDS]
-    if any(server_cmd_picked):
-        doing = dict(zip(SERVER_COMMANDS,server_cmd_picked))
-        server = remote_store.StoreServer(args.store_dir, args.port,
+    cmd_picked = [args.command == n for n in COMMANDS]
+    doing = dict(zip(COMMANDS, cmd_picked))
+    if any(SERVER_COMMANDS(cmd_picked)):
+        server = StoreServer(args.store_dir, args.port,
                                           args.secure)
         if doing['invite']:
             print(str(server.create_invitation()))
@@ -50,14 +56,15 @@ def main():
             server.shutdown(doing['stop'])
             if doing['start']:
                 server.run_server()
-
-    # mount commands
-    elif args.command == 'register':
-        pass
-    elif args.command == 'backup':
-        pass
-    else:
-        raise AssertionError('should never happen: %s' % args.command)
+        return
+    elif any(MOUNT_COMMANDS(cmd_picked)):
+        m = MountDB(directory=args.dir)
+        if doing['register']:
+            m.register(args.url,args.invitation)
+        else:
+            m.backup()
+        return
+    raise AssertionError('should never happen: %s' % args.command)
 
 
 if __name__ == '__main__':

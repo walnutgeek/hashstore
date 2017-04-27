@@ -88,17 +88,6 @@ def test_db2():
     eq_(0, csame.delete('abc', {'name': 'b'}))
     eq_(2, c.store('abc',utils.quict(name='c',_parent_id=1)))
     eq_(2, c.store('abc', utils.quict(name='c', _parent_id=1)))
-    try:
-        c.store('abc', utils.quict(abc_id = 1, name='c', _parent_id=1))
-        ok_(False)
-    except ValueError as e:
-        message = utils.exception_message(e)
-        ok_( "did not update any thing even pkey was provided. where: " in message)
-        ok_( " name=:name" in message)
-        ok_( " abc_id=:abc_id" in message)
-        ok_( "'_parent_id': 1" in message)
-        ok_( "'name': 'c'" in message)
-        ok_( "'abc_id': 1" in message)
     cont_id = c.store('content',{'key':{'b':5, 'a':3},
                                  '_content_meta': ['x','a','z'] })
     eq_({'b':5, 'a':3},c.select_one('content',{'content_id':cont_id})['key'])

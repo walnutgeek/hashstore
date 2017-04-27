@@ -11,16 +11,34 @@ class TestSetup:
         if ensure_empty:
             ensure_no_dir(self.dir)
             ensure_dir(self.dir)
+        self.processes = []
+        self.counter = 0
+
+    def run_shash_and_wait(self, cmd, log_file = None):
+        self.run_shash(cmd,log_file).wait()
 
     def run_shash(self, cmd, log_file = None):
         if log_file is None:
-            log_file = cmd.split()[0]+'.log'
+            cmd_name = cmd.split()[0]
+            log_file = '{cmd_name}{self.counter:03d}.log'.format(**locals())
+            self.counter += 1
         if os.path.isabs(log_file):
             path = log_file
         else:
             path = self.full_log_path(log_file)
         popen = run_bg('hashstore.shash', cmd.split(), path)
+        self.processes.append((popen, cmd ,path))
         return popen
+
+    def reset_all_process(self):
+        self.processes = []
+
+    def wait_bg(self, print_all_logs=True):
+        for p, cmd, logpath in self.processes:
+            rc = p.wait()
+            logtext = open(logpath).read()
+            if print_all_logs:
+                print('{cmd}\nrc:{rc}\n{logtext}\n'.format(**locals()))
 
     def full_log_path(self, log_file):
         return os.path.join(self.dir, log_file)
@@ -115,8 +133,22 @@ file_set2 = (
     ('q/link', make_recursive_link)
 )
 
-def prep_mount(dir,file_set):
+
+def prep_mount(dir, file_set, keep_shamo=False):
+    shamo_file = os.path.join(dir,'.shamo')
+
+    shamo_content = None
+    if os.path.exists(shamo_file) and keep_shamo:
+        with open(shamo_file,'rb') as f:
+            shamo_content = f.read()
+
     ensure_no_dir(dir)
+
+    if shamo_content:
+        ensure_dir(dir)
+        with open(shamo_file, 'wb') as f:
+            f.write(shamo_content)
+
     for path,fn in file_set:
         abs_path = os.path.join(dir, path)
         d = os.path.dirname(abs_path)
@@ -142,7 +174,7 @@ def ensure_no_dir(dir):
                 break
 
 
-def run_bg(module, args = [], outfile = None):
+def run_bg(module, args=[], outfile=None):
     command = ['coverage', 'run', '-p', '-m']
     command.append(module)
     for arg in args:

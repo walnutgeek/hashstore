@@ -23,7 +23,8 @@ class IgnoreEntry:
         self.entry = entry
 
     def _match_root(self, split):
-        return len(split) > self.root_length and self.root == split[:self.root_length]
+        return len(split) > self.root_length \
+               and self.root == split[:self.root_length]
 
     def _match_entry(self, split):
         path = os.path.join(*split)
@@ -61,8 +62,8 @@ def check_if_path_should_be_ignored(ignore_entries, path, isdir):
 
 class MountDB(DbFile):
     def __init__(self, directory, file='.shamo',scan_now = False):
-        DbFile.__init__(self, os.path.join(directory, file))
-        self.dir = directory
+        self.dir = os.path.abspath(directory)
+        DbFile.__init__(self, os.path.join(self.dir, file))
         self.last_hash = None
         self.last_id = None
         if scan_now:
@@ -130,7 +131,7 @@ class MountDB(DbFile):
                 if n in ['.svn', '.git', '.DS_Store', '.vol',
                          '.hotfiles.btree', '.ssh' ]:
                     return False
-                for t in ['.shamo', '.Spotlight', '._', '.Trash']:
+                for t in ['.shamo', '.backup', '.Spotlight', '._', '.Trash']:
                     if n.startswith(t):
                         return False
                 return True
@@ -197,20 +198,37 @@ class MountDB(DbFile):
         return self.select('file', {'scan_id':scan_id}, ' order by parent_id, name')
 
     @_session
-    def register(self, url, invitation = None, storage = None, session=None):
-        remote = self.select_one('remote', quict(
-            remote_id = 1
-        ), session=session)
-        if remote is not None and url == remote['url'] :
-            url_uuid = uuid.uuid4()
-            if storage is None:
-                storage = RemoteStorage(url)
-            mount_uuid = storage.register(url_uuid)
-            self.insert('remote', quict(
-                url_uuid=url_uuid,
-                url_text=url,
-                mount_session=quick_hash(mount_uuid)
+    def register(self, url, invitation=None, session=None):
+        url_uuid = uuid.uuid4()
+        storage = RemoteStorage(url)
+        server_uuid = storage.register(url_uuid,
+                             invitation=invitation,
+                             meta={'mount_path': self.dir})
+        if server_uuid is not None:
+            self.ensure_db()
+            self.store('remote', quict(
+                remote_id=1,
+                _url_uuid=url_uuid,
+                _url_text=url,
+                _mount_session=quick_hash(server_uuid)
             ), session=session)
+
+    @_session
+    def backup(self, session=None):
+        remote = self.select_one('remote', quict(remote_id=1),
+                                 session=session)
+        if remote is None:
+            raise ValueError('cannot backup, need register mount first')
+
+        storage = RemoteStorage(remote['url_text'])
+        resp = storage.login(remote['url_uuid'])
+        log.debug( (remote['mount_session'],quick_hash(resp['server_uuid'])) )
+        if remote['mount_session'] != quick_hash(resp['server_uuid']):
+            raise AssertionError('cannot validate server')
+        storage.set_auth_session(resp['auth_session'])
+        self.push_files(storage, session=session)
+        storage.logout()
+        return self.last_hash
 
 
     @_session
@@ -246,6 +264,8 @@ class MountDB(DbFile):
             rescan_hash = self.last_hash
 
 
+
+
 class ScanTree:
     def __init__(self, mount, scan_id=None):
         self.directories = defaultdict(UDKBundle)
@@ -261,7 +281,6 @@ class ScanTree:
                 self.file_to_dir_hashes[file_hash] = parent_hash
             else:
                 self.k = UDK.ensure_it(file_hash)
-
 
     def file_path(self, h):
         try:

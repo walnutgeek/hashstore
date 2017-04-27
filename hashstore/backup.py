@@ -15,7 +15,7 @@ default_config = os.path.join(os.environ['HOME'],'.back-it-up')
 
 
 class Backup(DbFile):
-    def __init__(self, db_location , mount_locations, storage_config):
+    def __init__(self, db_location , mount_locations, storage_or_config):
         DbFile.__init__(self, db_location )
         self.ensure_db()
         self.mounts = []
@@ -24,7 +24,10 @@ class Backup(DbFile):
             entry = (mount_id, location)
             self.mounts.append(entry)
             log.info(entry)
-        self.storage = storage.factory(storage_config)
+        if isinstance(storage_or_config, storage.Storage):
+            self.storage = storage_or_config
+        else:
+            self.storage = storage.factory(storage_or_config)
 
     @staticmethod
     def from_config(config=default_config, db_location = None, substitutions = {}):

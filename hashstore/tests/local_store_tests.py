@@ -68,8 +68,8 @@ def test_SecureStore():
     m_rs = select_all('mount')
     eq_(2,len(m_rs)) # second mount created
 
-    auth_session = hs.login(remote_uuid)
-    log.info(auth_session)
+    auth_session, mount_id = hs.login(remote_uuid)
+    log.info('auth:{auth_session} mount:{mount_id}'.format(**locals()))
 
     seed(1)
     s4k = random_bytes(4000)
@@ -166,6 +166,7 @@ def test_HashStore():
     eq_(0, len(o2.read()))
     #store again
     store()
+
     #retrieve non existent
     eq_(None, hs.get_content(not_existent))
     udks = list(hs.iterate_udks())

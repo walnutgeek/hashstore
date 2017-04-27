@@ -82,7 +82,7 @@ def process_stream(fd, process_buffer=NOP_process_buffer):
     return digest.hexdigest(),length,inline_data
 
 
-class UDK(utils.Stringable):
+class UDK(utils.Stringable,utils.EnsureIt):
     '''
     Stands for Unique Data Key.
 
@@ -269,6 +269,7 @@ class UDKBundle(utils.Jsonable):
         content = str(self)
         in_bytes = utils.ensure_bytes(content)
         return UDK.from_digest_and_inline_data(quick_hash(in_bytes), in_bytes, bundle=True), len(in_bytes), content
+
 
 class UdkSet(utils.Jsonable):
     def __init__(self,o=None):

@@ -3,6 +3,8 @@ import six
 import os
 import json
 import sys
+import uuid
+import abc
 
 
 def quict(**kwargs):
@@ -137,6 +139,7 @@ def path_split_all(path, ensure_trailing_slash = None):
                 parts = parts[:-1]
     return parts
 
+
 class EnsureIt:
     @classmethod
     def ensure_it(cls, o):
@@ -144,12 +147,17 @@ class EnsureIt:
             return o
         return cls(o)
 
-class Stringable(EnsureIt):
+
+@six.add_metaclass(abc.ABCMeta)
+class Stringable(object):
     '''
     Marker to inform json_encoder to use `str(o)` to
     serialize in json
     '''
     pass
+
+Stringable.register(uuid.UUID)
+
 
 class Jsonable(EnsureIt):
     '''

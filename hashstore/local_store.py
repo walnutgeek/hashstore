@@ -206,11 +206,14 @@ class HashStore:
         ))['_invitation_id']
 
     def register(self, remote_uuid, invitation, mount_meta=None):
-        rc = self.dbf.update('invitation', quict(
-            invitation_id = invitation,
-            used=False,
-            _used=True,
-        ))
+        if invitation is None:
+            rc = 0 if self.secure else 1
+        else:
+            rc = self.dbf.update('invitation', quict(
+                invitation_id = invitation,
+                used=False,
+                _used=True,
+            ))
         if rc == 1:
             mount_session = udk.quick_hash(remote_uuid)
             return self.dbf.resolve_ak('mount', mount_session)
@@ -222,7 +225,7 @@ class HashStore:
         if mount is not None:
             mount_id = mount['mount_id']
             auth_session = self.dbf.insert('auth_session', quict(mount_id=mount_id, active=True))
-            return auth_session['_auth_session_id']
+            return auth_session['_auth_session_id'], mount_id
         else:
             raise ValueError("authentication error")
 
