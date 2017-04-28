@@ -18,7 +18,8 @@ class TestSetup:
         p_id = self.run_shash(cmd,log_file)
         popen, cmd, logpath = self.processes[p_id]
         rc = popen.wait()
-        return rc, open(logpath).read().strip().split()[-1]
+        split = open(logpath).read().strip().split()
+        return rc, split[-1] if len(split) else None
 
     def run_shash(self, cmd, log_file = None):
         p_id = self.counter
@@ -51,6 +52,7 @@ class TestSetup:
 
 def makedir(path, abs_path):
     os.makedirs(abs_path)
+
 
 def make_recursive_link(path, abs_path):
     try:
