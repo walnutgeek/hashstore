@@ -2,7 +2,8 @@ from hashstore.db import _session, DbFile
 from hashstore.udk import process_stream,\
     UDK,UDKBundle,UdkSet,quick_hash
 from hashstore.storage import RemoteStorage
-from hashstore.utils import quict, path_split_all, reraise_with_msg
+from hashstore.utils import quict, path_split_all, reraise_with_msg, \
+    read_in_chunks, ensure_directory
 from collections import defaultdict
 import os
 import fnmatch
@@ -213,23 +214,57 @@ class MountDB(DbFile):
                 _mount_session=quick_hash(server_uuid)
             ), session=session)
 
+    def backup(self):
+        def action(storage,session):
+            self.push_files(storage, session=session)
+        self._run_against_storage(action)
+        return self.last_hash
+
+    def restore(self, key, path):
+
+        def action(storage,session):
+            def restore_inner( k, p):
+                k = UDK.ensure_it(k)
+                if k.named_udk_bundle:
+                    content = storage.get_content(k)
+                    log.info('%r' % content)
+                    bundle = UDKBundle(content)
+                    ensure_directory(p)
+                    for n in bundle:
+                        file_path = os.path.join(p, n)
+                        file_k = bundle[n]
+                        if file_k.named_udk_bundle:
+                            restore_inner(file_k, file_path)
+                        else:
+                            try:
+                                out_fp = open(file_path, "wb")
+                                in_fp = storage.get_content(file_k)
+                                for chunk in read_in_chunks(in_fp):
+                                    out_fp.write(chunk)
+                                out_fp.close()
+                            except:
+                                reraise_with_msg(
+                                    "%s -> %s" % (file_k, file_path))
+            restore_inner(key,path)
+        self._run_against_storage(action)
+
+
     @_session
-    def backup(self, session=None):
+    def _run_against_storage(self, activity, session=None):
         remote = self.select_one('remote', quict(remote_id=1),
                                  session=session)
         if remote is None:
             raise ValueError('cannot backup, need register mount first')
-
         storage = RemoteStorage(remote['url_text'])
         resp = storage.login(remote['url_uuid'])
-        log.debug( (remote['mount_session'],quick_hash(resp['server_uuid'])) )
+        log.debug(
+            (remote['mount_session'], quick_hash(resp['server_uuid'])))
         if remote['mount_session'] != quick_hash(resp['server_uuid']):
             raise AssertionError('cannot validate server')
         storage.set_auth_session(resp['auth_session'])
-        self.push_files(storage, session=session)
+        result = activity(storage,session)
         storage.logout()
-        return self.last_hash
-
+        return result
 
     @_session
     def push_files(self, storage, session=None):

@@ -18,7 +18,7 @@ import tornado.template
 import tornado.ioloop
 import tornado.httpserver
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 
@@ -98,7 +98,8 @@ class HasheryHandler(tornado.web.RequestHandler):
             self.set_header('Content-Type', '{mime}; charset="{enc}"'.format(**locals()))
         elif mime:
             self.set_header('Content-Type', mime)
-        content = self.store.get_content(file.udk())
+        auth_session = self.request.headers.get("Auth_session")
+        content = self.store.get_content(file.udk(),auth_session=auth_session)
         while 1:
             chunk = content.read(64*1024)
             if not chunk:

@@ -3,7 +3,6 @@ This module contains of data access session.
 
 """
 import sqlite3
-import six
 import logging
 import hashstore.utils as utils
 import traceback
@@ -12,7 +11,7 @@ log = logging.getLogger(__name__)
 
 
 class Session:
-    def __init__(self,dbf, trace_stack = None):
+    def __init__(self, dbf, trace_stack = None):
         self.file = dbf.file
         self.trace_stack = trace_stack
         self.conn = sqlite3.connect(self.file)

@@ -18,7 +18,6 @@ def run(case,envs=run_envs):
     os.system(combine_cmd)
     return all(env_states)
 
-@runnable
 def execute_one_test(*args):
     # case = 'hashstore.tests.shash_tests'
     # case = 'hashstore.tests.mount_tests'
@@ -33,6 +32,7 @@ def execute_one_test(*args):
                      ])
 
 
+@runnable
 def execute_all_tests(*args):
     return run('')
 

@@ -11,30 +11,35 @@ class TestSetup:
         if ensure_empty:
             ensure_no_dir(self.dir)
             ensure_dir(self.dir)
-        self.processes = []
+        self.processes = {}
         self.counter = 0
 
     def run_shash_and_wait(self, cmd, log_file = None):
-        self.run_shash(cmd,log_file).wait()
+        p_id = self.run_shash(cmd,log_file)
+        popen, cmd, logpath = self.processes[p_id]
+        rc = popen.wait()
+        return rc, open(logpath).read().strip().split()[-1]
 
     def run_shash(self, cmd, log_file = None):
+        p_id = self.counter
+        self.counter += 1
         if log_file is None:
             cmd_name = cmd.split()[0]
-            log_file = '{cmd_name}{self.counter:03d}.log'.format(**locals())
-            self.counter += 1
+            log_file = '{cmd_name}{p_id:03d}.log'.format(**locals())
         if os.path.isabs(log_file):
             path = log_file
         else:
             path = self.full_log_path(log_file)
         popen = run_bg('hashstore.shash', cmd.split(), path)
-        self.processes.append((popen, cmd ,path))
-        return popen
+        self.processes[p_id] = (popen, cmd ,path)
+        return p_id
 
     def reset_all_process(self):
-        self.processes = []
+        self.processes = {}
 
     def wait_bg(self, print_all_logs=True):
-        for p, cmd, logpath in self.processes:
+        for p_id in self.processes:
+            p, cmd, logpath = self.processes[p_id]
             rc = p.wait()
             logtext = open(logpath).read()
             if print_all_logs:

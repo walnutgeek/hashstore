@@ -36,9 +36,16 @@ def args_parser():
     backup_group.add_argument('--dir', metavar='dir', nargs='?',
                         default='.',
                         help='directory to be backed up')
+    backup_group.add_argument('--dest', metavar='dest', nargs='?',
+                        default=None,
+                        help='destination directory where '
+                             'files will be restored')
+    backup_group.add_argument('--udk', metavar='udk', nargs='?',
+                        default=None,
+                        help='version of directory to be restored')
     return parser
 
-COMMANDS = 'start stop invite register backup'.split()
+COMMANDS = 'start stop invite register backup restore scan'.split()
 SERVER_COMMANDS = lambda cmds: cmds[:3]
 MOUNT_COMMANDS = lambda cmds: cmds[3:]
 
@@ -61,8 +68,13 @@ def main():
         m = MountDB(directory=args.dir)
         if doing['register']:
             m.register(args.url,args.invitation)
-        else:
-            m.backup()
+        elif doing['backup']:
+            print(m.backup())
+        elif doing['restore']:
+            m.restore(args.udk,args.dest)
+        else: #scan
+            _,udk = m.scan()
+            print(udk)
         return
     raise AssertionError('should never happen: %s' % args.command)
 

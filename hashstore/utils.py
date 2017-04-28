@@ -118,6 +118,7 @@ def create_path_resolver(substitutions = {}):
 
     return path_resolver
 
+
 def path_split_all(path, ensure_trailing_slash = None):
     def tails(head):
         while(True):
