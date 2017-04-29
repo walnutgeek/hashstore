@@ -1,4 +1,6 @@
 test-out/
+dist
+*.egg-info
 .idea/
 *.pyc
 *.log
