@@ -157,7 +157,6 @@ class MountDB(DbFile):
                         file_type='DIR'
                     ),session=session)
                     k,size = read_dir(path_to_file, dir_rec, ignore_entries)
-                    cumulative_size += size
                 else:
                     digest, size, inline_data = process_stream(open(path_to_file,'rb'))
                     k = UDK.from_digest_and_inline_data(digest, inline_data)
