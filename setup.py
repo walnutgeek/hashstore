@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='hashstore',
-      version='0.0.3',
+      version='0.0.4',
       description='Content Addressable Storage',
       url='https://github.com/walnutgeek/hashstore',
       author='Walnut Geek',

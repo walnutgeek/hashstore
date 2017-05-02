@@ -18,6 +18,8 @@ import tornado.template
 import tornado.ioloop
 import tornado.httpserver
 
+GIGABYTE = pow(1024, 3)
+
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
@@ -124,9 +126,10 @@ def stop_server(signum, frame):
 
 
 class StoreServer:
-    def __init__(self, store_root, port, secure):
+    def __init__(self, store_root, port, secure, max_file_size = 20*GIGABYTE):
         self.store = HashStore(store_root, secure=secure, init=False)
         self.port = port
+        self.max_file_size = max_file_size
 
     def create_invitation(self, message = ''):
         return str(self.store.create_invitation(message))
@@ -156,7 +159,7 @@ class StoreServer:
             (r'/(\.pid)$', create_handler(lambda: '%d' % os.getpid()),),
         ])
         signal.signal(signal.SIGINT, stop_server)
-        http_server = tornado.httpserver.HTTPServer(application)
+        http_server = tornado.httpserver.HTTPServer(application, max_body_size=self.max_file_size)
         http_server.listen(self.port)
         logging.info('StoreServer({0.store.root},secure={0.store.secure}) listening=0.0.0.0:{0.port}'.format(self) )
         tornado.ioloop.IOLoop.instance().start()
