@@ -9,7 +9,7 @@ setup(name='hashstore',
       license='Apache 2.0',
       packages=['hashstore'],
       entry_points={
-          'console_scripts': [.
+          'console_scripts': [
               'shash=hashstore.shash:main',
           ],
       },
