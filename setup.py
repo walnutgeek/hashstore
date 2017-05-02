@@ -1,5 +1,8 @@
 from setuptools import setup
 
+# MANIFEST.in ensures that requirements are included in `sdist`
+install_requires = open('requirements.txt').read().split()
+
 setup(name='hashstore',
       version='0.0.4',
       description='Content Addressable Storage',
@@ -13,5 +16,5 @@ setup(name='hashstore',
               'shash=hashstore.shash:main',
           ],
       },
-      install_requires=open('requirements.txt').read().split(),
+      install_requires=install_requires,
       zip_safe=False)

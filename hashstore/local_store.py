@@ -14,6 +14,48 @@ SQLITE_EXT = '.sqlite3'
 
 log = logging.getLogger(__name__)
 
+def _incomming_dbf_instance(file):
+    '''
+    table:incoming
+        incoming_id PK
+        sha UDK
+        new BOOL
+        created_dt INSERT_DT
+        updated_dt UPDATE_DT
+    table:mount
+        mount_id UUID4 PK
+        mount_session TEXT AK
+        created_dt INSERT_DT
+    table:invitation
+        invitation_id UUID4 PK
+        invitation_body TEXT
+        used BOOL
+        created_dt INSERT_DT
+        update_dt UPDATE_DT NULL
+    table:auth_session
+        auth_session_id UUID4 PK
+        mount_id FK(mount)
+        active BOOL
+        created_dt INSERT_DT
+        update_dt UPDATE_DT NULL
+    table:push
+        push_id PK
+        auth_session_id FK(auth_session)
+        mount_hash UDK
+        created_dt INSERT_DT
+    '''
+    return db.DbFile(file, _incomming_dbf_instance.__doc__)
+
+def _blob_dbf_instance(file):
+    '''
+    table:blob
+        blob_id PK
+        sha UDK AK
+        content BIG
+        created_dt INSERT_DT
+    '''
+    return db.DbFile(file, _blob_dbf_instance.__doc__)
+
 
 class Lookup:
     def __init__(self, store, sha):
@@ -41,17 +83,6 @@ class InlineLookup(Lookup):
 
     def stream(self):
         return six.BytesIO(self.sha.data())
-
-
-def _blob_dbf_instance(file):
-    '''
-    table:blob
-      blob_id PK
-      sha UDK AK
-      content BIG
-      created_dt INSERT_DT
-    '''
-    return db.DbFile(file, _blob_dbf_instance.__doc__)
 
 
 def _blob_db_filename(directory):
@@ -150,37 +181,9 @@ class HashStore:
             return
         self.incoming = os.path.join(self.root,'incoming')
         ensure_directory(self.incoming)
-        model = '''
-        table:incoming
-            incoming_id PK
-            sha UDK
-            new BOOL
-            created_dt INSERT_DT
-            updated_dt UPDATE_DT
-        table:mount
-            mount_id UUID4 PK
-            mount_session TEXT AK
-            created_dt INSERT_DT
-        table:invitation
-            invitation_id UUID4 PK
-            invitation_body TEXT
-            used BOOL
-            created_dt INSERT_DT
-            update_dt UPDATE_DT NULL
-        table:auth_session
-            auth_session_id UUID4 PK
-            mount_id FK(mount)
-            active BOOL
-            created_dt INSERT_DT
-            update_dt UPDATE_DT NULL
-        table:push
-            push_id PK
-            auth_session_id FK(auth_session)
-            mount_hash UDK
-            created_dt INSERT_DT
-        '''
-        self.dbf = db.DbFile(self.incoming + SQLITE_EXT,
-                             model).ensure_db()
+        db_name = self.incoming + SQLITE_EXT
+        self.dbf = _incomming_dbf_instance(db_name).ensure_db()
+
 
     def iterate_udks(self, auth_session = None):
         self.check_auth_session(auth_session)
