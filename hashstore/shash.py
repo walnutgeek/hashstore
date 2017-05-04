@@ -60,7 +60,7 @@ def main():
         if doing['invite']:
             print(str(server.create_invitation()))
         else:
-            server.shutdown(doing['stop'])
+            server.shutdown(not(doing['stop']))
             if doing['start']:
                 server.run_server()
         return

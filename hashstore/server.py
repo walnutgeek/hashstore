@@ -9,9 +9,9 @@ import logging
 import mimetypes
 import signal
 from hashstore.local_store import HashStore
-from hashstore.udk import UDK
+from hashstore.udk import UDK, UDKBundle
 import json
-from hashstore.utils import json_encoder
+from hashstore.utils import json_encoder, path_split_all
 
 import tornado.web
 import tornado.template
@@ -26,14 +26,24 @@ log = logging.getLogger(__name__)
 
 class HashPath:
     def __init__(self,path):
-        log.info(path)
-        self.path = path
+        self.path = path_split_all(path)
+        if len(self.path) < 1:
+            raise ValueError('no path: {}'.format(path))
+
+    def __getitem__(self, i):
+        return self.path[i]
+
+    def __len__(self):
+        return  len(self.path)
+
+    def need_to_be_resolved(self):
+        return len(self) > 1
 
     def mime_enc(self):
-        return mimetypes.guess_type(self.path)
+        return mimetypes.guess_type(self.path[-1])
 
     def udk(self):
-        return UDK.ensure_it(self.path[:64])
+        return UDK.ensure_it(self.path[0])
 
 
 @tornado.web.stream_request_body
@@ -94,14 +104,19 @@ class HasheryHandler(tornado.web.RequestHandler):
         self.finish()
 
     def get(self, path):
-        file = HashPath(path)
-        mime,enc = file.mime_enc()
+        hash_path = HashPath(path)
+        udk = hash_path.udk()
+        auth_session = self.request.headers.get("Auth_session")
+        if hash_path.need_to_be_resolved():
+            for i in range(1, len(hash_path)) :
+                bundle = UDKBundle(self.store.get_content(udk,auth_session=auth_session))
+                udk = bundle[hash_path[i]]
+        mime,enc = hash_path.mime_enc()
         if mime and enc:
             self.set_header('Content-Type', '{mime}; charset="{enc}"'.format(**locals()))
         elif mime:
             self.set_header('Content-Type', mime)
-        auth_session = self.request.headers.get("Auth_session")
-        content = self.store.get_content(file.udk(),auth_session=auth_session)
+        content = self.store.get_content(udk,auth_session=auth_session)
         while 1:
             chunk = content.read(64*1024)
             if not chunk:
