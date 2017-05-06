@@ -17,6 +17,13 @@ def test_args_parser():
     eq_(args.command, "start")
     eq_(args.port, 345)
     eq_(args.store_dir, '/u1/abc/store')
+    eq_(args.secure, None)
+
+    args = p.parse_args(["start", "--port", "345",
+                         '--store_dir', '/u1/abc/store', '--secure'])
+    eq_(args.command, "start")
+    eq_(args.port, 345)
+    eq_(args.store_dir, '/u1/abc/store')
     eq_(args.secure, True)
 
     args = p.parse_args(["start", "--port", "345",

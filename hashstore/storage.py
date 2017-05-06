@@ -14,7 +14,8 @@ class Storage:
 
 class LocalStorage(Storage):
     def __init__(self, path):
-        self.store = localstore.HashStore(path)
+        self.store = localstore.HashStore(
+            path, access_mode=localstore.AccessMode.INSECURE)
 
     def __getattr__(self, name):
         if name in methods_to_implement:

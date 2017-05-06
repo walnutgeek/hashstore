@@ -1,7 +1,7 @@
 import uuid
 import os
 from hashstore.tests import TestSetup, seed, random_bytes
-from hashstore.local_store import HashStore
+from hashstore.local_store import HashStore,AccessMode
 from hashstore.utils import exception_message
 import hashstore.udk as udk
 from nose.tools import eq_,ok_,with_setup
@@ -21,7 +21,8 @@ db_udk = '92bef2cc149396cc1cd6f3fcbe458084f34eec66c75c115ce65bee082621c898'
 file_udk = '32a987ad3ced40abe090804cf1da7cefc42722b5211bdbeed62430314646ecd5'
 
 def test_SecureStore():
-    hs = HashStore(os.path.join(test.dir,'test_SecureStore'), secure=True)
+    hs = HashStore(os.path.join(test.dir,'test_SecureStore'),
+                   access_mode=AccessMode.ALL_SECURE)
 
     def select_all(tbl):
         return hs.dbf.select(tbl, {}, '1=1')
@@ -35,6 +36,8 @@ def test_SecureStore():
     eq_(invitation,i_rs[0]['invitation_id'])
     eq_(False,i_rs[0]['used'])
     eq_('body',i_rs[0]['invitation_body'])
+
+    eq_(None, hs.register(uuid.uuid4(),None))
 
     remote_uuid = uuid.uuid4()
     try:
@@ -115,7 +118,8 @@ def test_SecureStore():
 
 
 def test_HashStore():
-    hs = HashStore(os.path.join(test.dir,'test_HashStore'), secure=False)
+    hs = HashStore(os.path.join(test.dir,'test_HashStore'),
+                   access_mode=AccessMode.INSECURE)
     not_existent = 'afebac2a37799077d70427c6a28ed1d99754363e1f5dd0a2b28b962d8ae15263'
 
     def store():

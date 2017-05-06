@@ -11,6 +11,14 @@ substitutions = {'{test_dir}': test.dir, '{q}': 'q'}
 
 u.ensure_directory(test.dir)
 
+def test_docs():
+    import doctest
+    import hashstore.utils as test_subject
+    r = doctest.testmod(test_subject)
+    ok_(r.attempted > 0, 'There is not doctests in module')
+    eq_(r.failed,0)
+
+
 def test_path_resolver():
     r = u.create_path_resolver(substitutions)
     eq_(r('{test_dir}/x/y/z'), test.dir + '/x/y/z')

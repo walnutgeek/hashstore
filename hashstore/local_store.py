@@ -3,11 +3,26 @@ import os
 import shutil
 import datetime
 import six
+import enum
 from hashstore.session import _session
 import hashstore.db as db
 import logging
-from hashstore.utils import quict,ensure_directory,ensure_bytes,read_in_chunks
+from hashstore.utils import v2s,quict,ensure_directory,ensure_bytes,read_in_chunks
 import hashstore.udk as udk
+
+class AccessMode(enum.Enum):
+    INSECURE = 0
+    WRITE_SECURE = 1
+    ALL_SECURE = 2
+
+    @classmethod
+    def from_bool(cls, secure):
+        if secure is None:
+            return cls.WRITE_SECURE
+        elif secure == False:
+            return cls.INSECURE
+        else:
+            return cls.ALL_SECURE
 
 SHARD_SIZE = 3
 SQLITE_EXT = '.sqlite3'
@@ -67,6 +82,9 @@ class Lookup:
     def found(self):
         return self.size is not None and self.size >= 0
 
+    def fd(self):
+        return None
+
     def stream(self):
         return None
 
@@ -74,6 +92,7 @@ class Lookup:
         return False
 
 NULL_LOOKUP = Lookup(None, None)
+
 
 class InlineLookup(Lookup):
     def __init__(self, store, sha):
@@ -136,6 +155,9 @@ class FileLookup(Lookup):
             if e.errno != 2:  # No such file
                  raise # pragma: no cover
 
+    def fd(self):
+        return os.open(self.file,os.O_RDONLY )
+
     def stream(self):
         return open(self.file,'rb')
 
@@ -170,9 +192,11 @@ class IncommingFile:
 
 
 class HashStore:
-    def __init__(self, root,  secure=False, init=True):
+    def __init__(self, root, access_mode=AccessMode.WRITE_SECURE, init=True):
         self.root = root
-        self.secure = secure
+        if access_mode == True or access_mode == False:
+            raise AssertionError( v2s(locals(),'access_mode'))
+        self.access_mode = access_mode
         if init:
             self.initialize()
 
@@ -210,7 +234,7 @@ class HashStore:
 
     def register(self, remote_uuid, invitation, mount_meta=None):
         if invitation is None:
-            rc = 0 if self.secure else 1
+            rc = 0 if self.access_mode != AccessMode.INSECURE else 1
         else:
             rc = self.dbf.update('invitation', quict(
                 invitation_id = invitation,
@@ -237,7 +261,7 @@ class HashStore:
             auth_session_id = auth_session, _active = False))
 
     def check_auth_session(self, auth_session, push_hash = None):
-        if self.secure or auth_session:
+        if self.access_mode != AccessMode.INSECURE :
             if auth_session is None:
                 raise ValueError("auth_session is required")
             @_session
@@ -297,7 +321,8 @@ class HashStore:
         return NULL_LOOKUP
 
     def get_content(self, k, auth_session = None):
-        self.check_auth_session(auth_session)
+        if self.access_mode == AccessMode.ALL_SECURE:
+            self.check_auth_session(auth_session)
         return self.lookup(k).stream()
 
     def delete(self, k, auth_session = None):
@@ -346,6 +371,3 @@ class HashStore:
                 return self.k
 
         return Writer()
-
-
-

@@ -11,8 +11,8 @@ log = logging.getLogger(__name__)
 
 def test_docs():
     import doctest
-    import hashstore.udk
-    r = doctest.testmod(hashstore.udk)
+    import hashstore.udk as test_subject
+    r = doctest.testmod(test_subject)
     ok_(r.attempted > 0)
     eq_(r.failed,0)
 

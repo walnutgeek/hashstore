@@ -278,7 +278,7 @@ class MountDB(DbFile):
             ), session=session)
             tree = ScanTree(self)
             count_synched_dirs, hashes_to_push = storage.store_directories(
-                tree.directories)
+                tree.directories,self.last_hash)
             push_files = len(hashes_to_push) > 0
             if push_files:
                 hashes_to_push = UdkSet.ensure_it(hashes_to_push)

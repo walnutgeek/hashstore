@@ -97,6 +97,25 @@ def ensure_string(s):
         return s.decode('utf-8')
 
 
+def v2s(vars_dict, *var_keys):
+    '''
+    Selectively conver variable dictionary to string
+
+    >>> v2s({'a':'b','c':'d'},'a')
+    'a=b'
+    >>> x=5
+    >>> q=True
+    >>> v2s(locals(),'x','q')
+    'x=5 q=True'
+
+    :param vars_dict:
+    :param var_keys:
+    :return:
+    '''
+    s = ' '.join(k + '={' + k + '}' for k in var_keys)
+    return s.format(**vars_dict)
+
+
 def create_path_resolver(substitutions = {}):
     substitutions = dict(substitutions)
     for k in os.environ:

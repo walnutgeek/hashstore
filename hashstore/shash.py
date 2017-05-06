@@ -9,7 +9,7 @@ def args_parser():
 
     parser.add_argument('command', choices=COMMANDS)
 
-    parser.set_defaults(secure=True)
+    parser.set_defaults(secure=None)
     server_group = parser.add_argument_group('server', 'Server oprations: '
                                                        'Start/stop or invite')
 
@@ -17,7 +17,12 @@ def args_parser():
                               default=7532, help='a port to listen.')
     server_group.add_argument('--insecure', dest="secure", action='store_false',
                              help='start insecure server that does not require '
-                                  'mounts to register for backup')
+                                  'client to register neiter for  read or  write '
+                                  '(default is when only writes  are secure')
+    server_group.add_argument('--secure', dest="secure", action='store_true',
+                             help='start secure server that does not require '
+                                  'client to register for write and read '
+                                  '(default is when only writes  are secure')
     server_group.add_argument('--store_dir', metavar='store_dir',
                              nargs='?', default='.',
                              help='a directory where local hashstore will reside')

@@ -7,7 +7,9 @@ from sniffer.api import *
 def py_files(filename):
     return filename.endswith('.py') or filename.endswith('.yaml') or filename.endswith('.rst')
 
-run_envs = [ 'py2', 'py3' ]
+run_envs = [ 'py2',
+             'py3'
+             ]
 env_template = '. activate %s; coverage run -p -m nose %s'
 combine_cmd = '. activate py2; coverage combine; coverage report -m; rm .coverage'
 
@@ -21,9 +23,9 @@ def run(case,envs=run_envs):
 def execute_one_test(*args):
     # case = 'hashstore.tests.shash_tests'
     # case = 'hashstore.tests.mount_tests'
-    case = 'hashstore.tests.server_tests'
+    # case = 'hashstore.tests.server_tests'
     # case = 'hashstore.tests.local_store_tests'
-    # case = 'hashstore.tests.utils_tests'
+    case = 'hashstore.tests.utils_tests'
     # case = 'hashstore.tests.udk_tests'
     # case = 'hashstore.tests.doc_tests'
     return run(case,[
