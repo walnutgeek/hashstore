@@ -1,3 +1,0 @@
-mounts:
-- {location: "{test_dir}/files",  frequency: 1d}
-storage: { type: Remote, url: "http://localhost:9753/" }
