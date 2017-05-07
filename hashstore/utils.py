@@ -99,7 +99,7 @@ def ensure_string(s):
 
 def v2s(vars_dict, *var_keys):
     '''
-    Selectively conver variable dictionary to string
+    Selectively convert variable dictionary to string
 
     >>> v2s({'a':'b','c':'d'},'a')
     'a=b'

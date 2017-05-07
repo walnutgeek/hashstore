@@ -7,25 +7,8 @@ from hashstore.utils import json_encoder
 import logging
 log = logging.getLogger(__name__)
 
-methods_to_implement = ['store_directories', 'write_content', 'get_content']
 
-class Storage:
-    pass
-
-class LocalStorage(Storage):
-    def __init__(self, path):
-        self.store = localstore.HashStore(
-            path, access_mode=localstore.AccessMode.INSECURE)
-
-    def __getattr__(self, name):
-        if name in methods_to_implement:
-            return getattr(self.store, name)
-        else:
-            raise AttributeError('%s.%s is not delegated ' %
-                                 (self.__class__.__name__, name) )
-
-
-class RemoteStorage(Storage):
+class RemoteStorage:
     def __init__(self, url):
         self.url = url
         self.headers = {}
@@ -78,16 +61,3 @@ class RemoteStorage(Storage):
         url = self.url + '.hashery/' + str(k.strip_bundle())
         return requests.get(url, headers=self.headers, stream=True).raw
 
-
-
-def factory(config_dict):
-    '''
-
-    :param path_resolver:
-    :param config_dict:
-    :return: destination instance
-    '''
-    config_dict = dict(config_dict)
-    constructor = globals()[config_dict['type'] + 'Storage']
-    del config_dict['type']
-    return constructor(**config_dict)

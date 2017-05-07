@@ -1,7 +1,7 @@
 from hashstore.db import _session, DbFile
 from hashstore.udk import process_stream,\
     UDK,UDKBundle,UdkSet,quick_hash
-from hashstore.storage import RemoteStorage
+from hashstore.client import RemoteStorage
 from hashstore.utils import quict, path_split_all, reraise_with_msg, \
     read_in_chunks, ensure_directory
 from collections import defaultdict
