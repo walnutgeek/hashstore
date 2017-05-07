@@ -275,13 +275,6 @@ class HashStore:
                         session=session)
             tx(self)
 
-    def write_content(self, fp ,auth_session = None):
-        self.check_auth_session(auth_session)
-        w = self.writer(auth_session)
-        for buffer in read_in_chunks(fp):
-            w.write(buffer)
-        return w.done()
-
     def store_directories(self, directories, mount_hash=None, auth_session = None):
         self.check_auth_session(auth_session, mount_hash)
         unseen_file_hashes = udk.UdkSet()
@@ -296,7 +289,7 @@ class HashStore:
                 w = self.writer(auth_session=auth_session)
                 w.write(dir_content_dump, done=True)
                 lookup = self.lookup(dir_hash)
-                if lookup.found() :
+                if lookup.found():
                     dirs_stored.add(dir_hash)
                 else: # pragma: no cover
                     dirs_mismatch.add(dir_hash)
