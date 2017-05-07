@@ -357,7 +357,6 @@ class Schema:
                 yield str(index)
 
 
-
 old_value_key = lambda key: key[:1] != '_'
 new_value_key = lambda key: key[:1] == '_'
 column_name_from_key = lambda k: k if old_value_key(k) else k[1:]

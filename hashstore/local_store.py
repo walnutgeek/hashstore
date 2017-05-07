@@ -19,7 +19,7 @@ class AccessMode(enum.Enum):
     def from_bool(cls, secure):
         if secure is None:
             return cls.WRITE_SECURE
-        elif secure == False:
+        elif not secure:
             return cls.INSECURE
         else:
             return cls.ALL_SECURE
@@ -194,8 +194,6 @@ class IncommingFile:
 class HashStore:
     def __init__(self, root, access_mode=AccessMode.WRITE_SECURE, init=True):
         self.root = root
-        if access_mode == True or access_mode == False:
-            raise AssertionError( v2s(locals(),'access_mode'))
         self.access_mode = access_mode
         if init:
             self.initialize()

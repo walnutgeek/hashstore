@@ -21,7 +21,7 @@ class TestSetup:
         split = open(logpath).read().strip().split()
         return rc, split[-1] if len(split) else None
 
-    def run_shash(self, cmd, log_file = None):
+    def run_shash(self, cmd, log_file=None):
         p_id = self.counter
         self.counter += 1
         if log_file is None:

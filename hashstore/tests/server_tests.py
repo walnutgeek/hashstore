@@ -19,7 +19,7 @@ def test_backup():
     hashery_dir = os.path.join(test.dir, 'insecure')
     os.makedirs(hashery_dir)
     port = 9753
-    test.run_shash( 'start --insecure --store_dir %s --port %d' % (hashery_dir, port), 'noauth_start.log')
+    test.run_shash('start --insecure --store_dir %s --port %d' % (hashery_dir, port))
     time.sleep(2)
     files = os.path.join(test.dir, 'files')
     prep_mount(files, file_set1)
@@ -35,49 +35,80 @@ def test_backup():
     b.restore(v2[files], f2)
     eq_(str(mount.MountDB(f1).scan()[1]), fileset1_udk)
     eq_(str(mount.MountDB(f2).scan()[1]), fileset2_udk)
-    test.run_shash_and_wait('stop --port %d' % port, 'shut.log')
+    test.run_shash_and_wait('stop --port %d' % port)
 
     time.sleep(.5)
 
 
-def test_secure():
-    test.reset_all_process()
-    hashery_dir = os.path.join(test.dir, 'secure')
-    os.makedirs(hashery_dir)
-    invite_log = test.full_log_path('invite.log')
-    rc,invitation = test.run_shash_and_wait( 'invite --store_dir %s' % (hashery_dir), invite_log)
-    eq_(rc, 0)
-    invitation = open(invite_log).read().strip().split()[-1]
-    eq_(len(invitation),36)
-    eq_(sum(1 for c in invitation if '-' == c), 4)
-    time.sleep(.1)
-    log.info(invitation)
-    port = 9753
-    test.run_shash( 'start --store_dir {hashery_dir} --port {port}'.format(**locals()), 'secure_start.log')
-    time.sleep(2)
+def test_all_access_modes():
+    def do_test(secure):
+        test.reset_all_process()
+        if secure == False:
+            store_dir = 'insecure2'
+            do_invitation = False
+            server_opt = ' --insecure'
+        else:
+            if secure is None:
+                store_dir = 'write'
+                server_opt = ''
+            else:
+                store_dir = 'secure'
+                server_opt = ' --secure'
+            do_invitation = True
 
-    files = os.path.join(test.dir, 'sfiles')
-    prep_mount(files, file_set1)
-    test.run_shash_and_wait('register --url http://localhost:{port}/ --invitation {invitation} --dir {files}'.format(**locals()))
-    _,h1 = test.run_shash_and_wait('backup --dir {files}'.format(**locals()))
+        hashery_dir = os.path.join(test.dir, store_dir)
+        os.makedirs(hashery_dir)
 
-    prep_mount(files, file_set2, keep_shamo=True)
-    _,h2 = test.run_shash_and_wait('backup --dir {files}'.format(**locals()))
-    eq_(h1, fileset1_udk)
-    eq_(h2, fileset2_udk)
-    f1 = os.path.join(test.dir, 'sfiles1')
-    test.run_shash_and_wait('restore --dir {files} --udk {h1} --dest {f1}'.format(**locals()))
+        files = os.path.join(test.dir, 'sfiles')
+        prep_mount(files, file_set1)
 
-    f2 = os.path.join(test.dir, 'sfiles2')
-    test.run_shash_and_wait('restore --dir {files} --udk {h2} --dest {f2}'.format(**locals()))
+        port = 9753
+        test.run_shash('start --store_dir {hashery_dir} --port {port}'
+                       '{server_opt}'.format(**locals()))
+        time.sleep(2)
+        if do_invitation:
+            invite_log = test.full_log_path(store_dir + '_invite.log')
+            rc,invitation = test.run_shash_and_wait(
+                'invite --store_dir {hashery_dir}'.format(**locals()), invite_log)
+            eq_(rc, 0)
+            invitation = open(invite_log).read().strip().split()[-1]
+            eq_(len(invitation),36)
+            eq_(sum(1 for c in invitation if '-' == c), 4)
 
-    _, s1 = test.run_shash_and_wait('scan --dir {f1}'.format(**locals()))
-    _, s2 = test.run_shash_and_wait('scan --dir {f2}'.format(**locals()))
-    eq_(s1, fileset1_udk)
-    eq_(s2, fileset2_udk)
-    test.run_shash_and_wait('stop --port %d' % port, 'secure_shut.log')
-    # test.wait_bg()
-    # ok_(False)
+            time.sleep(.1)
+            log.info(invitation)
+
+            test.run_shash_and_wait('register --url http://localhost:{port}/ '
+                                    '--invitation {invitation} '
+                                    '--dir {files}'.format(**locals()))
+        else:
+            test.run_shash_and_wait('register --url http://localhost:{port}/ '
+                                    '--dir {files}'.format(**locals()))
+
+        _,h1 = test.run_shash_and_wait('backup --dir {files}'.format(**locals()))
+
+        prep_mount(files, file_set2, keep_shamo=True)
+        _,h2 = test.run_shash_and_wait('backup --dir {files}'.format(**locals()))
+        eq_(h1, fileset1_udk)
+        eq_(h2, fileset2_udk)
+        f1 = os.path.join(test.dir, 'sfiles1')
+        test.run_shash_and_wait('restore --dir {files} --udk {h1} '
+                                '--dest {f1}'.format(**locals()))
+
+        f2 = os.path.join(test.dir, 'sfiles2')
+        test.run_shash_and_wait('restore --dir {files} --udk {h2} '
+                                '--dest {f2}'.format(**locals()))
+
+        _, s1 = test.run_shash_and_wait('scan --dir {f1}'.format(**locals()))
+        _, s2 = test.run_shash_and_wait('scan --dir {f2}'.format(**locals()))
+        eq_(s1, fileset1_udk)
+        eq_(s2, fileset2_udk)
+        test.run_shash_and_wait('stop --port %d' % port)
+        # test.wait_bg()
+        # ok_(False)
+    do_test(False)
+    do_test(None)
+    do_test(True)
 
 
 def test_dummies():

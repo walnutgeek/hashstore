@@ -37,7 +37,7 @@ class Backup(DbFile):
         path_resolver = create_path_resolver(substitutions)
         mount_locations = [path_resolver(m['location']) for m in config['mounts']]
         storage_config = config['storage']
-        for var_name in [ 'path' , 'url']:
+        for var_name in ['path', 'url']:
             if var_name in storage_config:
                 storage_config[var_name] = path_resolver(storage_config[var_name])
         return Backup(db_location,mount_locations,storage_config)
