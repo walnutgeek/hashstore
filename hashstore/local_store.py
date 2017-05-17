@@ -82,7 +82,7 @@ class Lookup:
     def found(self):
         return self.size is not None and self.size >= 0
 
-    def fd(self):
+    def open_fd(self):
         return None
 
     def stream(self):
@@ -155,8 +155,8 @@ class FileLookup(Lookup):
             if e.errno != 2:  # No such file
                  raise # pragma: no cover
 
-    def fd(self):
-        return os.open(self.file,os.O_RDONLY )
+    def open_fd(self):
+        return os.open(self.file,os.O_RDONLY)
 
     def stream(self):
         return open(self.file,'rb')

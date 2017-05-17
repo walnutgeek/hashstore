@@ -24,6 +24,10 @@ class TestSetup:
     def run_shash(self, cmd, log_file=None):
         p_id = self.counter
         self.counter += 1
+        executable = 'hashstore.shash'
+        if 'd ' == cmd[:2]:
+            cmd = cmd[2:]
+            executable = 'hashstore.shashd'
         if log_file is None:
             cmd_name = cmd.split()[0]
             log_file = '{cmd_name}{p_id:03d}.log'.format(**locals())
@@ -31,7 +35,7 @@ class TestSetup:
             path = log_file
         else:
             path = self.full_log_path(log_file)
-        popen = run_bg('hashstore.shash', cmd.split(), path)
+        popen = run_bg(executable, cmd.split(), path)
         self.processes[p_id] = (popen, cmd ,path)
         return p_id
 

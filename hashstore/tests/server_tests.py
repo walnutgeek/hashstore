@@ -37,13 +37,13 @@ def test_all_access_modes():
         prep_mount(files, file_set1)
 
         port = 9753
-        test.run_shash('start --store_dir {hashery_dir} --port {port}'
+        test.run_shash('d start --store_dir {hashery_dir} --port {port}'
                        '{server_opt}'.format(**locals()))
         time.sleep(2)
         if do_invitation:
             invite_log = test.full_log_path(store_dir + '_invite.log')
             rc,invitation = test.run_shash_and_wait(
-                'invite --store_dir {hashery_dir}'.format(**locals()), invite_log)
+                'd invite --store_dir {hashery_dir}'.format(**locals()), invite_log)
             eq_(rc, 0)
             invitation = open(invite_log).read().strip().split()[-1]
             eq_(len(invitation),36)
@@ -77,7 +77,7 @@ def test_all_access_modes():
         _, s2 = test.run_shash_and_wait('scan --dir {f2}'.format(**locals()))
         eq_(s1, fileset1_udk)
         eq_(s2, fileset2_udk)
-        test.run_shash_and_wait('stop --port %d' % port)
+        test.run_shash_and_wait('d stop --port %d' % port)
         # test.wait_bg()
         # ok_(False)
     do_test(False)

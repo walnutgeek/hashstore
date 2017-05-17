@@ -8,3 +8,4 @@ dist
 .coverage.*
 node_modules/
 Notebooks/.ipynb_checkpoints/
+hashstore/webdata/app

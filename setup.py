@@ -14,6 +14,7 @@ setup(name='hashstore',
       entry_points={
           'console_scripts': [
               'shash=hashstore.shash:main',
+              'shashd=hashstore.shashd:main',
           ],
       },
       install_requires=install_requires,

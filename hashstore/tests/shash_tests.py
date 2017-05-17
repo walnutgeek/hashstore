@@ -1,5 +1,6 @@
 from nose.tools import eq_,ok_,with_setup
 import hashstore.shash as shash
+import hashstore.shashd as shashd
 from hashstore.tests import TestSetup
 import sys
 
@@ -7,35 +8,37 @@ test = TestSetup(__name__,ensure_empty=True)
 log = test.log
 
 def test_args_parser():
-    p = shash.args_parser()
-    args = p.parse_args(["start", "--port", "345"])
+    pd = shashd.args_parser()
+    args = pd.parse_args(["start", "--port", "345"])
     eq_(args.command, "start")
     eq_(args.port, 345)
 
-    args = p.parse_args(["start", "--port", "345",
+    args = pd.parse_args(["start", "--port", "345",
                          '--store_dir', '/u1/abc/store'])
     eq_(args.command, "start")
     eq_(args.port, 345)
     eq_(args.store_dir, '/u1/abc/store')
     eq_(args.secure, None)
 
-    args = p.parse_args(["start", "--port", "345",
+    args = pd.parse_args(["start", "--port", "345",
                          '--store_dir', '/u1/abc/store', '--secure'])
     eq_(args.command, "start")
     eq_(args.port, 345)
     eq_(args.store_dir, '/u1/abc/store')
     eq_(args.secure, True)
 
-    args = p.parse_args(["start", "--port", "345",
+    args = pd.parse_args(["start", "--port", "345",
                          '--store_dir', '/u1/abc/store' ,'--insecure'])
     eq_(args.command, "start")
     eq_(args.port, 345)
     eq_(args.store_dir, '/u1/abc/store')
     eq_(args.secure, False)
 
-    args = p.parse_args(["stop", "--port", "345"])
+    args = pd.parse_args(["stop", "--port", "345"])
     eq_(args.command, "stop")
     eq_(args.port, 345)
+
+    p = shash.args_parser()
 
     args = p.parse_args("register --url http://abc:345 "
                         "--dir /u1/abc/docs".split())
