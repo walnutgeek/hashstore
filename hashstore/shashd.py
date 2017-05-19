@@ -1,5 +1,8 @@
 from hashstore.server import StoreServer
-
+from hashstore.local_store import AccessMode
+from hashstore.mount import Mount
+import six
+import yaml
 
 def args_parser():
     import argparse
@@ -24,7 +27,7 @@ def args_parser():
                         help='a directory where local hashstore will reside')
     parser.add_argument('--config', metavar='config',
                         nargs='?', default=None,
-                        help='json configuration file name or json content inlined')
+                        help='yaml configuration file name')
 
     return parser
 
@@ -36,8 +39,18 @@ def main():
     args = parser.parse_args()
     cmd_picked = [args.command == n for n in COMMANDS]
     doing = dict(zip(COMMANDS, cmd_picked))
-    server = StoreServer(args.store_dir, args.port,
-                                      args.secure)
+
+    store_dir = args.store_dir
+    port = args.port
+    access_mode = AccessMode.from_bool(args.secure)
+    mounts = None
+    if args.config:
+        config = yaml.safe_load(open(args.config))
+        store_dir = config['store_dir']
+        port = config['port']
+        access_mode = AccessMode[config['access_mode']]
+        mounts = { n: Mount(n,p) for n,p in six.iteritems(config['mounts'])}
+    server = StoreServer(store_dir, port, access_mode, mounts)
     if doing['invite']:
         print(str(server.create_invitation()))
     else:

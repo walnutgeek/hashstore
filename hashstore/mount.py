@@ -17,19 +17,6 @@ log = logging.getLogger(__name__)
 
 
 
-FILE_COLUMNS = [
-    { 'name': 'filename', 'type': 'link' },
-    { 'name': 'size' , 'type': 'number' },
-    { 'name': 'type', 'type': 'string' },
-    { 'name': 'mime', 'type': 'string' },
-    { 'name': 'details', 'type': 'string'},
-]
-
-BUNDLE_COLUMNS = [
-    { 'name': 'name', 'type': 'link'},
-    { 'name': 'udk' , 'type': 'string'},
-]
-
 # move to utils
 class FileNotFound(Exception):
     def __init__(self, path):
@@ -38,11 +25,11 @@ class FileNotFound(Exception):
 # move to utils
 def _cacheable(fn):
     @functools.wraps(fn)
-    def cache_it(self):
+    def _(self):
         if fn.__name__ not in self.cache:
             self.cache[fn.__name__] = fn(self)
         return self.cache[fn.__name__]
-    return cache_it
+    return _
 
 
 class File:
@@ -79,8 +66,8 @@ class File:
 
     @_cacheable
     def link(self):
-        l = self.path + '/' if self.isdir() else self.path
-        return l if l[0:1] == '/' else '/'+l
+        path = '/' + self.mount.name + '/' + self.path
+        return path + ('/' if self.isdir() else '')
 
     @_cacheable
     def details(self):
@@ -100,22 +87,85 @@ class File:
             return [self.child(name) for name in os.listdir(self.abs_path)]
         return None
 
-    @_cacheable
-    def record(self):
-        return [ '['+self.filename()+']('+self.link()+')', self.size(), self.type(),
-                 self.mime(), self.details() ]
+
+    COLUMNS = [
+        {'name': 'filename', 'type': 'link'},
+        {'name': 'size', 'type': 'number'},
+        {'name': 'type', 'type': 'string'},
+        {'name': 'mime', 'type': 'string'},
+        {'name': 'details', 'type': 'string'},
+    ]
 
     def render(self):
         if self.isdir():
-            s = json.dumps({'columns': FILE_COLUMNS}) + '\n'
+            s = json.dumps({'columns': self.COLUMNS}) + '\n'
             for f in self.list_dir():
                 s += json.dumps(f.record()) + '\n'
             return s
-        return open(self.abs_path, "rb")
+        return os.open(self.abs_path, os.O_RDONLY)
+
+
+    @_cacheable
+    def record(self):
+        return ['[' + self.filename() + '](' + self.link() + ')',
+                self.size(), self.type(),
+                self.mime(), self.details()]
+
+
+class HashPath:
+    def __init__(self,path):
+        self.path = path_split_all(path.strip('/'))
+        if len(self.path) < 1:
+            raise ValueError('no path: {}'.format(path))
+
+    def __getitem__(self, i):
+        return self.path[i]
+
+    def __len__(self):
+        return len(self.path)
+
+    def need_to_be_resolved(self):
+        return len(self) > 1
+
+    def child_path(self, name):
+        child_path=list(self.path)
+        child_path.append(name)
+        return '/'.join(child_path)
+
+    def mime_enc(self,is_dir):
+        if is_dir:
+            return ('text/wdf', 'utf-8')
+        return mimetypes.guess_type(self.path[-1])
+
+    def udk(self):
+        return UDK.ensure_it(self.path[0])
+
+def render_bundle(hash_path, content):
+    bundle = UDKBundle(content)
+
+    COLUMNS = [
+        {'name': 'name', 'type': 'link'},
+        {'name': 'type', 'type': 'string'},
+        {'name': 'udk', 'type': 'link'},
+    ]
+    s = json.dumps({'columns': COLUMNS}) + '\n'
+    for k in bundle.keys():
+        name_link = '[' + k + '](/' + hash_path.child_path(k)+'/)'
+        udk = bundle[k]
+        if udk.named_udk_bundle:
+            file_type = 'dir'
+            s_udk = str(udk.nomalize(udk))
+            mount_link = '[' + s_udk + '](/' + s_udk + '/)'
+        else:
+            file_type  = 'file'
+            mount_link = str(udk)
+        s += json.dumps([name_link, file_type, mount_link ]) + '\n'
+    return s
 
 
 class Mount:
-    def __init__(self,root='.'):
+    def __init__(self,name, root):
+        self.name = name
         self.root = os.path.abspath(root)
 
     def file(self, path):
@@ -153,6 +203,7 @@ class IgnoreEntry:
             if self._match_entry(rel_split):
                 return True
         return False
+
 
 def parse_ignore_specs(cur_dir, files, initial_ignore_entries):
     ignore_specs = list(filter(pick_ignore_specs, files))

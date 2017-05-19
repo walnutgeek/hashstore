@@ -57,7 +57,6 @@ def test_args_parser():
     eq_(args.dir, '/u1/abc/docs')
 
     try:
-
         args = p.parse_args(["-h"])
         ok_(False)
     except SystemExit:

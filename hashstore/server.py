@@ -7,6 +7,7 @@ import time
 import logging
 import mimetypes
 import signal
+from hashstore.mount import HashPath, render_bundle
 from hashstore.local_store import HashStore, AccessMode
 from hashstore.udk import UDK, UDKBundle
 import json
@@ -34,6 +35,8 @@ class MountHandler(tornado.web.RequestHandler):
     def initialize(self,mount):
         self.mount = mount
 
+    @tornado.web.asynchronous
+    @gen.coroutine
     def get(self, path):
         try:
             file = self.mount.file(path)
@@ -44,16 +47,22 @@ class MountHandler(tornado.web.RequestHandler):
                 self.set_header('Content-Type', mime)
             content = file.render()
             if isinstance(content, six.string_types):
-                self.write(content)
+                self.finish(content)
             else:
-                while 1:
-                    chunk = content.read(64*1024)
-                    if not chunk:
-                        break
-                    self.write(chunk)
+                self.stream = tornado.iostream.PipeIOStream(content)
+                self.stream.read_until_close(callback=self.on_file_end,
+                                             streaming_callback=self.on_chunk)
         except FileNotFound:
             raise tornado.web.HTTPError(404)
-        self.finish()
+
+    def on_file_end(self, s):
+        if s:
+            self.write(s)
+        self.finish()  # close connection
+
+    def on_chunk(self, chunk):
+        self.write(chunk)
+        self.flush()
 
 
 def _fn_handler(content_fn):
@@ -70,26 +79,6 @@ def _dummy_handler(content):
     return _fn_handler(lambda : content)
 
 
-class HashPath:
-    def __init__(self,path):
-        self.path = path_split_all(path)
-        if len(self.path) < 1:
-            raise ValueError('no path: {}'.format(path))
-
-    def __getitem__(self, i):
-        return self.path[i]
-
-    def __len__(self):
-        return len(self.path)
-
-    def need_to_be_resolved(self):
-        return len(self) > 1
-
-    def mime_enc(self):
-        return mimetypes.guess_type(self.path[-1])
-
-    def udk(self):
-        return UDK.ensure_it(self.path[0])
 
 
 @tornado.web.stream_request_body
@@ -113,7 +102,13 @@ class StreamHandler(tornado.web.RequestHandler):
         self.w.write(chunk)
 
 
-class HashPathMixin:
+class HashMountHandler(tornado.web.RequestHandler):
+    SUPPORTED_METHODS = ['GET']
+
+    def initialize(self, store ):
+        self.store = store
+        self.dir_as_bundle = False # send directory as wdf
+
     def _get_lookup(self, auth_session, hash_path):
         udk = hash_path.udk()
         is_directory = True
@@ -128,47 +123,47 @@ class HashPathMixin:
             self.store.check_auth_session(auth_session=auth_session)
         return self.store.lookup(self.udk), is_directory
 
-
-class HashMountHandler(tornado.web.RequestHandler,HashPathMixin):
-    SUPPORTED_METHODS = ['GET']
-
-    def initialize(self,store):
-        self.store = store
-
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self, path):
-        try:
-            auth_session = self.request.headers.get("Auth_session")
-            hash_path = HashPath(path)
-            lookup,is_directory = self._get_lookup(auth_session, hash_path)
-            if not lookup.found():
-                raise tornado.web.HTTPError(404)
-
-            file = self.mount.file(path)
-            mime,enc = file.mime_enc()
-            if mime and enc:
-                self.set_header('Content-Type', '{mime}; charset="{enc}"'.format(**locals()))
-            elif mime:
-                self.set_header('Content-Type', mime)
-            content = file.render()
-            if isinstance(content, six.string_types):
-                self.write(content)
-            else:
-                while 1:
-                    chunk = content.read(64*1024)
-                    if not chunk:
-                        break
-                    self.write(chunk)
-        except FileNotFound:
+        auth_session = self.request.headers.get("Auth_session")
+        hash_path = HashPath(path)
+        lookup,is_dir = self._get_lookup(auth_session, hash_path)
+        if not lookup.found():
             raise tornado.web.HTTPError(404)
-        self.finish()
+        mime,enc = hash_path.mime_enc(is_dir)
+        if mime and enc:
+            self.set_header('Content-Type', '{mime}; charset="{enc}"'.format(**locals()))
+        elif mime:
+            self.set_header('Content-Type', mime)
 
-class HasheryHandler(tornado.web.RequestHandler,HashPathMixin):
+        if self.dir_as_bundle or not is_dir:
+            fd = lookup.open_fd()
+            if fd is not None:
+                self.stream = tornado.iostream.PipeIOStream(fd)
+                self.stream.read_until_close(callback=self.on_file_end,
+                                             streaming_callback=self.on_chunk)
+            else:
+                self.finish(lookup.stream().read())
+        else:
+            self.finish(render_bundle(hash_path, lookup.stream()))
+
+    def on_file_end(self, s):
+        if s:
+            self.write(s)
+        self.finish()  # close connection
+
+    def on_chunk(self, chunk):
+        self.write(chunk)
+        self.flush()
+
+
+class HasheryHandler(HashMountHandler):
     SUPPORTED_METHODS = ['GET','POST']
 
     def initialize(self,store):
         self.store = store
+        self.dir_as_bundle = True
 
     def post(self, path):
         print("post: %s" % path)
@@ -201,38 +196,7 @@ class HasheryHandler(tornado.web.RequestHandler,HashPathMixin):
             self.store.logout(auth_session=auth_session)
         self.finish()
 
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def get(self, path):
-        auth_session = self.request.headers.get("Auth_session")
-        hash_path = HashPath(path)
-        lookup,is_dir = self._get_lookup(auth_session, hash_path)
-        if not lookup.found():
-            raise tornado.web.HTTPError(404)
-        mime,enc = hash_path.mime_enc()
-        if mime and enc:
-            self.set_header('Content-Type', '{mime}; charset="{enc}"'.format(**locals()))
-        elif mime:
-            self.set_header('Content-Type', mime)
 
-        fd = lookup.open_fd()
-        if fd is not None:
-            self.stream = tornado.iostream.PipeIOStream(fd)
-            self.stream.read_until_close(callback=self.on_file_end,
-                                         streaming_callback=self.on_chunk)
-        else:
-            self.on_chunk(lookup.stream().read())
-            self.on_file_end(None)
-
-
-    def on_file_end(self, s):
-        if s:
-            self.write(s)
-        self.finish()  # close connection
-
-    def on_chunk(self, chunk):
-        self.write(chunk)
-        self.flush()
 
 def stop_server(signum, frame):
     tornado.ioloop.IOLoop.instance().stop()
@@ -242,7 +206,7 @@ def stop_server(signum, frame):
 pid_route = (r'/(\.pid)$', _dummy_handler(str(os.getpid())))
 
 app_dir = os.path.join(os.path.dirname(__file__),'app')
-app_mount = Mount(app_dir)
+app_mount = Mount('webapp', app_dir)
 app_route = (r'/\.app/(.*)$', MountHandler, {'mount': app_mount})
 
 def _load_index():
@@ -254,8 +218,8 @@ index_route = (r'(.*)$', _fn_handler(_load_index),)
 
 
 class StoreServer:
-    def __init__(self, store_root, port, secure, mounts = None, max_file_size = 20*GIGABYTE):
-        self.store = HashStore(store_root, access_mode=AccessMode.from_bool(secure), init=False)
+    def __init__(self, store_root, port, access_mode, mounts, max_file_size = 20*GIGABYTE):
+        self.store = HashStore(store_root, access_mode=access_mode, init=False)
         self.port = port
         self.max_file_size = max_file_size
         self.mounts = dict(mounts or {})
@@ -297,8 +261,7 @@ class StoreServer:
             for mount_name in self.mounts:
                 mount = self.mounts[mount_name]
                 handlers.append((r'/\.raw/'+ mount_name + r'/(.*)$', MountHandler, {'mount': mount}) )
-                handlers.append((r'/\.raw/(.*)$', HashMountHandler, store_ref))
-
+            handlers.append((r'/\.raw/(.*)$', HashMountHandler, store_ref))
         handlers.append(index_route)
         application = tornado.web.Application(handlers)
         signal.signal(signal.SIGINT, stop_server)
