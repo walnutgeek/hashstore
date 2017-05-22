@@ -87,7 +87,6 @@ class File:
             return [self.child(name) for name in os.listdir(self.abs_path)]
         return None
 
-
     COLUMNS = [
         {'name': 'filename', 'type': 'link'},
         {'name': 'size', 'type': 'number'},

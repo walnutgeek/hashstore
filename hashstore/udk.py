@@ -91,9 +91,9 @@ class UDK(utils.Stringable,utils.EnsureIt):
 
     >>> short_content = 'The quick brown fox jumps over the lazy dog'
     >>> short_udk = UDK.from_string(short_content)
-    >>> str(short_udk)
-    'MVGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZw=='
     >>> short_udk.has_data()
+    True
+    >>> short_udk.data() is not None
     True
 
     In string representation there is 'M' in the beginging. It is used
@@ -108,6 +108,8 @@ class UDK(utils.Stringable,utils.EnsureIt):
     >>> longer_udk = UDK.from_string(longer_content)
     >>> longer_udk.has_data()
     False
+    >>> longer_udk.data() is None
+    True
     >>> str(longer_udk)
     '973153f86ec2da1748e63f0cf85b89835b42f8ee8018c549868a1308a19f6ca3'
 
@@ -168,7 +170,7 @@ class UDK(utils.Stringable,utils.EnsureIt):
         return self.k[0] == 'M'
 
     def data(self):
-        return base64.b64decode(self.k[1:])
+        return base64.b64decode(self.k[1:]) if self.has_data() else None
 
     def hexdigest(self):
         try:
