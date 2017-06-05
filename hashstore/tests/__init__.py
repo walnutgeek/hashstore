@@ -2,6 +2,9 @@ import logging
 import os
 import shutil
 import subprocess
+from nose.tools import eq_,ok_
+import sys, re
+from doctest import OutputChecker, DocTestRunner, DocTestFinder
 
 
 class TestSetup:
@@ -194,3 +197,20 @@ def run_bg(module, args=[], outfile=None):
     return subprocess.Popen(command, stdout=f, stderr=subprocess.STDOUT)
 
 
+class Py23DocChecker(OutputChecker):
+    def check_output(self, want, got, optionflags):
+        if sys.version_info[0] < 3:
+            want = re.sub("b'(.*?)'", "'\\1'", want)
+        return OutputChecker.check_output(self, want, got, optionflags)
+
+def doctest_it(m):
+    name = m.__name__
+    # Find, parse, and run all tests in the given module.
+    finder = DocTestFinder(exclude_empty=False)
+    runner = DocTestRunner(verbose=None, optionflags=0,
+                           checker=Py23DocChecker())
+    for test in finder.find(m, name, globs=None, extraglobs=None):
+        runner.run(test)
+    runner.summarize()
+    ok_(runner.tries > 0, 'There is not doctests in module')
+    eq_(runner.failures, 0)

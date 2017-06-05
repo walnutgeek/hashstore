@@ -1,4 +1,5 @@
 from collections import Mapping
+import functools
 import six
 import os
 import json
@@ -188,7 +189,6 @@ class Jsonable(EnsureIt):
     def __str__(self):
         return json_encoder.encode(self.to_json())
 
-
     def __hash__(self):
         return hash(str(self))
 
@@ -215,3 +215,16 @@ def read_in_chunks(fp, chunk_size=65535):
             break
         yield data
 
+
+def _cacheable(fn):
+    @functools.wraps(fn)
+    def _(self):
+        if fn.__name__ not in self.cache:
+            self.cache[fn.__name__] = fn(self)
+        return self.cache[fn.__name__]
+    return _
+
+
+class FileNotFound(Exception):
+    def __init__(self, path):
+        super(FileNotFound, self).__init__(path)

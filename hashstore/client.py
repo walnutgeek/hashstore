@@ -1,4 +1,3 @@
-import hashstore.local_store as localstore
 import hashstore.udk as udk
 import requests
 import json
@@ -43,10 +42,11 @@ class RemoteStorage:
         in_data = json_encoder.encode(data)
         r = requests.post(meta_url, headers=self.headers, data=in_data)
         out_data = r.text
-        log.debug('post_meta_data:\n'
-                  ' {meta_url}\n'
-                  ' in: {in_data}\n'
-                  ' out: {out_data}'.format(**locals()))
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug('post_meta_data:\n'
+                      ' {meta_url}\n'
+                      ' in: {in_data}\n'
+                      ' out: {out_data}'.format(**locals()))
         return out_data
 
     def write_content(self,fp):
