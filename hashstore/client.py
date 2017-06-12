@@ -38,7 +38,7 @@ class RemoteStorage:
         return json.loads(text)
 
     def post_meta_data(self, data_ptr, data):
-        meta_url = self.url + '.hashery/' + data_ptr
+        meta_url = self.url + '.up/post/' + data_ptr
         in_data = json_encoder.encode(data)
         r = requests.post(meta_url, headers=self.headers, data=in_data)
         out_data = r.text
@@ -50,7 +50,7 @@ class RemoteStorage:
         return out_data
 
     def write_content(self,fp):
-        r = requests.post(self.url+'.hashery/write_content', headers=self.headers, data=fp)
+        r = requests.post(self.url+'.up/stream', headers=self.headers, data=fp)
         text = r.text
         log.info(text)
         return udk.UDK.ensure_it(json.loads(r.text))
@@ -58,6 +58,7 @@ class RemoteStorage:
     def get_content(self,k):
         if k.has_data():
             return six.BytesIO(k.data())
-        url = self.url + '.hashery/' + str(k.strip_bundle())
+        url = self.url + '.raw/' + str(k.strip_bundle())
+        print(url)
         return requests.get(url, headers=self.headers, stream=True).raw
 

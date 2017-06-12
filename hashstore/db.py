@@ -496,22 +496,22 @@ class DbFile:
 
         def format(self,template):
             '''
-            slimular to `template.format(**vars)`, but this way if does not  unnecessarily
-            execute __getitem__ on every key because no unpacking `**vars` needed
+            similar to `template.format(**vars)`, but this way if does
+            not  unnecessarily execute __getitem__ on every key because
+            no unpacking `**vars` needed
             :param template: format string
-            :return: formatted string, woth only necessary attributes resoved
+            :return: formatted string, only necessary attributes resolved
             '''
             from string import Formatter
             return Formatter().vformat(template,[],self)
 
-
-        def ensure_rowid(self,session):
+        def ensure_rowid(self, session):
             pk = self.table.primarykey
             if pk is not None and pk.type == DEFAULT_PK_TYPE:
                 self.data['_' + pk.name] = session.lastrowid()
             return self.data['_' + pk.name]
 
-        def select_pk(self,session):
+        def select_pk(self, session):
             rs = session.query(self.format(SELECT_PK_TMPL), self['data'])
             rec_id = None
             if len(rs) > 0:

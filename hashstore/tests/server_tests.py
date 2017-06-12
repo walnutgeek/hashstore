@@ -53,7 +53,7 @@ mounts:
         else:
             test.run_shash('d start --store_dir {hashery_dir} --port {port}'
                        '{server_opt}'.format(**locals()))
-        time.sleep(2)
+        time.sleep(3)
         if do_invitation:
             invite_log = test.full_log_path(store_dir + '_invite.log')
             if use_config:
