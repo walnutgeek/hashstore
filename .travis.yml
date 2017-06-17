@@ -1,21 +1,22 @@
-language: python
-python:
-  # we don't use the Travis Python, but have to pick something
-  - "2.7"
+language: node_js
+node_js:
+- "5.3.0"
 install:
   - sudo apt-get update
+  - npm install
+  - npm run build
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
-  # Useful for debugging any issues with conda
   - conda info -a
   - conda create -q -n py2 python=2
   - conda create -q -n py3 python=3
 
 script:
+  -
   - for e in py2 py3 ;
     do
       source activate $e;
