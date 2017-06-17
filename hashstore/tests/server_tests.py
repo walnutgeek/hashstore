@@ -98,7 +98,7 @@ mounts:
         if not(secured_read_access):
             import requests
 
-            def get_and_match(url, hexdigest=None, grep=None, status_code=None):
+            def get_and_match(url, hexdigest=None, grep=None, status_code=200):
                 resp = requests.get(url)
                 if status_code is not None:
                     eq_(resp.status_code, status_code)
@@ -112,7 +112,8 @@ mounts:
 
             server_url = 'http://localhost:{port}/'.format(**locals())
             raw_url = server_url + '.raw/'
-            get_and_match(raw_url + fileset1_udk + '/../abc',status_code=404)
+            get_and_match(raw_url + fileset1_udk + '/../abc',
+                          status_code=404)
             get_and_match(raw_url + fileset1_udk + '/',
                           hexdigest=fileset1_udk[1:])
             grep_index = [b'{"columns": [{"name": "mount", "type": "link"}']
@@ -121,11 +122,13 @@ mounts:
             get_and_match(raw_url+fileset1_udk+'/a/b/2',
                           hexdigest='8d6eaa485bc21f46df59127f4670a8ad7ae14d8ea2064efff49aae8e2a8fb8e4')
             grep_index_html = [b'<script src="/.app/hashstore.js"></script>']
-            get_and_match(server_url +'.app/index.html', None, grep_index_html)
-            get_and_match(server_url +'any/other/link', None, grep_index_html)
+            get_and_match(server_url +'.app/index.html', grep = grep_index_html)
+            get_and_match(server_url +'any/other/link', grep = grep_index_html)
             if use_config:
-                get_and_match(raw_url+'files/',None,[b'{"columns": [{"name": "filename", "type": "link"}, {"name": "size", "type": "number"}, {"name": "type", "type": "string"}, {"name": "mime", "type": "string"}]}\n'])
-                get_and_match(raw_url+'files/a/b/2', '8d6eaa485bc21f46df59127f4670a8ad7ae14d8ea2064efff49aae8e2a8fb8e4')
+                get_and_match(raw_url+'files/',
+                              grep = [b'{"columns": [{"name": "filename", "type": "link"}, {"name": "size", "type": "number"}, {"name": "type", "type": "string"}, {"name": "mime", "type": "string"}]}\n'])
+                get_and_match(raw_url+'files/a/b/2',
+                              hexdigest = '8d6eaa485bc21f46df59127f4670a8ad7ae14d8ea2064efff49aae8e2a8fb8e4')
 
         if use_config:
             test.run_shash_and_wait('d stop --config ' +yaml_config)

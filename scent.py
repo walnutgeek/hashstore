@@ -23,11 +23,11 @@ def execute_one_test(*args):
     case = ''
     # case = 'hashstore.tests.shash_tests'
     # case = 'hashstore.tests.mount_tests'
-    # case += ' hashstore.tests.server_tests'
+    case += ' hashstore.tests.server_tests'
     # case = 'hashstore.tests.local_store_tests'
     # case += ' hashstore.tests.utils_tests'
     # case += ' hashstore.tests.mymime_tests'
-    case += ' hashstore.tests.base_x_tests'
+    # case += ' hashstore.tests.base_x_tests'
     # case += ' hashstore.tests.udk_tests'
     # case = ' hashstore.tests.doc_tests'
     return run(case,[ 'py2' ,'py3' ])
