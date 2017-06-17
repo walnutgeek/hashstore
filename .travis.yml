@@ -27,4 +27,3 @@ script:
   - coverage combine
   - coverage report -m
   - rm .coverage
-  # Your test script goes here
