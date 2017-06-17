@@ -16,7 +16,6 @@ install:
   - conda create -q -n py3 python=3
 
 script:
-  -
   - for e in py2 py3 ;
     do
       source activate $e;

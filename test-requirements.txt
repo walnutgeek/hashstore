@@ -3,3 +3,4 @@ mock
 sniffer
 coverage
 codecov
+numpy
