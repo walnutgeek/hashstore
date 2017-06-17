@@ -7,7 +7,8 @@ from hashstore.udk import process_stream,\
     UDK,UDKBundle,UdkSet,quick_hash
 from hashstore.client import RemoteStorage
 from hashstore.utils import quict, path_split_all, reraise_with_msg, \
-    read_in_chunks, ensure_directory, FileNotFound, _cacheable
+    read_in_chunks, ensure_directory, FileNotFound, _cacheable, \
+    json_encoder
 from collections import defaultdict
 import os
 import fnmatch
@@ -86,8 +87,9 @@ class StorePath:
             if self.store.access_mode == AccessMode.ALL_SECURE:
                 self.store.check_auth_session(auth_session=auth_session)
             is_directory = True
-            if len(self) > 1:
-                for i in range(1, len(self)):
+            udk = self.root_udk
+            if len(self.path) > 1:
+                for i in range(1, len(self.path)):
                     content = self.store.get_content(udk, auth_session=auth_session)
                     bundle = UDKBundle(content)
                     udk = bundle[self.path[i]]
@@ -121,18 +123,18 @@ class PathResover:
         @_session_dbf(self.store.dbf)
         def index(session=None):
 
-            s = json.dumps({'columns': [
+            s = json_encoder.encode({'columns': [
                 {'name': 'mount', 'type': 'link'},
                 {'name': 'created', 'type': 'timestamp'},
             ]}) + '\n'
 
             for m in self.mounts.keys():
-                s += json.dumps([md_link(m, m), None]) + '\n'
+                s += json_encoder.encode([md_link(m, m), None]) + '\n'
 
             order_by = '1=1 order by created_dt desc limit 100'
             for row in session.dbf.select('push', {}, where=order_by):
                 udk = str(row['mount_hash'])
-                s += json.dumps(
+                s += json_encoder.encode(
                     [md_link(udk, udk), row['created_dt']]) + '\n'
             return Content(MIME_WDF, None, s)
         return locals()[q]()
@@ -165,22 +167,28 @@ class File:
         child_path.append(name)
         return File(self.mount, child_path)
 
+    @_cacheable
     def isdir(self):
         return os.path.isdir(self.abs_path)
 
+    @_cacheable
     def filename(self):
         return self.mount.name if len(self.path) == 0 else self.path[-1]
 
+    @_cacheable
     def size(self):
         return 0 if self.isdir() else os.path.getsize(self.abs_path)
 
+    @_cacheable
     def type(self):
         return 'dir' if self.isdir() else 'file'
 
+    @_cacheable
     def link(self):
         path = '/' + self.mount.name + '/' + '/'.join(self.path)
         return path + ('/' if self.isdir() else '')
 
+    @_cacheable
     def mime(self):
         return MIME_WDF if self.isdir() else guess_type(self.filename())
 
@@ -204,9 +212,9 @@ class File:
 
     def render(self, auth_session = None):
         if self.isdir():
-            s = json.dumps({'columns': self.COLUMNS}) + '\n'
+            s = json_encoder.encode({'columns': self.COLUMNS}) + '\n'
             for f in self.list_dir():
-                s += json.dumps(f.record()) + '\n'
+                s += json_encoder.encode(f.record()) + '\n'
             return Content(MIME_WDF, None, s)
         fd = os.open(self.abs_path, os.O_RDONLY)
         return Content(self.mime(), fd, None)
@@ -487,7 +495,7 @@ class MountDB(DbFile):
                     fp = open(os.path.join(self.dir, f), 'rb')
                     stored_as = storage.write_content(fp)
                     if stored_as != h:
-                        log.warn('scaned: %s, but stored as: %s' % (f, stored_as))
+                        log.warning('scaned: %s, but stored as: %s' % (f, stored_as))
             self.update('push', quict(
                 push_id=push_rec['_push_id'],
                 _directory_synched=count_synched_dirs,

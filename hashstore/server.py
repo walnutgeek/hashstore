@@ -7,10 +7,9 @@ import time
 import logging
 import signal
 from hashstore.mount import PathResover, Content, split_path
-import json
 import six
 from hashstore.utils import json_encoder
-
+import json
 import tornado.web
 import tornado.template
 import tornado.ioloop
@@ -77,7 +76,7 @@ class PostHandler(tornado.web.RequestHandler):
             mount_meta['remote_ip'] = remote_ip
             server_uuid = self.store.register(
                 req['mount_uuid'], req['invitation'],
-                json.dumps(mount_meta))
+                json_encoder.encode(mount_meta))
             self.write(json_encoder.encode(server_uuid))
         elif path == 'login':
             auth_session,server_uuid=self.store.login(req['mount_uuid'])
@@ -97,16 +96,19 @@ def _raw_handler(content_fn):
         @tornado.web.asynchronous
         @gen.coroutine
         def get(self, path):
-            content=content_fn(self,path)
-            if content.mime is not None:
-                self.set_header('Content-Type', content.mime)
-            if content.fd is not None:
-                self.stream = tornado.iostream.PipeIOStream(content.fd)
-                self.stream.read_until_close(
-                    callback=self.on_file_end,
-                    streaming_callback=self.on_chunk)
-            else:
-                self.finish(content.inline)
+            try:
+                content=content_fn(self,path)
+                if content.mime is not None:
+                    self.set_header('Content-Type', content.mime)
+                if content.fd is not None:
+                    self.stream = tornado.iostream.PipeIOStream(content.fd)
+                    self.stream.read_until_close(
+                        callback=self.on_file_end,
+                        streaming_callback=self.on_chunk)
+                else:
+                    self.finish(content.inline)
+            except FileNotFound:
+                self.send_error(404)
 
         def on_file_end(self, s):
             if s:

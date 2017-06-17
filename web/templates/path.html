@@ -1,0 +1,11 @@
+<ol>
+    <% _.forEach(file.enumerate(),function(e){ %>
+        <% if( e.isRoot() ){ %>
+        <a href="<%- e.path() %>" class="wdf_link" ><i class="fa fa-home" ></i></a>
+        <% }else{ %>
+        <a href="<%- e.path() %>" class="wdf_link"><%- e.name %></a>
+        <% } %>
+        <% if( e.dir ){ %> / <% } %>
+    <% }); %>
+</ol>
+<a href="/.raw<%- file.path() %>"><span class="glyphicon glyphicon-save"></span></a>

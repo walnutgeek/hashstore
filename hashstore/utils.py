@@ -197,6 +197,9 @@ class Jsonable(EnsureIt):
 
 
 class StringableEncoder(json.JSONEncoder):
+    def __init__(self):
+        json.JSONEncoder.__init__(self, sort_keys=True)
+
     def default(self, o):
         if isinstance(o, Stringable):
             return str(o)

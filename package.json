@@ -1,0 +1,69 @@
+{
+  "name": "hashstore",
+  "version": "0.0.5",
+  "description": "Content adressable store",
+  "main": "js/index.js",
+  "scripts": {
+    "clean": "rimraf hashstore/app htmlcov dist *.log .coverage test-out *.egg-info",
+    "build": "webpack",
+    "test_reg": "python setup.py register -r pypitest",
+    "test_up": "python setup.py sdist upload -r pypitest",
+    "live_reg": "python setup.py register -r pypi",
+    "live_up": "python setup.py sdist upload -r pypi",
+    "sdist": "python setup.py sdist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:walnutgeek/hashstroe.git"
+  },
+  "keywords": [
+    "content adressable store",
+    "python"
+  ],
+  "files": [
+    "README.md",
+    "js/*.js"
+  ],
+  "author": "wg@walnutgeek.com",
+  "license": "Apache 2.0",
+  "bugs": {
+    "url": "https://github.com/walnutgeek/hashstore/issues"
+  },
+  "homepage": "https://github.com/walnutgeek/hashstore#readme",
+  "devDependencies": {
+    "codecov": "^1.0.1",
+    "copy-webpack-plugin": "^0.3.3",
+    "css-loader": "^0.23.1",
+    "docco": "^0.7.0",
+    "file-loader": "^0.8.5",
+    "gh-pages": "^0.5.0",
+    "istanbul": "^0.4.0",
+    "jsdom": "^7.2.2",
+    "jshint": "^2.8.0",
+    "jshint-loader": "^0.8.3",
+    "json-loader": "^0.5.4",
+    "mocha": "^2.3.4",
+    "mocha-jsdom": "^1.0.0",
+    "mocha-lcov-reporter": "^1.0.0",
+    "mocha-loader": "^0.7.1",
+    "node-sass": "^3.4.2",
+    "npm-run-all": "^1.3.3",
+    "raw-loader": "^0.5.1",
+    "rimraf": "^2.4.3",
+    "sass-loader": "^3.1.2",
+    "style-loader": "^0.13.0",
+    "uglify-loader": "^1.2.0",
+    "url-loader": "^0.5.7",
+    "wdf-loader": "0.0.4",
+    "webpack": "^1.12.6",
+    "webpack-dev-server": "^1.12.1"
+  },
+  "dependencies": {
+    "bootstrap": "^3.3.6",
+    "font-awesome": "^4.5.0",
+    "jquery": "^2.1.4",
+    "lodash": "^4.0.0",
+    "marked": "^0.3.5",
+    "wdf": "file:../wdf/wdf-0.0.11.tgz"
+  }
+}

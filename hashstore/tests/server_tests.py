@@ -2,7 +2,7 @@ import os
 import time
 from nose.tools import eq_,ok_,with_setup
 from hashstore.local_store import AccessMode
-import hashstore.mount as mount
+from hashstore.udk import quick_hash
 
 from hashstore.tests import TestSetup, file_set1, file_set2, prep_mount, fileset1_udk, fileset2_udk
 
@@ -31,7 +31,7 @@ def test_all_access_modes():
             do_invitation = True
         store_dir=access_mode.name+'_' + ('conf' if use_config else 'cmd')
 
-        insecured_read_access = access_mode == AccessMode.ALL_SECURE
+        secured_read_access = access_mode == AccessMode.ALL_SECURE
 
         hashery_dir = os.path.join(test.dir, store_dir)
         os.makedirs(hashery_dir)
@@ -95,16 +95,50 @@ mounts:
         _, s2 = test.run_shash_and_wait('scan --dir {f2}'.format(**locals()))
         eq_(s1, fileset1_udk)
         eq_(s2, fileset2_udk)
+        if not(secured_read_access):
+            import requests
+
+            def get_and_match(url, h_match=None, grep=None, status_code=None):
+                resp = requests.get(url)
+                if status_code is not None:
+                    eq_(resp.status_code, status_code)
+                content = resp.content
+                h = quick_hash(content)
+                if h_match is not None:
+                    eq_(h, h_match)
+                if grep is not None:
+                    for g in grep:
+                        ok_(g in content)
+
+            server_url = 'http://localhost:{port}/'.format(**locals())
+            raw_url = server_url + '.raw/'
+            get_and_match(raw_url + fileset1_udk + '/../abc',status_code=404)
+            get_and_match(raw_url + fileset1_udk + '/',
+                          fileset1_udk[1:])
+            grep_index = [b'{"columns": [{"name": "mount", "type": "link"}']
+            get_and_match(raw_url, None, grep_index)
+            get_and_match(raw_url +'index', None, grep_index)
+            get_and_match(raw_url+fileset1_udk+'/a/b/2', '8d6eaa485bc21f46df59127f4670a8ad7ae14d8ea2064efff49aae8e2a8fb8e4')
+            grep_index_html = [b'<script src="/.app/hashstore.js"></script>']
+            get_and_match(server_url +'.app/index.html', None, grep_index_html)
+            get_and_match(server_url +'any/other/link', None, grep_index_html)
+            if use_config:
+                get_and_match(raw_url+'files/',None,[b'{"columns": [{"name": "filename", "type": "link"}, {"name": "size", "type": "number"}, {"name": "type", "type": "string"}, {"name": "mime", "type": "string"}]}\n'])
+                get_and_match(raw_url+'files/a/b/2', '8d6eaa485bc21f46df59127f4670a8ad7ae14d8ea2064efff49aae8e2a8fb8e4')
+
         if use_config:
             test.run_shash_and_wait('d stop --config ' +yaml_config)
         else:
             test.run_shash_and_wait('d stop --port %d' % port)
         # test.wait_bg()
         # ok_(False)
+
+
     for use_config in (True, False):
         do_test(False, use_config)
         do_test(None, use_config)
         do_test(True, use_config)
+    # do_test(None, True)
 
 
 def test_dummies():

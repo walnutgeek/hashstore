@@ -1,4 +1,6 @@
 from hashstore.mount import MountDB
+import logging
+logging.basicConfig(level=logging.INFO)
 
 
 def args_parser():

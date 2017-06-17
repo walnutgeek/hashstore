@@ -90,7 +90,6 @@ class BaseX:
             string = self.alphabet[idx] + string
         return string
 
-
     def encode(self, v):
         '''Encode a string'''
         if not isinstance(v, bytes):
@@ -110,7 +109,6 @@ class BaseX:
 
         return (self.alphabet[0] * count_of_nulls + result)
 
-
     def decode_int(self, v):
         '''Decode a string into integer'''
 
@@ -118,7 +116,6 @@ class BaseX:
         for char in v:
             decimal = decimal * self.size + self.alphabet.index(char)
         return decimal
-
 
     def decode(self, v):
         '''Decode string'''
@@ -140,13 +137,11 @@ class BaseX:
 
         return (b'\0' * count_of_nulls + bseq(reversed(result)))
 
-
     def encode_check(self, v):
         '''Encode a string with a 4 character checksum'''
 
         digest = sha256(sha256(v).digest()).digest()
         return self.encode(v + digest[:4])
-
 
     def decode_check(self, v):
         '''Decode and verify the checksum '''

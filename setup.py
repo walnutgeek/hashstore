@@ -4,7 +4,7 @@ from setuptools import setup
 install_requires = open('requirements.txt').read().split()
 
 setup(name='hashstore',
-      version='0.0.5',
+      version='0.0.6',
       description='Content Addressable Storage',
       url='https://github.com/walnutgeek/hashstore',
       author='Walnut Geek',
