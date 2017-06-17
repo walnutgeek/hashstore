@@ -98,14 +98,14 @@ mounts:
         if not(secured_read_access):
             import requests
 
-            def get_and_match(url, h_match=None, grep=None, status_code=None):
+            def get_and_match(url, hexdigest=None, grep=None, status_code=None):
                 resp = requests.get(url)
                 if status_code is not None:
                     eq_(resp.status_code, status_code)
                 content = resp.content
                 h = quick_hash(content)
-                if h_match is not None:
-                    eq_(h, h_match)
+                if hexdigest is not None:
+                    eq_(h, hexdigest)
                 if grep is not None:
                     for g in grep:
                         ok_(g in content)
@@ -114,11 +114,12 @@ mounts:
             raw_url = server_url + '.raw/'
             get_and_match(raw_url + fileset1_udk + '/../abc',status_code=404)
             get_and_match(raw_url + fileset1_udk + '/',
-                          fileset1_udk[1:])
+                          hexdigest=fileset1_udk[1:])
             grep_index = [b'{"columns": [{"name": "mount", "type": "link"}']
-            get_and_match(raw_url, None, grep_index)
-            get_and_match(raw_url +'index', None, grep_index)
-            get_and_match(raw_url+fileset1_udk+'/a/b/2', '8d6eaa485bc21f46df59127f4670a8ad7ae14d8ea2064efff49aae8e2a8fb8e4')
+            get_and_match(raw_url, grep = grep_index)
+            get_and_match(raw_url +'index', grep = grep_index)
+            get_and_match(raw_url+fileset1_udk+'/a/b/2',
+                          hexdigest='8d6eaa485bc21f46df59127f4670a8ad7ae14d8ea2064efff49aae8e2a8fb8e4')
             grep_index_html = [b'<script src="/.app/hashstore.js"></script>']
             get_and_match(server_url +'.app/index.html', None, grep_index_html)
             get_and_match(server_url +'any/other/link', None, grep_index_html)
