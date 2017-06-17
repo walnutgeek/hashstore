@@ -64,6 +64,6 @@
     "jquery": "^2.1.4",
     "lodash": "^4.0.0",
     "marked": "^0.3.5",
-    "wdf": "file:../wdf/wdf-0.0.11.tgz"
+    "wdf": "0.0.11"
   }
 }
