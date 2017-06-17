@@ -2,4 +2,4 @@ nose
 mock
 sniffer
 coverage
-numpy
+codecov

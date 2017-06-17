@@ -28,5 +28,6 @@ script:
   - source activate py2
   - coverage combine
   - coverage report -m
+  - codecov
   - rm .coverage
   - test $(cat py2.status) == 0 && test $(cat py3.status) == 0

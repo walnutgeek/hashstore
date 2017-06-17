@@ -5,6 +5,20 @@ install_requires = open('requirements.txt').read().split()
 
 setup(name='hashstore',
       version='0.0.6',
+      classifiers=[
+          # How mature is this project? Common values are
+          #   3 - Alpha
+          #   4 - Beta
+          #   5 - Production/Stable
+          'Development Status :: 3 - Alpha',
+          'Intended Audience :: Developers',
+          'Topic :: System :: Archiving :: Backup',
+          'License :: OSI Approved :: Apache Software License',
+          'Programming Language :: Python :: 2',
+          'Programming Language :: Python :: 2.7',
+          'Programming Language :: Python :: 3',
+          'Programming Language :: Python :: 3.6',
+      ],
       description='Content Addressable Storage',
       url='https://github.com/walnutgeek/hashstore',
       author='Walnut Geek',
