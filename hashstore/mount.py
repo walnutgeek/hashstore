@@ -8,14 +8,17 @@ from hashstore.udk import process_stream,\
 from hashstore.client import RemoteStorage
 from hashstore.utils import quict, path_split_all, reraise_with_msg, \
     read_in_chunks, ensure_directory, FileNotFound, _cacheable, \
-    json_encoder
+    json_encoder, ensure_unicode
 from collections import defaultdict
 import os
+import codecs
 import fnmatch
 import uuid
 import traceback
 
 import logging
+
+
 log = logging.getLogger(__name__)
 
 
@@ -255,10 +258,12 @@ def parse_ignore_specs(cur_dir, files, initial_ignore_entries):
     if len(ignore_specs) > 0:
         ignore_entries = list(initial_ignore_entries)
         for spec in ignore_specs:
-            for l in open(os.path.join(cur_dir,spec)).readlines():
-                l = l.strip()
-                if l != '' and l[0] != '#':
-                    ignore_entries.append(IgnoreEntry(cur_dir, l))
+            spec_path = os.path.join(cur_dir, spec)
+            with codecs.open(spec_path, 'r', 'utf-8') as fh:
+                for l in fh.readlines():
+                    l = l.strip()
+                    if l != u'' and l[0] != u'#':
+                        ignore_entries.append(IgnoreEntry(cur_dir, l))
         return ignore_entries
     else:
         return initial_ignore_entries
@@ -267,6 +272,17 @@ def parse_ignore_specs(cur_dir, files, initial_ignore_entries):
 def check_if_path_should_be_ignored(ignore_entries, path, isdir):
     return any(entry.should_ignore_path(path,isdir)
                for entry in ignore_entries )
+
+IGNORE_FILENAMES = [u'.svn', u'.git', u'.DS_Store', u'.vol',
+                    u'.hotfiles.btree', u'.ssh']
+
+IGNORE_IF_STARTS_WITH = [u'.shamo', u'.backup', u'.Spotlight',
+                         u'._', u'.Trash']
+
+
+def ignore_files(n):
+    return not(n in IGNORE_FILENAMES or
+               any(n.startswith(t) for t in IGNORE_IF_STARTS_WITH))
 
 
 class MountDB(DbFile):
@@ -322,6 +338,7 @@ class MountDB(DbFile):
     def scan(self, scanned_dir = None, session = None):
         if scanned_dir is None:
             scanned_dir = self.dir
+        scanned_dir = ensure_unicode(scanned_dir)
         self.ensure_db()
         scan_rec = self.insert('scan', quict(
             dir=scanned_dir,
@@ -336,14 +353,6 @@ class MountDB(DbFile):
 
         def read_dir(cur_dir, cur_rec, ignore_entries):
 
-            def ignore_files(n):
-                if n in ['.svn', '.git', '.DS_Store', '.vol',
-                         '.hotfiles.btree', '.ssh' ]:
-                    return False
-                for t in ['.shamo', '.backup', '.Spotlight', '._', '.Trash']:
-                    if n.startswith(t):
-                        return False
-                return True
             files = sorted(filter(ignore_files, os.listdir(cur_dir)))
             ignore_entries = parse_ignore_specs(cur_dir, files, ignore_entries)
             dir_content = UDKBundle()
@@ -366,7 +375,11 @@ class MountDB(DbFile):
                     ),session=session)
                     k,size = read_dir(path_to_file, dir_rec, ignore_entries)
                 else:
-                    digest, size, inline_data = process_stream(open(path_to_file,'rb'))
+                    try:
+                        digest, size, inline_data = process_stream(open(path_to_file,'rb'))
+                    except IOError:
+                        log.warning('cannot read: %s' % path_to_file)
+                        continue
                     k = UDK.from_digest_and_inline_data(digest, inline_data)
                     rec = self.insert('file', quict(
                         name=f,

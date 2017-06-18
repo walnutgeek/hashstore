@@ -98,6 +98,13 @@ def ensure_string(s):
         return s.decode('utf-8')
 
 
+def ensure_unicode(s):
+    if isinstance(s,six.text_type):
+        return s
+    else:
+        return s.decode('utf-8')
+
+
 def v2s(vars_dict, *var_keys):
     '''
     Selectively convert variable dictionary to string

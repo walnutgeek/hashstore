@@ -4,7 +4,7 @@ from setuptools import setup
 install_requires = open('requirements.txt').read().split()
 
 setup(name='hashstore',
-      version='0.0.6',
+      version='0.0.7',
       classifiers=[
           # How mature is this project? Common values are
           #   3 - Alpha
@@ -25,6 +25,7 @@ setup(name='hashstore',
       author_email='wg@walnutgeek.com',
       license='Apache 2.0',
       packages=['hashstore'],
+      package_data={'': ['app/*']},
       entry_points={
           'console_scripts': [
               'shash=hashstore.shash:main',

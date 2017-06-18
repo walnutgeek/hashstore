@@ -128,7 +128,7 @@ mounts:
                 get_and_match(raw_url+'files/',
                               grep = [b'{"columns": [{"name": "filename", "type": "link"}, {"name": "size", "type": "number"}, {"name": "type", "type": "string"}, {"name": "mime", "type": "string"}]}\n'])
                 get_and_match(raw_url+'files/a/b/2',
-                              hexdigest = '8d6eaa485bc21f46df59127f4670a8ad7ae14d8ea2064efff49aae8e2a8fb8e4')
+                              hexdigest='8d6eaa485bc21f46df59127f4670a8ad7ae14d8ea2064efff49aae8e2a8fb8e4')
 
         if use_config:
             test.run_shash_and_wait('d stop --config ' +yaml_config)

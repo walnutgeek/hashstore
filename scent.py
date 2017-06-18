@@ -38,3 +38,6 @@ def execute_all_tests(*args):
 # #@runnable
 # def execute_sphinx(*args):
 #     return 0 == os.system('cd docs; make')
+
+if __name__ == '__main__':
+    run('')
