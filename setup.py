@@ -4,7 +4,7 @@ from setuptools import setup
 install_requires = open('requirements.txt').read().split()
 
 setup(name='hashstore',
-      version='0.0.7',
+      version='0.0.8',
       classifiers=[
           # How mature is this project? Common values are
           #   3 - Alpha

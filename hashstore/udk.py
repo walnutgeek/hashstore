@@ -115,6 +115,7 @@ class UDK(utils.Stringable,utils.EnsureIt):
 
     '''
     def __init__(self, k , bundle = False):
+        k = utils.ensure_string(k)
         self.named_udk_bundle = False
         if k[:1] == 'X':
             self.named_udk_bundle = True
@@ -136,16 +137,16 @@ class UDK(utils.Stringable,utils.EnsureIt):
             return UDK(hexdigest, bundle=bundle)
 
     @staticmethod
-    def from_stream(fd, bundle = False):
+    def from_stream(fd, bundle=False):
         digest, _, inline_data = process_stream(fd)
         return UDK.from_digest_and_inline_data(digest, inline_data, bundle=bundle)
 
     @staticmethod
-    def from_string(s, bundle = False):
+    def from_string(s, bundle=False):
         return UDK.from_stream(six.BytesIO(utils.ensure_bytes(s)), bundle=bundle)
 
     @staticmethod
-    def from_file(file, bundle = False):
+    def from_file(file, bundle=False):
         return UDK.from_stream(open(file, 'rb'), bundle=bundle)
 
     def strip_bundle(self):
@@ -183,6 +184,9 @@ class UDK(utils.Stringable,utils.EnsureIt):
             if not isinstance(other, UDK):
                 return False
             return self.hexdigest() == other.hexdigest()
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class UDKBundle(utils.Jsonable):

@@ -80,29 +80,15 @@ def call_if_defined (o, k, *args):
     return getattr(o,k)(*args) if hasattr(o,k) else None
 
 
-def ensure_bytes(s):
-    while True:
-        if isinstance(s, six.binary_type):
-            return s
-        elif isinstance(s, six.string_types):
-            break
-        else:
-            s = str(s)
-    return s.encode()
 
-
-def ensure_string(s):
-    if isinstance(s,six.string_types):
-        return s
-    else:
-        return s.decode('utf-8')
-
-
-def ensure_unicode(s):
-    if isinstance(s,six.text_type):
-        return s
-    else:
-        return s.decode('utf-8')
+if bytes == str:  # python2
+    ensure_bytes = lambda s: s if isinstance(s, bytes) else str(s)
+    ensure_unicode = lambda s: s if isinstance(s, unicode) else unicode(s)
+    ensure_string = ensure_bytes
+else:  # python3
+    ensure_bytes = lambda s: s if isinstance(s, bytes) else str(s).encode('utf-8')
+    ensure_unicode = lambda s: s if isinstance(s, str) else str(s)
+    ensure_string = lambda s: s.decode('utf-8') if isinstance(s, bytes) else s
 
 
 def v2s(vars_dict, *var_keys):

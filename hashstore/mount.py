@@ -505,10 +505,16 @@ class MountDB(DbFile):
                 hashes_to_push = UdkSet.ensure_it(hashes_to_push)
                 for h in hashes_to_push:
                     f = tree.file_path(h)
-                    fp = open(os.path.join(self.dir, f), 'rb')
-                    stored_as = storage.write_content(fp)
-                    if stored_as != h:
-                        log.warning('scaned: %s, but stored as: %s' % (f, stored_as))
+                    path = os.path.join(self.dir, f)
+                    try:
+                        fp = open(path, 'rb')
+                    except IOError:
+                        log.warning( 'not here: %s -> %s' % (path, h))
+                    else:
+                        stored_as = storage.write_content(fp)
+                        if stored_as != h:
+                            log.warning('scaned: %s -> %s but stored as: %s' %
+                                        (path, h, stored_as))
             self.update('push', quict(
                 push_id=push_rec['_push_id'],
                 _directory_synched=count_synched_dirs,
