@@ -73,6 +73,14 @@ class Session:
     def rollback(self):
         self._tx_action('rollback')
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is not None:
+            self.set_for_rollback()
+        self.close()
+
     def close(self):
         if self.success:
             self.commit()
@@ -91,15 +99,9 @@ def _session_dbf(dbf_factory):
                 return fn(*args, **kwargs)
             else:
                 dbf = dbf_factory(args) if callable(dbf_factory) else dbf_factory
-                session = Session(dbf)
-                try:
+                with Session(dbf) as session:
                     kwargs['session'] = session
                     return fn(*args, **kwargs)
-                except:
-                    session.set_for_rollback()
-                    raise
-                finally:
-                    session.close()
         return decorated
     return decorate
 
