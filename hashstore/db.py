@@ -384,7 +384,7 @@ class DbFile:
     def ensure_db(self, after_create=None, compare=True):
         if not (self.exists()):
             directory = os.path.dirname(self.file)
-            if not (os.path.isdir(directory)):
+            if not os.path.isdir(directory):
                 os.makedirs(directory)
             self.create_db(after_create)
         elif compare:
@@ -594,9 +594,9 @@ class DbFile:
 
 
     @_session
-    def delete(self, table_name, data, session=None):
+    def delete(self, table_name, data, where='', session=None):
         vars = DbFile.SmartVars(self, table_name, data, op='UPDATE')
-        session.execute(vars.format(DELETE_TMPL), vars['data'])
+        session.execute(vars.format(DELETE_TMPL) + where, vars['data'])
         return session.rowcount()
 
 

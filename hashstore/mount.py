@@ -11,10 +11,10 @@ from hashstore.utils import quict, path_split_all, reraise_with_msg, \
     json_encoder, ensure_unicode
 from collections import defaultdict
 import os
-import codecs
-import fnmatch
 import uuid
-import traceback
+
+from hashstore.dir_scan import parse_ignore_specs, ignore_files, \
+    check_if_path_should_be_ignored
 
 import logging
 
@@ -223,66 +223,8 @@ class File:
         return Content(self.mime(), fd, None)
 
 
-def pick_ignore_specs(n):
-    return n in ['.gitignore', '.ignore']
 
 
-class IgnoreEntry:
-    def __init__(self,cur_dir, entry):
-        self.root = path_split_all(cur_dir, False)
-        self.root_length = len(self.root)
-        self.entry = entry
-
-    def _match_root(self, split):
-        return len(split) > self.root_length \
-               and self.root == split[:self.root_length]
-
-    def _match_entry(self, split):
-        path = os.path.join(*split)
-        m = fnmatch.fnmatch(path, self.entry)
-        return m
-
-    def should_ignore_path(self, path , isdir):
-        path_split = path_split_all(path, isdir)
-        if self._match_root(path_split) :
-            rel_split = path_split[self.root_length:]
-            if isdir and self._match_entry(rel_split[:-1]):
-                return True
-            if self._match_entry(rel_split):
-                return True
-        return False
-
-
-def parse_ignore_specs(cur_dir, files, initial_ignore_entries):
-    ignore_specs = list(filter(pick_ignore_specs, files))
-    if len(ignore_specs) > 0:
-        ignore_entries = list(initial_ignore_entries)
-        for spec in ignore_specs:
-            spec_path = os.path.join(cur_dir, spec)
-            with codecs.open(spec_path, 'r', 'utf-8') as fh:
-                for l in fh.readlines():
-                    l = l.strip()
-                    if l != u'' and l[0] != u'#':
-                        ignore_entries.append(IgnoreEntry(cur_dir, l))
-        return ignore_entries
-    else:
-        return initial_ignore_entries
-
-
-def check_if_path_should_be_ignored(ignore_entries, path, isdir):
-    return any(entry.should_ignore_path(path,isdir)
-               for entry in ignore_entries )
-
-IGNORE_FILENAMES = [u'.svn', u'.git', u'.DS_Store', u'.vol',
-                    u'.hotfiles.btree', u'.ssh']
-
-IGNORE_IF_STARTS_WITH = [u'.shamo', u'.backup', u'.Spotlight',
-                         u'._', u'.Trash']
-
-
-def ignore_files(n):
-    return not(n in IGNORE_FILENAMES or
-               any(n.startswith(t) for t in IGNORE_IF_STARTS_WITH))
 
 
 class MountDB(DbFile):
@@ -352,7 +294,6 @@ class MountDB(DbFile):
         ),session=session)
 
         def read_dir(cur_dir, cur_rec, ignore_entries):
-
             files = sorted(filter(ignore_files, os.listdir(cur_dir)))
             ignore_entries = parse_ignore_specs(cur_dir, files, ignore_entries)
             dir_content = UDKBundle()
@@ -373,7 +314,7 @@ class MountDB(DbFile):
                         scan_id=scan_id,
                         file_type='DIR'
                     ),session=session)
-                    k,size = read_dir(path_to_file, dir_rec, ignore_entries)
+                    k,size,_ = read_dir(path_to_file, dir_rec, ignore_entries)
                 else:
                     try:
                         digest, size, inline_data = process_stream(open(path_to_file,'rb'))
@@ -393,6 +334,7 @@ class MountDB(DbFile):
                 cumulative_size += size
                 dir_content[f] = k
             udk, size, content = dir_content.udk_content()
+            log.info('udk=%s content=%s' % (udk,content))
             cumulative_size += size
             self.update('file', quict(
                 file_id=cur_id,
@@ -401,14 +343,15 @@ class MountDB(DbFile):
                 _hash=str(udk)
             ), session=session)
             session.commit()
-            return udk, cumulative_size
-        scan_hash,size = read_dir(scanned_dir, root_rec, [])
+            return udk, cumulative_size, dir_content
+        scan_hash,size,bundle = read_dir(scanned_dir, root_rec, [])
         self.update('scan', quict(
             _hash=scan_hash,
             _size=size,
             scan_id=scan_id,
             _root_file_id=(root_rec['_file_id'])
         ), session=session)
+        self.last_bundle = bundle
         self.last_hash = scan_hash
         self.last_id = scan_id
         return scan_id, scan_hash
@@ -447,7 +390,6 @@ class MountDB(DbFile):
                 k = UDK.ensure_it(k)
                 if k.named_udk_bundle:
                     content = storage.get_content(k)
-                    print('%r' % content)
                     bundle = UDKBundle(content)
                     ensure_directory(p)
                     for n in bundle:
@@ -560,5 +502,9 @@ class ScanTree:
             reraise_with_msg('%s' % str(h) )
 
 
-
+if __name__ == '__main__':
+    import sys
+    m = MountDB(sys.argv[1],scan_now=True)
+    print(m.last_hash)
+    print(str(m.last_bundle))
 

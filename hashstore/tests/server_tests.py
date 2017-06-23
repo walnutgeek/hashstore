@@ -4,7 +4,8 @@ from nose.tools import eq_,ok_,with_setup
 from hashstore.local_store import AccessMode
 from hashstore.udk import quick_hash
 
-from hashstore.tests import TestSetup, file_set1, file_set2, prep_mount, fileset1_udk, fileset2_udk
+from hashstore.tests import TestSetup, file_set1, file_set2, \
+    prep_mount, update_mount, fileset1_udk, fileset2_udk
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log
@@ -79,7 +80,7 @@ mounts:
 
         _,h1 = test.run_shash_and_wait('backup --dir {files}'.format(**locals()))
 
-        prep_mount(files, file_set2, keep_shamo=True)
+        update_mount(files, file_set2)
         _,h2 = test.run_shash_and_wait('backup --dir {files}'.format(**locals()))
         eq_(h1, fileset1_udk)
         eq_(h2, fileset2_udk)

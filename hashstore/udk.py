@@ -220,12 +220,45 @@ class UDKBundle(utils.Jsonable):
     '''
     def __init__(self,o=None):
         self.store = {}
-        self.inverse = None
+        self._clear_cached()
         if o is not None:
             self.parse(o)
 
+    def _clear_cached(self):
+        self._inverse = None
+        self._udk = None
+        self._content = None
+        self._size = None
+
+    def inverse(self):
+        if self._inverse is None:
+            self._inverse = {v: k for k, v in six.iteritems(self.store)}
+        return self._inverse
+
+    def udk(self):
+        if self._udk is None:
+            self._build_content()
+        return self._udk
+
+    def content(self):
+        if self._content is None:
+            self._build_content()
+        return self._content
+
+    def size(self):
+        if self._size is None:
+            self._build_content()
+        return self._size
+
+    def _build_content(self):
+        self._content = str(self)
+        in_bytes = utils.ensure_bytes(self._content)
+        self._size = len(in_bytes)
+        self._udk = UDK.from_digest_and_inline_data(
+            quick_hash(in_bytes),in_bytes, bundle=True)
+
     def parse(self, o):
-        self.inverse = None
+        self._clear_cached()
         if isinstance(o, six.string_types):
             names, udks = json.loads(o)
         elif type(o) in [list, tuple] and len(o) == 2:
@@ -239,11 +272,11 @@ class UDKBundle(utils.Jsonable):
         return iter(self.keys())
 
     def __setitem__(self, k, v):
-        self.inverse = None
+        self._clear_cached()
         self.store[k] = UDK.ensure_it(v)
 
     def __delitem__(self, k):
-        self.inverse = None
+        self._clear_cached()
         del self.store[k]
 
     def __getitem__(self, k):
@@ -253,9 +286,8 @@ class UDKBundle(utils.Jsonable):
         return len(self.store)
 
     def get_name_by_udk(self, k):
-        if self.inverse is None:
-            self.inverse = { v : k for k,v in six.iteritems(self.store)}
-        return self.inverse[UDK.ensure_it(k)]
+        return self.inverse()[UDK.ensure_it(k)]
+
 
     def keys(self):
         names = list(self.store.keys())
