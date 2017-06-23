@@ -232,8 +232,14 @@ class DirScan(Scan):
 
     def _calc_stat(self):
         self._bundle = UDKBundle()
+        unreadable_entries = []
         for k in self.entries:
-            self._bundle[k] = self.entries[k].udk
+            try:
+                self._bundle[k] = self.entries[k].udk
+            except PermissionError:
+                unreadable_entries.append(k)
+        for to_remove in unreadable_entries:
+            del self.entries[to_remove]
         self._udk = self._bundle.udk()
         self._content = self._bundle.content()
         self._size = sum(e.size for e in itervalues(self.entries)) \
