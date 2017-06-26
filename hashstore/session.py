@@ -7,6 +7,8 @@ import logging
 import hashstore.utils as utils
 import traceback
 
+ALL_TABLES = "select * from sqlite_master where type='table'"
+
 log = logging.getLogger(__name__)
 
 
@@ -38,7 +40,7 @@ class Session:
 
 
     def query(self, q, params=None, as_dicts=False):
-        self.execute(q,params)
+        self.execute(q, params)
         result = self.cursor.fetchall()
         if as_dicts:
             header = list(self.cursor.description)
@@ -52,13 +54,16 @@ class Session:
     def lastrowid(self):
         return self.cursor.lastrowid
 
-    def table_info(self,table, session=None):
+    def table_info(self,table):
         return self.query('PRAGMA table_info(%s)' % table,
                           as_dicts=True )
 
-    def get_tables(self,session=None):
-        return self.query("select * from sqlite_master where type='table'",
-                          as_dicts=True)
+    def get_tables(self):
+        return self.query(ALL_TABLES, as_dicts=True)
+
+    def has_table(self,name):
+        records = self.query(ALL_TABLES + " and name = ?", params=[name])
+        return len(records) == 1
 
     def _tx_action(self, commit_or_rollback):
         msg = commit_or_rollback + ':' + self.file

@@ -6,10 +6,6 @@ install_requires = open('requirements.txt').read().split()
 setup(name='hashstore',
       version='0.0.8',
       classifiers=[
-          # How mature is this project? Common values are
-          #   3 - Alpha
-          #   4 - Beta
-          #   5 - Production/Stable
           'Development Status :: 3 - Alpha',
           'Intended Audience :: Developers',
           'Topic :: System :: Archiving :: Backup',

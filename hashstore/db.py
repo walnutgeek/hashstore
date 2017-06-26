@@ -409,13 +409,13 @@ class DbFile:
                 warnings.append('%s in_code: %s in_db: %s' % (warn_text, in_code, in_db))
             return r
 
-        tables_in_db = [r['name'] for r in session.get_tables(session=session)]
+        tables_in_db = [r['name'] for r in session.get_tables()]
         for tablename in self.schema.tables:
             if tablename not in tables_in_db:
                 warnings.append('table %s in not in db' % tablename)
             else:
                 none_of_tables = False
-                columns = session.table_info(tablename, session=session)
+                columns = session.table_info(tablename)
                 columnnames_in_db = sorted(c['name'] for c in columns)
                 table_in_code = self.schema.tables[tablename]
                 columnnames_in_code = sorted(table_in_code.column_names)
