@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 import logging
 import os
 import shutil
@@ -6,11 +8,12 @@ from nose.tools import eq_,ok_
 import sys, re
 from doctest import OutputChecker, DocTestRunner, DocTestFinder
 
+pyenv = 'py' + sys.version[0]
 
 class TestSetup:
     def __init__(self, name, ensure_empty = False):
         self.log = logging.getLogger(name)
-        self.dir = os.path.join(os.path.abspath("test-out"), name)
+        self.dir = os.path.join(os.path.abspath("test-out"), pyenv, name )
         if ensure_empty:
             ensure_no_dir(self.dir)
             ensure_dir(self.dir)
@@ -127,6 +130,7 @@ file_set1 = (
     ('too.sol', random_content_fn(105000, None)),
     ('q/x/y/2.b', random_content_fn(555, None)),
     ('x/1', random_content_fn(555, 5)),
+    ('q/x/палка_в/колесе.bin', random_content_fn(10000, None)),
     # all this get ignored
     ('q/x/y/1.sol', random_content_fn(105000, reseed_random())),
     ('q/p/2', random_content_fn(555, None)),
@@ -158,8 +162,8 @@ def update_mount(dir, file_set):
         fn(dir, path, abs_path)
 
 
-fileset1_udk = 'Xa959135b2cbfc5b923d21f6c58257da2b5c57fa4780653a79e6431a563dae269'
-fileset2_udk = 'Xe3eadf1e8f0eac78640971d46d5f41d5d975de34fe6eee39cefdb3f5d94075da'
+fileset1_udk = 'X7cb3ecebc582de3d18c6d12fb6109402718cf11ad06cb4ec4c1d7be23998f60f'
+fileset2_udk = 'Xf4eec87b810074535c8be8624ebb72129446c7936f10e62643f2e16e6fe081f7'
 
 def ensure_dir(d):
     if not os.path.isdir(d):

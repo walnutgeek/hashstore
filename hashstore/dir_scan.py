@@ -1,5 +1,5 @@
 import fnmatch, os, codecs
-from hashstore.utils import path_split_all, quict,json_encoder,reraise_with_msg
+from hashstore.utils import path_split_all, ensure_unicode, quict,json_encoder,reraise_with_msg
 from datetime import datetime
 from hashstore.db import DbFile
 from hashstore.session import Session
@@ -9,6 +9,8 @@ from six import itervalues
 
 import logging
 log = logging.getLogger(__name__)
+logging.basicConfig(format='%(asctime)s %(message)s')
+
 
 def pick_ignore_specs(n):
     '''
@@ -93,83 +95,63 @@ def ignore_files(n):
     return not(n in IGNORE_FILENAMES or
                any(n.startswith(t) for t in IGNORE_IF_STARTS_WITH))
 
-hashed_counts = 0
+class ScanStats:
+    def __init__(self, force_rehash=False):
+        self.hashed_counts = 0
+        self.hashed_bytes = 0
+        self.force_rehash = force_rehash
 
-hashed_bytes = 0
+    def increment_count(self):
+        self.hashed_counts += 1
+
+    def count_bytes(self, buffer):
+        self.hashed_bytes += len(buffer)
+
 
 class Scan:
-    def __init__(self, path, addname, from_db, file_type):
+    def __init__(self, path, addname, file_type, stats):
+        path = ensure_unicode(path)
         self.file_type = file_type
+        self.stats = stats
         if addname is None:
             self.name = os.path.basename(path)
         else:
+            addname = ensure_unicode(addname)
             path = os.path.join(path, addname)
             self.name = addname
         self.path = os.path.abspath(path)
-        self.from_db = from_db
-        self._modtime = None
-        self._size = None
-        self._udk = None
-
-    def udk(self):
-        if self._udk is None:
-            if not self.is_db_entry_stale():
-                self._udk = self.from_db['udk']
-            else:
-                self._build_udk()
-        return self._udk
-
-    def modtime(self):
-        if self._modtime is None:
-            self._calc_stat()
-        return self._modtime
-
-    def size(self):
-        if self._size is None:
-            self._calc_stat()
-        return self._size
 
     def new_db_entry(self):
         return {
             "_name": self.name,
             "file_type": self.file_type,
-            "udk": self.udk(),
-            "size": self.size(),
-            "modtime": self.modtime(),
+            "udk": self.udk,
+            "size": self.size,
+            "modtime": self.modtime,
         }
 
     def __str__(self):
         return json_encoder.encode(self.new_db_entry())
 
-    def is_db_entry_stale(self):
-        return True
-
-
-def count_bytes(buffer):
-    global hashed_bytes
-    hashed_bytes +=len(buffer)
-
 
 class FileScan(Scan):
-    def __init__(self, path, addname, from_db):
-        Scan.__init__(self, path, addname, from_db, 'FILE')
-
-    def is_db_entry_stale(self):
-        return self.from_db is None or self.modtime() > self.from_db['modtime']
-
-    def _calc_stat(self):
+    def __init__(self, path, addname, from_db, stats):
+        Scan.__init__(self, path, addname, 'FILE', stats)
         stat = os.stat(self.path)
-        self._modtime = stat.st_mtime
-        self._size = stat.st_size
+        self.modtime = stat.st_mtime
+        self.size = stat.st_size
+        if stats.force_rehash or from_db is None \
+                or self.modtime > from_db['modtime']:
+            self.stats.increment_count()
+            digest, _, inline_data = process_stream(
+                open(self.path, 'rb'),
+                process_buffer=self.stats.count_bytes
+            )
+            self.udk = UDK.from_digest_and_inline_data(digest, inline_data)
+        else:
+            self.udk = from_db['udk']
 
-    def _build_udk(self):
-        global hashed_counts
-        hashed_counts += 1
-        digest, _, inline_data = process_stream(
-            open(self.path, 'rb'),
-            process_buffer=count_bytes
-        )
-        self._udk = UDK.from_digest_and_inline_data(digest, inline_data)
+
 
 DIR_DATAMODEL='''
     table:entry
@@ -180,20 +162,45 @@ DIR_DATAMODEL='''
       modtime INTEGER
 '''
 
+
 class DirScan(Scan):
-    def __init__(self, path, addname=None, from_db=None,
+    def __init__(self, path, addname=None, stats = None,
                  ignore_entries=[], receiver_coroutine=None):
-        Scan.__init__(self, path, addname, from_db, "DIR")
+        if stats is None:
+            stats = ScanStats()
+        Scan.__init__(self, path, addname, "DIR", stats)
         self.dbf = DbFile(os.path.join(self.path, '.shamo'), DIR_DATAMODEL)
-        self._bundle = None
-        store_all_entries = False
-        db_entries = self.read_entries()
-        if db_entries is None:
-            store_all_entries = True
-            db_entries = {}
-        self.entries = {}
+
+        child_entries = []
+
+        def read_entries():
+            if self.dbf.exists():
+                try:
+                    q = self.dbf.select('entry', {}, where='1=1')
+                    return {r['name']: r for r in q}
+                except:
+                    pass
+            return {}
+
+        def store_entries(entries):
+            try:
+                with Session(self.dbf) as session:
+                    if not session.has_table('entry'):
+                        self.dbf.create_db(session=session)
+                    self.dbf.delete('entry', {}, where='1=1',
+                                    session=session)
+                    for e in entries:
+                        self.dbf.insert('entry', e, session=session)
+            except:
+                # from traceback import print_exc
+                # print_exc()
+                log.warning('cannot store: ' + self.dbf.file)
+
+        old_db_entries = read_entries()
+
         files = sorted(filter(ignore_files, os.listdir(self.path)))
         ignore_entries = parse_ignore_specs(self.path, files, ignore_entries)
+
         for f in files:
             path_to_file = os.path.join(self.path, f)
             if os.path.islink(path_to_file):
@@ -202,81 +209,50 @@ class DirScan(Scan):
             if check_if_path_should_be_ignored(ignore_entries, path_to_file, isdir):
                 continue
 
-            from_db = db_entries.get(f, None)
-            if from_db is None:
-                store_all_entries = True
-            else:
-                del db_entries[f]
-
-            if isdir:
-                entry = DirScan(self.path, f, from_db, ignore_entries, receiver_coroutine)
-            else:
-                entry = FileScan(self.path, f, from_db)
-
             try:
-                entry.udk()
-            except PermissionError:
-                log.warning('cannot read: %s' % entry.path)
-                pass
+                if isdir:
+                    entry = DirScan(self.path, f, self.stats,
+                                    ignore_entries, receiver_coroutine)
+                else:
+                    entry = FileScan(self.path, f,
+                                     old_db_entries.get(f, None),
+                                     self.stats)
+            except OSError:
+                log.warning('cannot read: %s/%s' % (self.path, f) )
+            except IOError:
+                log.warning('cannot read: %s/%s' % (self.path, f))
             else:
-                self.entries[f] = entry
+                child_entries.append(entry)
 
-        if len(db_entries) > 0 or any(e.is_db_entry_stale() for e
-                                      in itervalues(self.entries)):
-            store_all_entries = True
+        self.bundle = UDKBundle()
+        for e in child_entries:
+            self.bundle[e.name] = e.udk
+
+        self.udk = self.bundle.udk()
+        self.size = sum(e.size for e in child_entries) \
+                    + self.bundle.size()
+
+        stat = os.stat(self.path)
+
+        self.modtime = stat.st_mtime
+        if len(child_entries) > 0:
+            youngest_file = max(e.modtime for e in child_entries)
+            self.modtime = max(self.modtime, youngest_file)
+
+        self.new_db_entries =[ e.new_db_entry() for e in child_entries]
+
+        store_entries(self.new_db_entries)
+        log.debug(u'{self.path} -> {self.udk}'.format(**locals()))
+
         if receiver_coroutine:
-            receiver_coroutine.send((self,store_all_entries))
-        if store_all_entries:
-            self.store_entries()
-        log.debug('{self.path} -> {self.udk}'.format(**locals()))
-
-    def read_entries(self):
-        if self.dbf.exists():
-            try:
-                q = self.dbf.select('entry', {}, where='1=1')
-                return {r['name']: r for r in q}
-            except:
-                pass
-        return None
-
-    def store_entries(self):
-        try:
-            with Session(self.dbf) as session:
-                if not session.has_table('entry'):
-                    self.dbf.create_db(session=session)
-                self.dbf.delete('entry',{},where='1=1',session=session)
-                for k in self.entries:
-                    self.dbf.insert('entry',self.entries[k].new_db_entry(),session=session)
-        except :
-            # from traceback import print_exc
-            # print_exc()
-            log.warning('cannot store: '+self.dbf.file)
+            receiver_coroutine.send(self)
 
 
-    def _build_udk(self):
-        self._calc_stat()
-
-    def bundle(self):
-        if self._bundle is None:
-            self._calc_stat()
-        return self._bundle
-
-    def _calc_stat(self):
-        self._bundle = UDKBundle()
-        for entry in itervalues(self.entries):
-            self._bundle[entry.name]=entry.udk()
-        self._udk = self._bundle.udk()
-        self._content = self._bundle.content()
-        self._size = sum(e.size() for e in itervalues(self.entries)) \
-                     + self._bundle.size()
-        self._modtime = os.stat(self.path).st_mtime
-        if len(self.entries) > 0:
-            youngest_file = max(e.modtime() for e in itervalues(self.entries))
-            self._modtime = max(self._modtime, youngest_file)
 
 if __name__ == '__main__':
     import sys
-    bundle = DirScan(sys.argv[1]).bundle()
+
+    scan = DirScan(sys.argv[1])
     print('udk: %s\nhashed_counts: %s\nhashed_bytes: %s\n' %
-          (bundle.udk(),hashed_counts,hashed_bytes))
+          (scan.bundle.udk(),scan.stats.hashed_counts,scan.stats.hashed_bytes))
     # print(bundle.content())

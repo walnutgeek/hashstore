@@ -22,6 +22,7 @@ def to_blob(v):
     else:
         return v if isinstance(v, bytes) else memoryview(v)
 
+
 def _join(data, expression, delim=',', filter_keys=lambda key: True):
     return delim.join(map( expression, filter(filter_keys, data)))
 

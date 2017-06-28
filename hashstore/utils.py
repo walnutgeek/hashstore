@@ -83,7 +83,7 @@ def call_if_defined (o, k, *args):
 
 if bytes == str:  # python2
     ensure_bytes = lambda s: s if isinstance(s, bytes) else str(s)
-    ensure_unicode = lambda s: s if isinstance(s, unicode) else unicode(s)
+    ensure_unicode = lambda s: s if isinstance(s, unicode) else unicode(s,'utf-8')
     ensure_string = ensure_bytes
 else:  # python3
     ensure_bytes = lambda s: s if isinstance(s, bytes) else str(s).encode('utf-8')
