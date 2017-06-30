@@ -26,6 +26,12 @@ class RemoteStorage:
         response = self.post_meta_data('login', {'mount_uuid': mount_uuid})
         return json.loads(response)
 
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.logout()
+
+    def __enter__(self):
+        return self
+
     def logout(self):
         return self.post_meta_data('logout', {})
 

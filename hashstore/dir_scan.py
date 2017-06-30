@@ -1,12 +1,12 @@
 import fnmatch, os, codecs
-from hashstore.utils import path_split_all, ensure_unicode, quict,json_encoder,reraise_with_msg
-from datetime import datetime
+from hashstore.utils import path_split_all, ensure_unicode, quict,\
+    json_encoder,reraise_with_msg, ensure_directory, read_in_chunks
 from hashstore.db import DbFile
 from hashstore.session import Session
 from hashstore.udk import process_stream,\
     UDK,UDKBundle,UdkSet,quick_hash
-from six import itervalues
-
+import uuid
+from hashstore.client import RemoteStorage
 import logging
 log = logging.getLogger(__name__)
 logging.basicConfig(format='%(asctime)s %(message)s')
@@ -153,7 +153,7 @@ class FileScan(Scan):
 
 
 
-DIR_DATAMODEL='''
+ENTRY_DM= '''
     table:entry
       name TEXT PK
       file_type TEXT OPTIONS('DIR','FILE')
@@ -163,13 +163,14 @@ DIR_DATAMODEL='''
 '''
 
 
+
 class DirScan(Scan):
     def __init__(self, path, addname=None, stats = None,
-                 ignore_entries=[], receiver_coroutine=None):
+                 ignore_entries=[], on_each_dir=None):
         if stats is None:
             stats = ScanStats()
         Scan.__init__(self, path, addname, "DIR", stats)
-        self.dbf = DbFile(os.path.join(self.path, '.shamo'), DIR_DATAMODEL)
+        self.dbf = DbFile(os.path.join(self.path, '.shamo'), ENTRY_DM)
 
         child_entries = []
 
@@ -212,15 +213,15 @@ class DirScan(Scan):
             try:
                 if isdir:
                     entry = DirScan(self.path, f, self.stats,
-                                    ignore_entries, receiver_coroutine)
+                                    ignore_entries, on_each_dir)
                 else:
                     entry = FileScan(self.path, f,
                                      old_db_entries.get(f, None),
                                      self.stats)
             except OSError:
-                log.warning('cannot read: %s/%s' % (self.path, f) )
+                log.warning('cannot read: %s/%s' , self.path, f)
             except IOError:
-                log.warning('cannot read: %s/%s' % (self.path, f))
+                log.warning('cannot read: %s/%s' , self.path, f)
             else:
                 child_entries.append(entry)
 
@@ -242,11 +243,91 @@ class DirScan(Scan):
         self.new_db_entries =[ e.new_db_entry() for e in child_entries]
 
         store_entries(self.new_db_entries)
+
         log.debug(u'{self.path} -> {self.udk}'.format(**locals()))
 
-        if receiver_coroutine:
-            receiver_coroutine.send(self)
+        if on_each_dir:
+            on_each_dir(self)
 
+REMOTE_DM= '''
+    table:remote
+      remote_id PK
+      url_uuid UUID4
+      url_text TEXT
+      mount_session TEXT
+      created TIMESTAMP INSERT_DT
+'''
+
+class Remote:
+    def __init__(self, directory):
+        self.path = os.path.abspath(directory)
+        self.dbf = DbFile(os.path.join(self.path, '.shamo'), REMOTE_DM)
+
+    def register(self, url, invitation=None, session=None):
+        url_uuid = uuid.uuid4()
+        storage = RemoteStorage(url)
+        server_uuid = storage.register(url_uuid,
+                             invitation=invitation,
+                             meta={'mount_path': self.path})
+        if server_uuid is not None:
+            self.dbf.ensure_db()
+            self.dbf.store('remote', quict(
+                remote_id=1,
+                _url_uuid=url_uuid,
+                _url_text=url,
+                _mount_session=quick_hash(server_uuid)
+            ), session=session)
+
+    def storage(self):
+        remote = self.dbf.select_one('remote', quict(remote_id=1))
+        if remote is None:
+            raise ValueError('cannot backup, need register mount first')
+        storage = RemoteStorage(remote['url_text'])
+        resp = storage.login(remote['url_uuid'])
+        if remote['mount_session'] != quick_hash(resp['server_uuid']):
+            raise AssertionError('cannot validate server')
+        storage.set_auth_session(resp['auth_session'])
+        return storage
+
+    def backup(self):
+        with self.storage() as storage:
+            def ensure_files_on_remote(dir_scan):
+                bundles = { dir_scan.udk: dir_scan.bundle}
+                _, hashes_to_push = storage.store_directories(bundles)
+                for h in hashes_to_push:
+                    h = UDK.ensure_it(h)
+                    name = dir_scan.bundle.get_name_by_udk(h)
+                    fp = open(os.path.join(dir_scan.path,name), 'rb')
+                    k = storage.write_content(fp)
+                    if k != h:
+                        raise AssertionError('%s != %s' % (h,k))
+            dir = DirScan(self.path,on_each_dir=ensure_files_on_remote)
+            return dir.udk
+
+    def restore(self, key, path):
+        with self.storage() as storage:
+            def restore_inner( k, p):
+                k = UDK.ensure_it(k)
+                if k.named_udk_bundle:
+                    content = storage.get_content(k)
+                    bundle = UDKBundle(content)
+                    ensure_directory(p)
+                    for n in bundle:
+                        file_path = os.path.join(p, n)
+                        file_k = bundle[n]
+                        if file_k.named_udk_bundle:
+                            restore_inner(file_k, file_path)
+                        else:
+                            try:
+                                out_fp = open(file_path, "wb")
+                                in_fp = storage.get_content(file_k)
+                                for chunk in read_in_chunks(in_fp):
+                                    out_fp.write(chunk)
+                                out_fp.close()
+                            except:
+                                reraise_with_msg(
+                                    "%s -> %s" % (file_k, file_path))
+            restore_inner(key,path)
 
 
 if __name__ == '__main__':
