@@ -38,34 +38,18 @@ def main():
     cmd_picked = [args.command == n for n in COMMANDS]
     doing = dict(zip(COMMANDS, cmd_picked))
 
-    def mount_based():
-        from hashstore.mount import MountDB
-        m = MountDB(directory=args.dir)
-        if doing['register']:
-            m.register(args.url,args.invitation)
-        elif doing['backup']:
-            print(m.backup())
-        elif doing['restore']:
-            m.restore(args.udk,args.dest)
-        else: #scan
-            _,udk = m.scan()
-            print(udk)
-
-    def dir_scan_based():
-        import hashstore.dir_scan as dscan
+    import hashstore.dir_scan as dscan
+    if doing['scan']:
+        udk = dscan.DirScan(args.dir).udk
+        print(udk)
+    else:
         m = dscan.Remote(args.dir)
         if doing['register']:
             m.register(args.url,args.invitation)
         elif doing['backup']:
             print(m.backup())
-        elif doing['restore']:
+        else: # doing['restore']:
             m.restore(args.udk,args.dest)
-        else: #scan
-            udk = dscan.DirScan(args.dir).udk
-            print(udk)
-    #mount_based()
-    dir_scan_based()
-
 
 if __name__ == '__main__':
     main()

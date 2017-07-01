@@ -166,7 +166,8 @@ ENTRY_DM= '''
 
 class DirScan(Scan):
     def __init__(self, path, addname=None, stats = None,
-                 ignore_entries=[], on_each_dir=None):
+                 ignore_entries=[], on_each_dir=None, parent=None):
+        self.parent = parent
         if stats is None:
             stats = ScanStats()
         Scan.__init__(self, path, addname, "DIR", stats)
@@ -213,7 +214,7 @@ class DirScan(Scan):
             try:
                 if isdir:
                     entry = DirScan(self.path, f, self.stats,
-                                    ignore_entries, on_each_dir)
+                                    ignore_entries, on_each_dir, parent=self)
                 else:
                     entry = FileScan(self.path, f,
                                      old_db_entries.get(f, None),
@@ -258,6 +259,7 @@ REMOTE_DM= '''
       created TIMESTAMP INSERT_DT
 '''
 
+
 class Remote:
     def __init__(self, directory):
         self.path = os.path.abspath(directory)
@@ -293,7 +295,8 @@ class Remote:
         with self.storage() as storage:
             def ensure_files_on_remote(dir_scan):
                 bundles = { dir_scan.udk: dir_scan.bundle}
-                _, hashes_to_push = storage.store_directories(bundles)
+                mount_hash = dir_scan.udk if dir_scan.parent is None else None
+                _, hashes_to_push = storage.store_directories(bundles, mount_hash)
                 for h in hashes_to_push:
                     h = UDK.ensure_it(h)
                     name = dir_scan.bundle.get_name_by_udk(h)
