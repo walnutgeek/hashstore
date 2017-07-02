@@ -3,6 +3,8 @@ test-out/
 dist
 *.egg-info
 .idea/
+__pycache__
+*/__pycache__
 *.pyc
 *.log
 */*.pyc
