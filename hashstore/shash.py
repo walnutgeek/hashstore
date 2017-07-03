@@ -1,4 +1,5 @@
 import logging
+from hashstore.utils import print_pad
 logging.basicConfig(level=logging.INFO)
 
 
@@ -29,7 +30,7 @@ def args_parser():
                         help='version of directory to be restored')
     return parser
 
-COMMANDS = 'register backup restore scan'.split()
+COMMANDS = 'register backup restore scan ls'.split()
 
 
 def main():
@@ -39,7 +40,10 @@ def main():
     doing = dict(zip(COMMANDS, cmd_picked))
 
     import hashstore.dir_scan as dscan
-    if doing['scan']:
+    if doing['ls']:
+        usage = dscan.Shamo(args.dir).directory_usage()
+        print_pad(usage, 'file_type size name'.split())
+    elif doing['scan']:
         udk = dscan.DirScan(args.dir).udk
         print(udk)
     else:

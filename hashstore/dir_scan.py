@@ -163,15 +163,23 @@ ENTRY_DM= '''
 '''
 
 
+class Shamo:
+    def __init__(self, path):
+        self.dbf = DbFile(os.path.join(path, '.shamo'), ENTRY_DM)
 
-class DirScan(Scan):
+    def directory_usage(self):
+        return self.dbf.select('entry',{},
+                               where='1=1 order by size DESC, name')
+
+
+class DirScan(Shamo,Scan):
     def __init__(self, path, addname=None, stats = None,
                  ignore_entries=[], on_each_dir=None, parent=None):
         self.parent = parent
         if stats is None:
             stats = ScanStats()
         Scan.__init__(self, path, addname, "DIR", stats)
-        self.dbf = DbFile(os.path.join(self.path, '.shamo'), ENTRY_DM)
+        Shamo.__init__(self,self.path)
 
         child_entries = []
 

@@ -59,10 +59,11 @@ mounts:
             invite_log = test.full_log_path(store_dir + '_invite.log')
             if use_config:
                 rc,invitation = test.run_shash_and_wait(
-                    'd invite --config ' + yaml_config, invite_log)
+                    'd invite --config ' + yaml_config, invite_log, expect_rc=0)
             else:
                 rc,invitation = test.run_shash_and_wait(
-                    'd invite --store_dir {hashery_dir}'.format(**locals()), invite_log)
+                    'd invite --store_dir {hashery_dir}'.format(**locals()),
+                    invite_log, expect_rc=0)
             eq_(rc, 0)
             invitation = open(invite_log).read().strip().split()[-1]
             eq_(len(invitation),36)
@@ -73,15 +74,19 @@ mounts:
 
             test.run_shash_and_wait('register --url http://localhost:{port}/ '
                                     '--invitation {invitation} '
-                                    '--dir {files}'.format(**locals()))
+                                    '--dir {files}'.format(**locals()),
+                                        expect_rc=0)
         else:
             test.run_shash_and_wait('register --url http://localhost:{port}/ '
-                                    '--dir {files}'.format(**locals()))
+                                    '--dir {files}'.format(**locals()),
+                                        expect_rc=0)
 
-        _,h1 = test.run_shash_and_wait('backup --dir {files}'.format(**locals()))
+        _,h1 = test.run_shash_and_wait('backup --dir {files}'.format(**locals()),
+                                        expect_rc=0)
 
         update_mount(files, file_set2)
-        _,h2 = test.run_shash_and_wait('backup --dir {files}'.format(**locals()))
+        _,h2 = test.run_shash_and_wait('backup --dir {files}'.format(**locals()),
+                                        expect_rc=0)
         eq_(h1, fileset1_udk)
         eq_(h2, fileset2_udk)
         f1 = os.path.join(test.dir, 'sfiles1')
@@ -92,10 +97,19 @@ mounts:
         test.run_shash_and_wait('restore --dir {files} --udk {h2} '
                                 '--dest {f2}'.format(**locals()))
 
-        _, s1 = test.run_shash_and_wait('scan --dir {f1}'.format(**locals()))
-        _, s2 = test.run_shash_and_wait('scan --dir {f2}'.format(**locals()))
+        _, s1 = test.run_shash_and_wait('scan --dir {f1}'.format(**locals()),
+                                        expect_rc=0)
+        _, s2 = test.run_shash_and_wait('scan --dir {f2}'.format(**locals()),
+                                        expect_rc=0)
         eq_(s1, fileset1_udk)
         eq_(s2, fileset2_udk)
+        _, s1 = test.run_shash_and_wait('ls --dir {f1}'.format(**locals()),
+                                        expect_rc=0)
+        _, s2 = test.run_shash_and_wait('ls --dir {f2}'.format(**locals()),
+                                        expect_rc=0)
+        eq_(s1, 'a')
+        eq_(s2, 'a')
+
         if not(secured_read_access):
             import requests
 

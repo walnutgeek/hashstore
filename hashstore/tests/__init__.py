@@ -20,11 +20,16 @@ class TestSetup:
         self.processes = {}
         self.counter = 0
 
-    def run_shash_and_wait(self, cmd, log_file = None):
+    def run_shash_and_wait(self, cmd, log_file = None, expect_rc = None):
         p_id = self.run_shash(cmd,log_file)
         popen, cmd, logpath = self.processes[p_id]
         rc = popen.wait()
-        split = open(logpath).read().strip().split()
+        read = open(logpath).read()
+        split = read.strip().split()
+        if expect_rc is not None:
+            if expect_rc != rc:
+                print(read)
+                eq_(expect_rc, rc)
         return rc, split[-1] if len(split) else None
 
     def run_shash(self, cmd, log_file=None):
