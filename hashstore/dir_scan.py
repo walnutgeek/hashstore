@@ -2,14 +2,19 @@ import fnmatch, os, codecs
 from hashstore.utils import path_split_all, ensure_unicode, quict,\
     json_encoder,reraise_with_msg, ensure_directory, read_in_chunks
 from hashstore.db import DbFile
-from hashstore.session import Session
+from hashstore.session import Session, _session
 from hashstore.udk import process_stream,\
     UDK,UDKBundle,UdkSet,quick_hash
 import uuid
 from hashstore.client import RemoteStorage
+
 import logging
 log = logging.getLogger(__name__)
 logging.basicConfig(format='%(asctime)s %(message)s')
+
+import os
+import hashstore.base_x as bx
+b58 = bx.base_x(58)
 
 
 def pick_ignore_specs(n):
@@ -151,28 +156,77 @@ class FileScan(Scan):
         else:
             self.udk = from_db['udk']
 
+DIRKEY = 'dirkey'
 
+ENTRY = 'entry'
 
 ENTRY_DM= '''
-    table:entry
+    table:{ENTRY}
       name TEXT PK
       file_type TEXT OPTIONS('DIR','FILE')
       udk UDK
       size INTEGER
       modtime INTEGER
-'''
+    table:{DIRKEY}
+      singleton_id PK
+      dir_id TEXT
+'''.format(**locals())
 
 
 class Shamo:
+
     def __init__(self, path):
         self.dbf = DbFile(os.path.join(path, '.shamo'), ENTRY_DM)
+        self._dir_id = None
 
     def directory_usage(self):
-        return self.dbf.select('entry',{},
+        return self.dbf.select(ENTRY,{},
                                where='1=1 order by size DESC, name')
 
+    def read_entries(self):
+        if self.dbf.exists():
+            try:
+                q = self.dbf.select(ENTRY, {}, where='1=1')
+                return {r['name']: r for r in q}
+            except:
+                pass
+        return {}
 
-class DirScan(Shamo,Scan):
+    def store_entries(self, entries):
+        try:
+            with Session(self.dbf) as session:
+                self.dir_id(session=session)
+                self.dbf.delete(ENTRY, {}, where='1=1',
+                                session=session)
+                for e in entries:
+                    self.dbf.insert(ENTRY, e, session=session)
+        except:
+            # from traceback import print_exc
+            # print_exc()
+            log.warning('cannot store: ' + self.dbf.file)
+
+    @_session
+    def dir_id(self, session=None):
+        if self._dir_id is None:
+            r = None
+            if not session.has_table(DIRKEY):
+                self.dbf.create_db(session=session)
+            else:
+                r = self.dbf.select_one(DIRKEY,
+                                        quict(singleton_id=1),
+                                        session=session)
+            if r is not None:
+                self._dir_id = r['dir_id']
+            else:
+                self._dir_id = b58.encode(os.urandom(32))
+                self.dbf.store(DIRKEY, {
+                    'singleton_id': 1,
+                    '_dir_id': self._dir_id},
+                               session=session)
+        return self._dir_id
+
+
+class DirScan(Shamo, Scan):
     def __init__(self, path, addname=None, stats = None,
                  ignore_entries=[], on_each_dir=None, parent=None):
         self.parent = parent
@@ -183,30 +237,9 @@ class DirScan(Shamo,Scan):
 
         child_entries = []
 
-        def read_entries():
-            if self.dbf.exists():
-                try:
-                    q = self.dbf.select('entry', {}, where='1=1')
-                    return {r['name']: r for r in q}
-                except:
-                    pass
-            return {}
 
-        def store_entries(entries):
-            try:
-                with Session(self.dbf) as session:
-                    if not session.has_table('entry'):
-                        self.dbf.create_db(session=session)
-                    self.dbf.delete('entry', {}, where='1=1',
-                                    session=session)
-                    for e in entries:
-                        self.dbf.insert('entry', e, session=session)
-            except:
-                # from traceback import print_exc
-                # print_exc()
-                log.warning('cannot store: ' + self.dbf.file)
 
-        old_db_entries = read_entries()
+        old_db_entries = self.read_entries()
 
         files = sorted(filter(ignore_files, os.listdir(self.path)))
         ignore_entries = parse_ignore_specs(self.path, files, ignore_entries)
@@ -251,7 +284,7 @@ class DirScan(Shamo,Scan):
 
         self.new_db_entries =[ e.new_db_entry() for e in child_entries]
 
-        store_entries(self.new_db_entries)
+        self.store_entries(self.new_db_entries)
 
         log.debug(u'{self.path} -> {self.udk}'.format(**locals()))
 
@@ -272,6 +305,7 @@ class Remote:
     def __init__(self, directory):
         self.path = os.path.abspath(directory)
         self.dbf = DbFile(os.path.join(self.path, '.shamo'), REMOTE_DM)
+
 
     def register(self, url, invitation=None, session=None):
         url_uuid = uuid.uuid4()

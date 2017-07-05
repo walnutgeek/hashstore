@@ -41,7 +41,9 @@ def main():
 
     import hashstore.dir_scan as dscan
     if doing['ls']:
-        usage = dscan.Shamo(args.dir).directory_usage()
+        shamo = dscan.Shamo(args.dir)
+        usage = shamo.directory_usage()
+        print(shamo.dir_id())
         print_pad(usage, 'file_type size name'.split())
     elif doing['scan']:
         udk = dscan.DirScan(args.dir).udk
