@@ -3,6 +3,7 @@ import requests
 import json
 import six
 from hashstore.utils import json_encoder
+from hashstore.udk import quick_hash
 import logging
 log = logging.getLogger(__name__)
 
@@ -11,23 +12,27 @@ class RemoteStorage:
     def __init__(self, url):
         self.url = url
         self.headers = {}
+        self.logged_in = False
 
-    def set_auth_session(self,auth_session):
-        self.headers['auth_session'] = str(auth_session)
-
-    def register(self,mount_uuid, invitation=None, meta = None):
+    def register(self, mount_uuid, invitation=None, meta=None):
         response = self.post_meta_data('register',
                                    {'mount_uuid': mount_uuid,
                                     'invitation': invitation,
                                     'meta': meta})
         return json.loads(response)
 
-    def login(self,mount_uuid):
+    def login(self,mount_uuid,server_hash):
         response = self.post_meta_data('login', {'mount_uuid': mount_uuid})
-        return json.loads(response)
+        resp = json.loads(response)
+
+        if server_hash != quick_hash(resp['server_uuid']):
+            raise AssertionError('cannot validate server')
+        self.headers['auth_session'] = str(resp['auth_session'])
+        self.logged_in = True
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.logout()
+        if self.logged_in:
+            self.logout()
 
     def __enter__(self):
         return self
@@ -58,6 +63,5 @@ class RemoteStorage:
         if k.has_data():
             return six.BytesIO(k.data())
         url = self.url + '.raw/' + str(k.strip_bundle())
-        print(url)
         return requests.get(url, headers=self.headers, stream=True).raw
 

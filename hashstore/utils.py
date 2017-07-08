@@ -240,3 +240,34 @@ def print_pad(data, columns):
             srow += s
             pad = max_lens[icol]-len(s) + 2
         print(srow)
+
+
+def is_file_in_directory(file, dir):
+    '''
+    >>> is_file_in_directory('/a/b/c.txt', '/a')
+    True
+    >>> is_file_in_directory('/a/b/c.txt', '/a/')
+    True
+    >>> is_file_in_directory('/a/b/', '/a/b/')
+    True
+    >>> is_file_in_directory('/a/b/', '/a/b')
+    True
+    >>> is_file_in_directory('/a/b', '/a/b/')
+    True
+    >>> is_file_in_directory('/a/b', '/a/b')
+    True
+    >>> is_file_in_directory('/a/b', '/a//b')
+    True
+    >>> is_file_in_directory('/a//b', '/a/b')
+    True
+    >>> is_file_in_directory('/a/b/c.txt', '/')
+    True
+    >>> is_file_in_directory('/a/b/c.txt', '/aa')
+    False
+    >>> is_file_in_directory('/a/b/c.txt', '/b')
+    False
+    '''
+    realdir = os.path.realpath(dir)
+    dir = os.path.join(realdir, '')
+    file = os.path.realpath(file)
+    return file == realdir or os.path.commonprefix([file, dir]) == dir

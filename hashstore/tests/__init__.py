@@ -13,14 +13,17 @@ pyenv = 'py' + sys.version[0]
 class TestSetup:
     def __init__(self, name, ensure_empty = False):
         self.log = logging.getLogger(name)
-        self.dir = os.path.join(os.path.abspath("test-out"), pyenv, name )
+        test_out = os.path.abspath("test-out")
+        self.dir = os.path.join(test_out, pyenv, name)
+        self.home = os.path.join(test_out, pyenv, 'home')
         if ensure_empty:
             ensure_no_dir(self.dir)
             ensure_dir(self.dir)
+            ensure_dir(self.home)
         self.processes = {}
         self.counter = 0
 
-    def run_shash_and_wait(self, cmd, log_file = None, expect_rc = None):
+    def run_shash_and_wait(self, cmd, log_file=None, expect_rc=None):
         p_id = self.run_shash(cmd,log_file)
         popen, cmd, logpath = self.processes[p_id]
         rc = popen.wait()
@@ -46,7 +49,7 @@ class TestSetup:
             path = log_file
         else:
             path = self.full_log_path(log_file)
-        popen = run_bg(executable, cmd.split(), path)
+        popen = run_bg(executable, cmd.split(), self.home, path)
         self.processes[p_id] = (popen, cmd ,path)
         return p_id
 
@@ -186,13 +189,18 @@ def ensure_no_dir(dir):
                 break
 
 
-def run_bg(module, args=[], outfile=None):
+def run_bg(module,  args=[], home=None, outfile=None):
+    from subprocess import STDOUT
+    env = None
+    if home is not None:
+        env = os.environ
+        env['HOME'] = home
     command = ['coverage', 'run', '-p', '-m']
     command.append(module)
     for arg in args:
         command.append(arg)
-    f = open(outfile, 'w') if outfile is not None else None
-    return subprocess.Popen(command, stdout=f, stderr=subprocess.STDOUT)
+    fp = open(outfile, 'w') if outfile is not None else None
+    return subprocess.Popen(command, env=env, stdout=fp, stderr=STDOUT)
 
 
 class Py23DocChecker(OutputChecker):

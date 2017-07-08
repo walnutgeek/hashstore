@@ -1,6 +1,7 @@
 import fnmatch, os, codecs
 from hashstore.utils import path_split_all, ensure_unicode, quict,\
-    json_encoder,reraise_with_msg, ensure_directory, read_in_chunks
+    json_encoder,reraise_with_msg, ensure_directory, read_in_chunks, \
+    is_file_in_directory
 from hashstore.db import DbFile
 from hashstore.session import Session, _session
 from hashstore.udk import process_stream,\
@@ -291,20 +292,24 @@ class DirScan(Shamo, Scan):
         if on_each_dir:
             on_each_dir(self)
 
+REMOTE = 'remote'
+
 REMOTE_DM= '''
-    table:remote
+    table:{REMOTE}
       remote_id PK
+      path TEXT AK
       url_uuid UUID4
       url_text TEXT
       mount_session TEXT
       created TIMESTAMP INSERT_DT
-'''
+'''.format(**locals())
 
 
 class Remote:
     def __init__(self, directory):
         self.path = os.path.abspath(directory)
-        self.dbf = DbFile(os.path.join(self.path, '.shamo'), REMOTE_DM)
+        home_config = os.path.join(os.environ['HOME'], '.shamo')
+        self.dbf = DbFile(home_config, REMOTE_DM)
 
 
     def register(self, url, invitation=None, session=None):
@@ -316,22 +321,19 @@ class Remote:
         if server_uuid is not None:
             self.dbf.ensure_db()
             self.dbf.store('remote', quict(
-                remote_id=1,
+                path=self.path,
                 _url_uuid=url_uuid,
                 _url_text=url,
                 _mount_session=quick_hash(server_uuid)
             ), session=session)
 
     def storage(self):
-        remote = self.dbf.select_one('remote', quict(remote_id=1))
-        if remote is None:
-            raise ValueError('cannot backup, need register mount first')
-        storage = RemoteStorage(remote['url_text'])
-        resp = storage.login(remote['url_uuid'])
-        if remote['mount_session'] != quick_hash(resp['server_uuid']):
-            raise AssertionError('cannot validate server')
-        storage.set_auth_session(resp['auth_session'])
-        return storage
+        for remote in self.dbf.select('remote', {}, '1=1 order by path DESC'):
+            if is_file_in_directory(self.path, remote['path']) :
+                storage = RemoteStorage(remote['url_text'])
+                storage.login(remote['url_uuid'],remote['mount_session'])
+                return storage
+        raise ValueError('cannot backup, need register mount first')
 
     def backup(self):
         with self.storage() as storage:
