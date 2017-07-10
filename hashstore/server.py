@@ -4,10 +4,8 @@ from __future__ import unicode_literals
 import requests
 import os
 import time
-import logging
 import signal
 from hashstore.mount import PathResover, Content, split_path
-import six
 from hashstore.utils import json_encoder
 import json
 import tornado.web
@@ -16,13 +14,11 @@ import tornado.ioloop
 import tornado.httpserver
 import tornado.gen as gen
 import tornado.iostream
+from hashstore.mount import Mount,FileNotFound
+import logging
+log = logging.getLogger(__name__)
 
 GIGABYTE = pow(1024, 3)
-
-from hashstore.mount import Mount,FileNotFound
-
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(__name__)
 
 
 def _dummy_handler(content):
@@ -70,7 +66,7 @@ class PostHandler(tornado.web.RequestHandler):
                 auth_session=auth_session)
             self.write(json_encoder.encode(resp))
         elif path == 'register':
-            mount_meta =  {}
+            mount_meta={}
             if req['meta']:
                 mount_meta.update(**req['meta'])
             mount_meta['remote_ip'] = remote_ip

@@ -9,12 +9,12 @@ from hashstore.udk import process_stream,\
 import uuid
 from hashstore.client import RemoteStorage
 
-import logging
-log = logging.getLogger(__name__)
-logging.basicConfig(format='%(asctime)s %(message)s')
-
 import os
 import hashstore.base_x as bx
+
+import logging
+log = logging.getLogger(__name__)
+
 b58 = bx.base_x(58)
 
 
@@ -100,6 +100,7 @@ IGNORE_IF_STARTS_WITH = [u'.shamo', u'.backup', u'.Spotlight',
 def ignore_files(n):
     return not(n in IGNORE_FILENAMES or
                any(n.startswith(t) for t in IGNORE_IF_STARTS_WITH))
+
 
 class ScanStats:
     def __init__(self, force_rehash=False):
@@ -325,7 +326,11 @@ class Remote:
                 _url_uuid=url_uuid,
                 _url_text=url,
                 _mount_session=quick_hash(server_uuid)
-            ), session=session)
+                ), session=session)
+            log.info('remote registered for {self.path} at {url}'.format(
+                **locals()))
+        else:
+            log.error('cannot register on: {url}'.format(**locals()))
 
     def storage(self):
         for remote in self.dbf.select('remote', {}, '1=1 order by path DESC'):

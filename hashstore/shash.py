@@ -1,6 +1,5 @@
 import logging
 from hashstore.utils import print_pad
-logging.basicConfig(level=logging.INFO)
 
 
 def args_parser():
@@ -10,14 +9,14 @@ def args_parser():
 
     parser.add_argument('command', choices=COMMANDS)
 
-    parser.set_defaults(secure=None)
+    parser.set_defaults(secure=None, debug=False)
 
     parser.add_argument('--url', metavar='url', nargs='?',
                         default=None,
                         help='a url where server is running')
     parser.add_argument('--invitation', metavar='invitation', nargs='?',
                         default=None,
-                        help='invitation recieved from server')
+                        help='invitation received from server')
     parser.add_argument('--dir', metavar='dir', nargs='?',
                         default='.',
                         help='directory to be backed up')
@@ -28,6 +27,9 @@ def args_parser():
     parser.add_argument('--udk', metavar='udk', nargs='?',
                         default=None,
                         help='version of directory to be restored')
+    parser.add_argument('--debug', dest="debug", action='store_true',
+                        help='change loginin leve to debug. '
+                             'default is INFO')
     return parser
 
 COMMANDS = 'register backup restore scan ls'.split()
@@ -36,6 +38,10 @@ COMMANDS = 'register backup restore scan ls'.split()
 def main():
     parser = args_parser()
     args = parser.parse_args()
+
+    level = logging.DEBUG if args.debug else logging.INFO
+    logging.basicConfig(level=level)
+
     cmd_picked = [args.command == n for n in COMMANDS]
     doing = dict(zip(COMMANDS, cmd_picked))
 

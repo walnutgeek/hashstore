@@ -36,8 +36,7 @@ class Session:
             else:
                 self.cursor.execute(q, data)
         except Exception as e:
-            utils.reraise_with_msg('q=%s data=%r' % (q, data), e)
-
+            utils.reraise_with_msg('q=%s \ndata=%r \nfile=%s' % (q, data, self.file), e)
 
     def query(self, q, params=None, as_dicts=False):
         self.execute(q, params)

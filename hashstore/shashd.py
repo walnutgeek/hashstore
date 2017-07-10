@@ -3,6 +3,7 @@ from hashstore.local_store import AccessMode
 from hashstore.mount import Mount
 import six
 import yaml
+import logging
 
 def args_parser():
     import argparse
@@ -11,7 +12,7 @@ def args_parser():
 
     parser.add_argument('command', choices=COMMANDS)
 
-    parser.set_defaults(secure=None)
+    parser.set_defaults(secure=None,debug=False)
     parser.add_argument('--port', metavar='port', type=int, nargs='?',
                         default=7532, help='a port to listen.')
     parser.add_argument('--insecure', dest="secure", action='store_false',
@@ -28,6 +29,9 @@ def args_parser():
     parser.add_argument('--config', metavar='config',
                         nargs='?', default=None,
                         help='yaml configuration file name')
+    parser.add_argument('--debug', dest="debug", action='store_true',
+                        help='change loginin leve to debug. '
+                             'default is INFO')
 
     return parser
 
@@ -37,9 +41,12 @@ COMMANDS = 'start stop invite'.split()
 def main():
     parser = args_parser()
     args = parser.parse_args()
+
+    level = logging.DEBUG if args.debug else logging.INFO
+    logging.basicConfig(level=level)
+
     cmd_picked = [args.command == n for n in COMMANDS]
     doing = dict(zip(COMMANDS, cmd_picked))
-
     store_dir = args.store_dir
     port = args.port
     access_mode = AccessMode.from_bool(args.secure)
