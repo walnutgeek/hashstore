@@ -51,6 +51,7 @@ def main():
         usage = shamo.directory_usage()
         print(shamo.dir_id())
         print_pad(usage, 'file_type size name'.split())
+        print('total_size: %d' % sum( r['size'] for r in usage))
     elif doing['scan']:
         udk = dscan.DirScan(args.dir).udk
         print(udk)
