@@ -1,4 +1,7 @@
 import fnmatch, os, codecs
+
+import six
+
 from hashstore.utils import path_split_all, ensure_unicode, quict,\
     json_encoder,reraise_with_msg, ensure_directory, read_in_chunks, \
     is_file_in_directory
@@ -10,6 +13,7 @@ import uuid
 from hashstore.client import RemoteStorage
 
 import os
+import sys
 import hashstore.base_x as bx
 
 import logging
@@ -181,6 +185,9 @@ class Shamo:
         self.dbf = DbFile(os.path.join(path, '.shamo'), ENTRY_DM)
         self._dir_id = None
 
+    def total(self):
+        return sum(f['size'] for f in self.directory_usage())
+
     def directory_usage(self):
         return self.dbf.select(ENTRY,{},
                                where='1=1 order by size DESC, name')
@@ -238,8 +245,6 @@ class DirScan(Shamo, Scan):
         Shamo.__init__(self,self.path)
 
         child_entries = []
-
-
 
         old_db_entries = self.read_entries()
 
@@ -305,6 +310,45 @@ REMOTE_DM= '''
       created TIMESTAMP INSERT_DT
 '''.format(**locals())
 
+class Progress:
+    def __init__(self,path):
+        self.path = path
+        try:
+            self.total = Shamo(path).total()
+        except:
+            self.total = None
+        self.current = 0
+        self.terminal = sys.stdout.isatty()
+        self.pad_to = 0
+        self._value = ''
+
+
+    def just_processed(self, towards_total, directory ):
+        self.current += towards_total
+        directory = directory[len(self.path)+1:]
+        look = lambda start: directory.index(os.path.sep, start) + 1
+        try:
+            directory = directory[:look(look(look(0)))]
+        except:
+            pass
+        if six.PY2:
+            directory = directory.encode('utf-8')
+        output = '%s %s ' % (self.pct_value(), directory)
+        if self._value != output:
+            self._value = output
+            diff = self.pad_to - len(output)
+            self.pad_to = len(output)
+            if diff > 0 :
+                output += ' ' * diff
+            output += '\r' if self.terminal else '\n'
+            sys.stdout.write(output)
+            sys.stdout.flush()
+
+    def pct_value(self):
+        if self.total is None:
+            return '?'
+        pct_format = '%3.2f%%' if self.terminal  else  '%3d%%'
+        return pct_format % (100 * float(self.current)/self.total)
 
 class Remote:
     def __init__(self, directory):
@@ -341,18 +385,30 @@ class Remote:
         raise ValueError('cannot backup, need register mount first')
 
     def backup(self):
+        progress = Progress(self.path)
         with self.storage() as storage:
             def ensure_files_on_remote(dir_scan):
                 bundles = { dir_scan.udk: dir_scan.bundle}
                 mount_hash = dir_scan.udk if dir_scan.parent is None else None
-                _, hashes_to_push = storage.store_directories(bundles, mount_hash)
-                for h in hashes_to_push:
-                    h = UDK.ensure_it(h)
-                    name = dir_scan.bundle.get_name_by_udk(h)
-                    fp = open(os.path.join(dir_scan.path,name), 'rb')
-                    k = storage.write_content(fp)
-                    if k != h:
-                        raise AssertionError('%s != %s' % (h,k))
+                store_dir = True
+                while store_dir:
+                    _, hashes_to_push = storage.store_directories(bundles, mount_hash)
+                    store_dir = False
+                    for h in hashes_to_push:
+                        h = UDK.ensure_it(h)
+                        name = dir_scan.bundle.get_name_by_udk(h)
+                        file = os.path.join(dir_scan.path, name)
+                        fp = open(file, 'rb')
+                        stored = storage.write_content(fp)
+                        if stored != h:
+                            log.info('path:%s, %s != %s' % (file, h, stored))
+                            dir_scan.bundle[name] = stored
+                            dir_scan.udk = dir_scan.bundle.udk()
+                            store_dir = True
+                progress.just_processed(sum(f['size'] for f in dir_scan.new_db_entries
+                                            if f['file_type'] == 'FILE')
+                                        + dir_scan.bundle.size(), dir_scan.path)
+
             dir = DirScan(self.path,on_each_dir=ensure_files_on_remote)
             return dir.udk
 

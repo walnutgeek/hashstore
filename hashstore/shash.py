@@ -1,5 +1,11 @@
 import logging
+import os
+
+from hashstore import utils
+from hashstore.udk import UDK
 from hashstore.utils import print_pad
+
+log = logging.getLogger(__name__)
 
 
 def args_parser():
@@ -32,7 +38,7 @@ def args_parser():
                              'default is INFO')
     return parser
 
-COMMANDS = 'register backup restore scan ls'.split()
+COMMANDS = 'register backup restore scan ls find'.split()
 
 
 def main():
@@ -52,6 +58,23 @@ def main():
         print(shamo.dir_id())
         print_pad(usage, 'file_type size name'.split())
         print('total_size: %d' % sum( r['size'] for r in usage))
+    elif doing['find']:
+        results = []
+        def find(directory, udk):
+            try:
+                files=dscan.Shamo(directory).directory_usage()
+                for f in files:
+                    f['name'] = os.path.join(directory, f['name'])
+                    if f['file_type'] == 'DIR':
+                        find(f['name'], udk)
+                    f_udk = UDK.ensure_it(f['udk'])
+                    if f_udk == udk:
+                        results.append(f)
+            except:
+                log.warning(utils.exception_message())
+        find(args.dir,UDK.ensure_it(args.udk))
+        print_pad(results, 'file_type size udk name'.split())
+
     elif doing['scan']:
         udk = dscan.DirScan(args.dir).udk
         print(udk)

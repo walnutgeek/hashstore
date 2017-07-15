@@ -228,18 +228,19 @@ class FileNotFound(Exception):
 
 def print_pad(data, columns):
     sdata = []
-    for c in columns:
-        sdata.append(['' if r[c] is None else str(r[c]) for r in data])
-    max_lens =[max(len(cell) for cell in scolumn) for scolumn in sdata]
-    for irow in range(len(data)):
-        pad = 2
-        srow = ''
-        for icol in range(len(columns)):
-            srow += ' ' * pad
-            s = sdata[icol][irow]
-            srow += s
-            pad = max_lens[icol]-len(s) + 2
-        print(srow)
+    if len(data) > 0 :
+        for c in columns:
+            sdata.append(['' if r[c] is None else str(r[c]) for r in data])
+        max_lens =[max(len(cell) for cell in scolumn) for scolumn in sdata]
+        for irow in range(len(data)):
+            pad = 2
+            srow = ''
+            for icol in range(len(columns)):
+                srow += ' ' * pad
+                s = sdata[icol][irow]
+                srow += s
+                pad = max_lens[icol]-len(s) + 2
+            print(srow)
 
 
 def is_file_in_directory(file, dir):

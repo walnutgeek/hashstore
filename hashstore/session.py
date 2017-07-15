@@ -16,13 +16,16 @@ class Session:
     def __init__(self, dbf, trace_stack = None):
         self.dbf = dbf
         self.file = dbf.file
-        self.trace_stack = trace_stack
-        self.conn = sqlite3.connect(self.file)
-        self.conn.execute('pragma foreign_keys = on')
-        stack = '\n' + ''.join(traceback.format_stack(limit=self.trace_stack)) if self.trace_stack is not None else ''
-        log.debug('CONNECT: %s%s' % (self.file, stack))
-        self.cursor = self.conn.cursor()
-        self.success = True
+        try:
+            self.trace_stack = trace_stack
+            self.conn = sqlite3.connect(self.file)
+            self.conn.execute('pragma foreign_keys = on')
+            stack = '\n' + ''.join(traceback.format_stack(limit=self.trace_stack)) if self.trace_stack is not None else ''
+            log.debug('CONNECT: %s%s' % (self.file, stack))
+            self.cursor = self.conn.cursor()
+            self.success = True
+        except:
+            utils.reraise_with_msg('file:'+self.file)
 
 
     def set_for_rollback(self):

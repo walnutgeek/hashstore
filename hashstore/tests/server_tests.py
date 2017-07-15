@@ -107,8 +107,8 @@ mounts:
                                         expect_rc=0)
         _, s2 = test.run_shash_and_wait('ls --dir {f2}'.format(**locals()),
                                         expect_rc=0)
-        eq_(s1, 'a')
-        eq_(s2, 'a')
+        eq_(s1, '119767')
+        eq_(s2, '225926')
 
         if not(secured_read_access):
             import requests
