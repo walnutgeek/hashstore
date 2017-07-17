@@ -4,7 +4,7 @@ from setuptools import setup
 install_requires = open('requirements.txt').read().split()
 
 setup(name='hashstore',
-      version='0.0.11',
+      version='0.0.12',
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Intended Audience :: Developers',
