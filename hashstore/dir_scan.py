@@ -8,7 +8,7 @@ from hashstore.utils import path_split_all, ensure_unicode, quict,\
 from hashstore.db import DbFile
 from hashstore.session import Session, _session
 from hashstore.udk import process_stream,\
-    UDK,UDKBundle,UdkSet,quick_hash
+    UDK,UDKBundle,quick_hash
 import uuid
 from hashstore.client import RemoteStorage
 
