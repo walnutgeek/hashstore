@@ -3,8 +3,7 @@ from hashstore.mymime import MIME_WDF, MIME_UDK_BUNDLE, guess_type
 from hashstore.db import DbFile
 from hashstore.session import _session, _session_dbf
 from hashstore.local_store import HashStore, AccessMode
-from hashstore.udk import process_stream,\
-    UDK,UDKBundle,UdkSet,quick_hash
+from hashstore.udk import process_stream, UDK, UDKBundle
 from hashstore.client import RemoteStorage
 from hashstore.utils import quict, path_split_all, reraise_with_msg, \
     read_in_chunks, ensure_directory, FileNotFound, _cacheable, \

@@ -61,23 +61,23 @@ def test_UDK():
 def test_Bundle():
     inline_udk = 'M2MJrQoJnyE16leiBSMGeQOj7z+ZPuuaveBlvnOn3et1CzowDuGbTqw=='
     b1 = hashstore.udk.UDKBundle()
-    u1, _, c = b1.udk_content()
+    u1 = b1.udk()
     u0 = u1
-    b2 = hashstore.udk.UDKBundle().parse(c)
-    u2, _, c = b2.udk_content()
+    b2 = hashstore.udk.UDKBundle().parse(b1.content())
+    u2 = b2.udk()
     eq_(u1,u2)
     ok_(u1 == u2)
     b1['a'] = inline_udk
     udk_bundle_str = '[["a"], ["%s"]]' % inline_udk
     eq_(str(b1), udk_bundle_str)
-    u1, _, c = b1.udk_content()
+    u1 = b1.udk()
     ok_(u1 != u2)
-    b2.parse(six.BytesIO(ensure_bytes(c)))
+    b2.parse(six.BytesIO(ensure_bytes(b1.content())))
     eq_(str(b2), udk_bundle_str)
-    u2, _, c = b2.udk_content()
+    u2 = b2.udk()
     eq_(u1, u2)
     del b2['a']
-    u2, _, c = b2.udk_content()
+    u2= b2.udk()
     eq_(u0,u2)
     eq_(b1['a'],hashstore.udk.UDK(inline_udk))
     eq_(b1.get_udks(),[hashstore.udk.UDK(inline_udk)])
@@ -96,34 +96,6 @@ zuudk = lambda ch: hashstore.udk.UDK(uuudk(ch))
 u_or_z_uudk = lambda i, ch: (uuudk if i % 2 == 1 else zuudk)(ch)
 ssset = lambda set: ''.join( k.k[:1] for k in set)
 
-
-def test_Set():
-    seed(0)
-    cases = random_small_caps(100)
-    set = hashstore.udk.UdkSet()
-    a = ''
-    for i,c in enumerate(cases):
-        k = u_or_z_uudk(i,c)
-        a += 'a' if set.add(k) else ' '
-    eq_( cases, 'mpvaddhjtvsexgyymbghxoyrfnijutqtfppasdyrtttohabjakuxdlsxcaaevfgiurpejkybbhjdgxlosaodvmkulegepudmeuio')
-    eq_(a,      'aaaaa aaa aaaaa  a   a aaaa a a                  a   a  a                                           ')
-    eq_(ssset(set), 'abcdefghijklmnopqrstuvxy')
-    ok_(uuudk('a') in set)
-    ok_(zuudk('a') in set)
-    ok_(uuudk('z') not in set)
-    ok_(zuudk('z') not in set)
-    eq_(hashstore.udk.UdkSet(set.to_json()), set)
-    eq_(hashstore.udk.UdkSet(six.BytesIO(ensure_bytes(str(set)))), set)
-    eq_(hashstore.udk.UdkSet(str(set)), set)
-    eq_(hash(hashstore.udk.UdkSet(str(set))), hash(set))
-    eq_(hash(hashstore.udk.UdkSet(str(set))), hash(set))
-    eq_(hashstore.udk.UdkSet.ensure_it(set), set)
-    eq_(hashstore.udk.UdkSet.ensure_it(str(set)), set)
-    eq_(set[0].k[:1], 'a')
-    i = len(set)
-    del set[0]
-    eq_(i-1, len(set))
-    eq_(ssset(set), 'bcdefghijklmnopqrstuvxy')
 
 
 

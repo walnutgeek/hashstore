@@ -1,7 +1,5 @@
 import fnmatch, os, codecs
-
 import six
-
 from hashstore.utils import path_split_all, ensure_unicode, quict,\
     json_encoder,reraise_with_msg, ensure_directory, read_in_chunks, \
     is_file_in_directory
@@ -11,7 +9,6 @@ from hashstore.udk import process_stream,\
     UDK,UDKBundle,quick_hash
 import uuid
 from hashstore.client import RemoteStorage
-
 import os
 import sys
 import hashstore.base_x as bx

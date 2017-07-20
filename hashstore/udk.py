@@ -204,10 +204,10 @@ class UDKBundle(utils.Jsonable):
 
     >>> udks.keys()
     ['longer', 'short']
-    >>> udks_udk, size, content = udks.udk_content()
+    >>> udks_udk = udks.udk()
     >>> str(udks_udk)
     'X4453e495c259e32294f47a8592b5c187901c9ea13bdcc517e0994aa6f556986d'
-    >>> content
+    >>> udks.content()
     '[["longer", "short"], ["973153f86ec2da1748e63f0cf85b89835b42f8ee8018c549868a1308a19f6ca3", "MVGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZw=="]]'
     >>> no_bundle_marker = udks_udk.strip_bundle()
     >>> str(no_bundle_marker)
@@ -302,80 +302,4 @@ class UDKBundle(utils.Jsonable):
     def to_json(self):
         keys = self.keys()
         return [keys, self.get_udks(keys)]
-
-    def udk_content(self):
-        content = str(self)
-        in_bytes = utils.ensure_bytes(content)
-        return UDK.from_digest_and_inline_data(quick_hash(in_bytes), in_bytes, bundle=True), len(in_bytes), content
-
-
-class UdkSet(utils.Jsonable):
-    def __init__(self,o=None):
-        self.store = []
-        if o is not None:
-            self.parse(o)
-
-    def parse(self, o):
-        if isinstance(o, six.string_types):
-            udks = json.loads(o)
-        elif hasattr(o, 'read'):
-            udks = json.load(o)
-        else:
-            udks = o
-        for k in udks:
-            self.add(k)
-        return self
-
-    def _index_of(self,k):
-        l = len(self.store)
-        if l == 0:
-            return -1
-        else:
-            lo = 0
-            hi = l - 1
-            while True:
-                i = lo + int((hi-lo)/2)
-                s = self.store[i].k
-                if s == k.k:
-                    return i
-                if s > k.k:
-                    if i == lo:
-                        i = -1-i
-                        break
-                    hi = max(lo, i-1)
-                else:
-                    if i == hi:
-                        i = -1-(i+1)
-                        break
-                    lo = min(hi, i+1)
-            return i
-
-    def add(self,k):
-        k = UDK.ensure_it(k).strip_bundle()
-        i = self._index_of(k)
-        to_add = i < 0
-        if to_add:
-            at = -(i + 1)
-            self.store.insert(at, k)
-        return to_add
-
-    def __contains__(self, k):
-        k = UDK.ensure_it(k).strip_bundle()
-        return self._index_of(k) >= 0
-
-    def __iter__(self):
-        return iter(self.store)
-
-    def __delitem__(self, k):
-        del self.store[k]
-
-    def __getitem__(self, k):
-        return self.store[k]
-
-    def __len__(self):
-        return len(self.store)
-
-    def to_json(self):
-        return self.store
-
 

@@ -13,12 +13,12 @@ def test_docs():
     doctest_it(test_subject)
 
 
-def test_UDK():
+def test_CAKe():
     def do_test(c, s, d=None):
         u1 = ids.CAKe.from_string(c)
         eq_(s, str(u1))
         u1n = ids.CAKe(str(u1))
-        eq_(u1.digest, u1n.digest)
+        eq_(u1.digest(), u1n.digest())
         eq_(u1, u1n)
         if d is None:
             ok_(not(u1.has_data()))
@@ -26,14 +26,14 @@ def test_UDK():
             ok_(u1.has_data())
             eq_(c,u1.data())
 
-    do_test(b'', '1', True)
-    do_test(b'a' * 1, '12g', True)
-    do_test(b'a' * 2, '18Qp', True)
-    do_test(b'a' * 3, '1Zi88', True)
-    do_test(b'a' * 32, '17Z8ftDAzMvoyXnGEJye8DurzgQQXLAbYCaeeesM7UKHa',
+    do_test(b'', '0', True)
+    do_test(b'a' * 1, '01z', True)
+    do_test(b'a' * 2, '06u5', True)
+    do_test(b'a' * 3, '0qMed', True)
+    do_test(b'a' * 32, '0n5He1k77fjNxZNzBxGpha2giODrkmwQfOg6WorIJ4m5',
             True)
-    do_test(b'a' * 33, 'TC6YoprGnucZuxY9wg2NaYUgCvuVJCjkGgXnd6RiUoVK' )
-    do_test(b'a' * 46, 'R7WGeiz5xkhGTD1vh4KrmeGsdD8B1VnxUNWvWAjh4Cst')
+    do_test(b'a' * 33, '1uhocJXiWEa4cLBvQRvkSQGzaiAvRB1jznYWq4xCOckO')
+    do_test(b'a' * 46, '1mXcPcYpN8zZYdpM04hafWih3o1NQbr4q5bJtPYPq7Ev')
 
     # ok_(False)
 #
@@ -76,34 +76,5 @@ def test_UDK():
 # ssset = lambda set: ''.join( k.k[:1] for k in set)
 #
 #
-# def test_Set():
-#     seed(0)
-#     cases = random_small_caps(100)
-#     set = ids.UdkSet()
-#     a = ''
-#     for i,c in enumerate(cases):
-#         k = u_or_z_uudk(i,c)
-#         a += 'a' if set.add(k) else ' '
-#     eq_( cases, 'mpvaddhjtvsexgyymbghxoyrfnijutqtfppasdyrtttohabjakuxdlsxcaaevfgiurpejkybbhjdgxlosaodvmkulegepudmeuio')
-#     eq_(a,      'aaaaa aaa aaaaa  a   a aaaa a a                  a   a  a                                           ')
-#     eq_(ssset(set), 'abcdefghijklmnopqrstuvxy')
-#     ok_(uuudk('a') in set)
-#     ok_(zuudk('a') in set)
-#     ok_(uuudk('z') not in set)
-#     ok_(zuudk('z') not in set)
-#     eq_(ids.UdkSet(set.to_json()), set)
-#     eq_(ids.UdkSet(six.BytesIO(ensure_bytes(str(set)))), set)
-#     eq_(ids.UdkSet(str(set)), set)
-#     eq_(hash(ids.UdkSet(str(set))), hash(set))
-#     eq_(hash(ids.UdkSet(str(set))), hash(set))
-#     eq_(ids.UdkSet.ensure_it(set), set)
-#     eq_(ids.UdkSet.ensure_it(str(set)), set)
-#     eq_(set[0].k[:1], 'a')
-#     i = len(set)
-#     del set[0]
-#     eq_(i-1, len(set))
-#     eq_(ssset(set), 'bcdefghijklmnopqrstuvxy')
-#
-
 
 

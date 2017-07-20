@@ -99,9 +99,10 @@ def test_SecureStore():
     d = udk.UDKBundle()
     d['100k'] = h100k
     d['4k'] = h4k
-    hd, size, content = d.udk_content()
+    hd = d.udk()
+    size = d.size()
     eq_(str(hd),'X2183f19bce1c1cb3f91fbdfc8ec15fe6ce89aafa4b43de154205237a824d9666')
-    eq_(content,'[["100k", "4k"], ["b99268b77ce16d561a78b9a533349e46882f2df0b735e73d7441943074e214e5", "5694182274e5a6cab47ce45024b72f94dcfd7de584f2b4432fb3556ebb870fad"]]')
+    eq_(d.content(),'[["100k", "4k"], ["b99268b77ce16d561a78b9a533349e46882f2df0b735e73d7441943074e214e5", "5694182274e5a6cab47ce45024b72f94dcfd7de584f2b4432fb3556ebb870fad"]]')
     hs.store_directories({hd:d},auth_session=auth_session,mount_hash=hd)
 
     hs.logout(auth_session=auth_session)

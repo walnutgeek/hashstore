@@ -277,9 +277,9 @@ class HashStore:
 
     def store_directories(self, directories, mount_hash=None, auth_session = None):
         self.check_auth_session(auth_session, mount_hash)
-        unseen_file_hashes = udk.UdkSet()
-        dirs_stored = udk.UdkSet()
-        dirs_mismatch = udk.UdkSet()
+        unseen_file_hashes = set()
+        dirs_stored = set()
+        dirs_mismatch = set()
         for dir_hash, dir_contents in six.iteritems(directories):
             dir_hash = udk.UDK.ensure_it(dir_hash)
             dir_contents = udk.UDKBundle.ensure_it(dir_contents)
@@ -301,7 +301,7 @@ class HashStore:
                         unseen_file_hashes.add(file_hash)
         if len(dirs_mismatch) > 0: # pragma: no cover
             raise AssertionError('could not store directories: %r' % dirs_mismatch)
-        return len(dirs_stored), unseen_file_hashes
+        return len(dirs_stored), list(unseen_file_hashes)
 
     def lookup(self, k):
         k = udk.UDK.nomalize(k)
