@@ -5,3 +5,4 @@ tornado
 enum34
 argparse
 markdown
+SQLAlchemy

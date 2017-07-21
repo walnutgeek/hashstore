@@ -56,7 +56,7 @@ mounts:
                        '{server_opt}'.format(**locals()))
         time.sleep(3)
         if do_invitation:
-            invite_log = test.full_log_path(store_dir + '_invite.log')
+            invite_log = test.file_path(store_dir + '_invite.log')
             if use_config:
                 rc,invitation = test.run_shash_and_wait(
                     'd invite --config ' + yaml_config, invite_log, expect_rc=0)

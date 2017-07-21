@@ -1,11 +1,18 @@
-from nose.tools import eq_,ok_,with_setup
+from nose.tools import eq_,ok_
 import hashstore.ids as ids
-import logging
+import six
 from hashstore.utils import ensure_bytes
-from hashstore.tests import seed,random_small_caps, doctest_it
+from hashstore.tests import TestSetup, doctest_it
 
+from sqlalchemy import Table, MetaData, Column, types, \
+    create_engine, select
 
-log = logging.getLogger(__name__)
+import logging
+logging.basicConfig()
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
+test = TestSetup(__name__,ensure_empty=True)
+log = test.log
 
 
 def test_docs():
@@ -35,46 +42,76 @@ def test_CAKe():
     do_test(b'a' * 33, '1uhocJXiWEa4cLBvQRvkSQGzaiAvRB1jznYWq4xCOckO')
     do_test(b'a' * 46, '1mXcPcYpN8zZYdpM04hafWih3o1NQbr4q5bJtPYPq7Ev')
 
-    # ok_(False)
-#
-# def test_Bundle():
-#     inline_udk = 'M2MJrQoJnyE16leiBSMGeQOj7z+ZPuuaveBlvnOn3et1CzowDuGbTqw=='
-#     b1 = ids.UDKBundle()
-#     u1, _, c = b1.udk_content()
-#     u0 = u1
-#     b2 = ids.UDKBundle().parse(c)
-#     u2, _, c = b2.udk_content()
-#     eq_(u1,u2)
-#     ok_(u1 == u2)
-#     b1['a'] = inline_udk
-#     udk_bundle_str = '[["a"], ["%s"]]' % inline_udk
-#     eq_(str(b1), udk_bundle_str)
-#     u1, _, c = b1.udk_content()
-#     ok_(u1 != u2)
-#     b2.parse(six.BytesIO(ensure_bytes(c)))
-#     eq_(str(b2), udk_bundle_str)
-#     u2, _, c = b2.udk_content()
-#     eq_(u1, u2)
-#     del b2['a']
-#     u2, _, c = b2.udk_content()
-#     eq_(u0,u2)
-#     eq_(b1['a'],ids.UDK(inline_udk))
-#     eq_(b1.get_udks(),[ids.UDK(inline_udk)])
-#     eq_([k for k in b1], ['a'])
-#     eq_([k for k in b2], [])
-#     eq_(b1.get_name_by_udk(inline_udk), 'a')
-#     eq_(b1.get_name_by_udk(ids.UDK(inline_udk).hexdigest()), 'a')
-#     eq_(ids.UDKBundle(b1.to_json()), b1)
-#     eq_(ids.UDKBundle.ensure_it(b1.to_json()), b1)
-#     eq_(len(b1),1)
-#     eq_(str(b1),udk_bundle_str)
-#     eq_(hash(b1),hash(udk_bundle_str))
-#
-# uuudk = lambda ch: ch * 64
-# zuudk = lambda ch: ids.UDK(uuudk(ch))
-# u_or_z_uudk = lambda i, ch: (uuudk if i % 2 == 1 else zuudk)(ch)
-# ssset = lambda set: ''.join( k.k[:1] for k in set)
-#
-#
+
+def test_Bundle():
+    inline_udk = '01aMUQDApalaaYbXFjBVMMvyCAMfSPcTojI0745igi'
+    b1 = ids.NamedCAKes()
+    eq_(b1.content(),'[[], []]')
+    u1 = b1.udk()
+    u0 = u1
+    file_path = test.file_path('content.json')
+    with open(file_path, 'w') as w:
+        w.write(b1.content())
+    b2 = ids.NamedCAKes().parse(b1.content())
+    u_f = ids.CAKe.from_file(file_path, ids.DataType.BUNDLE)
+    u2 = b2.udk()
+    eq_(u_f, u2)
+    eq_(u1,u2)
+    ok_(u1 == u2)
+    b1['a'] = inline_udk
+    udk_bundle_str = '[["a"], ["%s"]]' % inline_udk
+    eq_(str(b1), udk_bundle_str)
+    u1 = b1.udk()
+    ok_(u1 != u2)
+    b2.parse(six.BytesIO(ensure_bytes(b1.content())))
+    eq_(str(b2), udk_bundle_str)
+    eq_(b2.size(),55)
+    u2 = b2.udk()
+    eq_(u1, u2)
+    del b2['a']
+    u2= b2.udk()
+    eq_(u0,u2)
+    eq_(b1['a'],ids.CAKe(inline_udk))
+    eq_(b1.get_udks(),[ids.CAKe(inline_udk)])
+    eq_([k for k in b1], ['a'])
+    eq_([k for k in b2], [])
+    eq_(b1.get_name_by_udk(inline_udk), 'a')
+    eq_(b1.get_name_by_udk(str(ids.CAKe(inline_udk))), 'a')
+    eq_(ids.NamedCAKes(b1.to_json()), b1)
+    eq_(ids.NamedCAKes.ensure_it(b1.to_json()), b1)
+    eq_(len(b1),1)
+    eq_(str(b1),udk_bundle_str)
+    eq_(hash(b1),hash(udk_bundle_str))
+    eq_(u1 == str(u1), False)
+
+
+
+def test_Alchemy():
+    meta = MetaData()
+    #'sqlite:///:memory:'
+    engine = create_engine('sqlite:///%s' % test.file_path('test.sqlite3'))
+
+    tbl = Table("mytable", meta,
+          Column("guid", ids.CAKeType(),
+                 primary_key=True,
+                 default=lambda: ids.CAKe.new_guid()),
+          Column('name', types.String()),
+          Column("attachment", ids.CAKeType(), nullable=True))
+    meta.create_all(engine)
+
+    r = engine.execute(tbl.insert().values(name='abc'))
+    guid1 = r.last_inserted_params()['guid']
+    log.debug( guid1 )
+    r = engine.execute(tbl.insert().values(name='xyz',attachment=None))
+    guid2 = r.last_inserted_params()['guid']
+    log.debug( guid2 )
+    engine.execute(tbl.update().where(tbl.c.guid == guid1)
+      .values(name='ed', attachment = ids.CAKe.from_string('asdf')))
+    fetch = engine.execute(select([tbl])).fetchall()
+    attach = {r.guid: r.attachment for r in fetch}
+    eq_(attach[guid1], ids.CAKe('01ME5Mi'))
+    eq_(attach[guid2], None)
+
+
 
 

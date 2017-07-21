@@ -48,7 +48,7 @@ class TestSetup:
         if os.path.isabs(log_file):
             path = log_file
         else:
-            path = self.full_log_path(log_file)
+            path = self.file_path(log_file)
         popen = run_bg(executable, cmd.split(), self.home, path)
         self.processes[p_id] = (popen, cmd ,path)
         return p_id
@@ -64,8 +64,8 @@ class TestSetup:
             if print_all_logs:
                 print('{cmd}\nrc:{rc}\n{logtext}\n'.format(**locals()))
 
-    def full_log_path(self, log_file):
-        return os.path.join(self.dir, log_file)
+    def file_path(self, file):
+        return os.path.join(self.dir, file)
 
 
 def makedir(dir, path, abs_path):

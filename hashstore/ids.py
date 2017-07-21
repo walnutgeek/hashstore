@@ -39,7 +39,7 @@ def cast_to_tiny_alphabet(text):
 
 class DataType(enum.IntEnum):
     UNCATEGORIZED = 0
-    BUNDLE_CSV = 1
+    BUNDLE = 1
     TXT_WITH_CAKEURLS = 2
 
 
@@ -291,6 +291,9 @@ class CAKe(utils.Stringable,utils.EnsureIt):
         return BASE_ENCODING.encode(pack_header(self.key_structure,
                                                 self.data_type, self._data))
 
+    def __repr__(self):
+        return "CAKe(%r)" % self.__str__()
+
     def __hash__(self):
         if not(hasattr(self, '_hash')):
             self._hash = hash(self.digest())
@@ -369,7 +372,7 @@ class NamedCAKes(utils.Jsonable):
         self._size = len(in_bytes)
         self._udk = CAKe.from_digest_and_inline_data(
             quick_hash(in_bytes),in_bytes,
-            data_type=DataType.BUNDLE_CSV)
+            data_type=DataType.BUNDLE)
 
     def parse(self, o):
         self._clear_cached()
@@ -415,3 +418,25 @@ class NamedCAKes(utils.Jsonable):
     def to_json(self):
         keys = self.keys()
         return [keys, self.get_udks(keys)]
+
+
+try:
+    from sqlalchemy.types import TypeDecorator, VARCHAR
+except: # pragma: no cover
+    pass
+else:
+    class CAKeType(TypeDecorator):
+        impl = VARCHAR
+
+        def process_bind_param(self, value, dialect):
+            if isinstance(value, CAKe):
+                return str(value)
+            else:
+                return value
+
+        def process_result_value(self, value, dialect):
+            if value is None:
+                return value
+            else:
+                return CAKe(value)
+
