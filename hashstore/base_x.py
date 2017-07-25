@@ -84,6 +84,12 @@ class BaseX:
 
     def encode_int(self, i):
         '''Encode an integer'''
+        if i < 0:
+            raise AssertionError('uint expected: %r' % i)
+        return self.alphabet[0] if i == 0 else self._encode_int(i)
+
+    def _encode_int(self, i):
+        '''unsafe encode_int'''
         string = ""
         while i:
             i, idx = divmod(i, self.size)
@@ -105,7 +111,7 @@ class BaseX:
             acc += p * c
             p <<= 8
 
-        result = self.encode_int(acc)
+        result = self._encode_int(acc)
 
         return (self.alphabet[0] * count_of_nulls + result)
 

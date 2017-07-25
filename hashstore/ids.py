@@ -6,6 +6,8 @@ import sys
 
 import hashstore.base_x as bx
 import hashstore.utils as utils
+from hashstore.new_db import varchar_type
+
 import json
 import enum
 
@@ -74,11 +76,11 @@ def _header(id_structure,data_type):
     '''
     return (data_type.value << 4) | id_structure.value
 
-def pack_header(id_structure, data_type, data_bytes):
+def pack_in_bytes(id_structure, data_type, data_bytes):
     r'''
-    >>> pack_header(KeyStructure.INLINE,DataType.UNCATEGORIZED, b'ABC')
+    >>> pack_in_bytes(KeyStructure.INLINE,DataType.UNCATEGORIZED, b'ABC')
     b'\x00ABC'
-    >>> pack_header(KeyStructure.SHA256,DataType.TXT_WITH_CAKEURLS,b'XYZ')
+    >>> pack_in_bytes(KeyStructure.SHA256,DataType.TXT_WITH_CAKEURLS,b'XYZ')
     b'!XYZ'
     '''
     return to_byte(_header(id_structure, data_type)) + data_bytes
@@ -131,7 +133,7 @@ def process_stream(fd,  process_buffer=NOP_process_buffer, chunk_size=65355):
     return digest.digest(), length, inline_data
 
 
-class CAKe(utils.Stringable,utils.EnsureIt):
+class Cake(utils.Stringable, utils.EnsureIt):
     '''
     Stands for Content Address Key.
 
@@ -144,11 +146,12 @@ class CAKe(utils.Stringable,utils.EnsureIt):
     Currently we have 4 `KeyStructure` defined, leaving 12 more for
     future extension.
 
-    >>> list(KeyStructure)
-    [<KeyStructure.INLINE: 0>, <KeyStructure.SHA256: 1>, <KeyStructure.GUID256: 2>, <KeyStructure.TINYNAME: 3>]
+    >>> list(KeyStructure) #doctest: +NORMALIZE_WHITESPACE
+    [<KeyStructure.INLINE: 0>, <KeyStructure.SHA256: 1>,
+    <KeyStructure.GUID256: 2>, <KeyStructure.TINYNAME: 3>]
 
     >>> short_content = b'The quick brown fox jumps over'
-    >>> short_k = CAKe.from_string(short_content)
+    >>> short_k = Cake.from_string(short_content)
     >>> short_k.key_structure
     <KeyStructure.INLINE: 0>
     >>> short_k.has_data()
@@ -163,7 +166,7 @@ class CAKe(utils.Stringable,utils.EnsureIt):
     Longer content is hashed with SHA256:
 
     >>> longer_content = b'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
-    >>> longer_k = CAKe.from_string(longer_content)
+    >>> longer_k = Cake.from_string(longer_content)
     >>> longer_k.key_structure
     <KeyStructure.SHA256: 1>
     >>> longer_k.has_data()
@@ -177,7 +180,7 @@ class CAKe(utils.Stringable,utils.EnsureIt):
     Global Unique ID can be generated, it is 32 byte
     random sequence packed in same way.
 
-    >>> guid = CAKe.new_guid()
+    >>> guid = Cake.new_guid()
     >>> guid.key_structure
     <KeyStructure.GUID256: 2>
     >>> len(str(guid))
@@ -186,19 +189,19 @@ class CAKe(utils.Stringable,utils.EnsureIt):
     Also you can generate tinyname. It is shorter key, that easier
     to remember. But key space is much smaller so you cannot  generate
     them independently but rather validate them against tinyname to
-    full CAKe mapping.
+    full Cake mapping.
 
     Generate tinyname at random:
 
-    >>> tiny = CAKe.tiny()
+    >>> tiny = Cake.tiny()
     >>> tiny.key_structure
     <KeyStructure.TINYNAME: 3>
     >>> len(str(tiny))
     6
 
-    Or seed it from CAKe:
+    Or seed it from Cake:
 
-    >>> tiny = CAKe.tiny(cake=longer_k)
+    >>> tiny = Cake.tiny(cake=longer_k)
     >>> tiny.key_structure
     <KeyStructure.TINYNAME: 3>
     >>> str(tiny)
@@ -208,20 +211,21 @@ class CAKe(utils.Stringable,utils.EnsureIt):
 
     Or generate it from text:
 
-    >>> tiny = CAKe.tiny(text='ABC')
+    >>> tiny = Cake.tiny(text='ABC')
     >>> tiny.key_structure
     <KeyStructure.TINYNAME: 3>
     >>> str(tiny)
     'SCI'
 
     '''
-    def __init__(self, s, id_structure = None, data_type = None):
+    def __init__(self, s, id_structure = None, data_type = None,
+                 codec = BASE_ENCODING):
         if id_structure is not None:
             self._data = s
             self.key_structure = id_structure
             self.data_type = data_type
         else:
-            decoded = BASE_ENCODING.decode(utils.ensure_string(s))
+            decoded = codec.decode(utils.ensure_string(s))
             header = to_int(decoded[0])
             self._data = decoded[1:]
             self.key_structure = KeyStructure(header & 0x0F)
@@ -237,29 +241,29 @@ class CAKe(utils.Stringable,utils.EnsureIt):
     def from_digest_and_inline_data(digest, buffer,
                                     data_type = DataType.UNCATEGORIZED):
         if buffer is not None and len(buffer) <= inline_max_bytes:
-            return CAKe(buffer, id_structure=KeyStructure.INLINE,
+            return Cake(buffer, id_structure=KeyStructure.INLINE,
                         data_type=data_type)
         else:
-            return CAKe(digest, id_structure=KeyStructure.SHA256,
+            return Cake(digest, id_structure=KeyStructure.SHA256,
                         data_type=data_type)
 
     @staticmethod
     def from_stream(fd, data_type=DataType.UNCATEGORIZED):
         digest, _, inline_data = process_stream(fd)
-        return CAKe.from_digest_and_inline_data(digest, inline_data,
-                                                data_type = data_type)
+        return Cake.from_digest_and_inline_data(digest, inline_data,
+                                                data_type=data_type)
 
     @staticmethod
     def from_string(s, data_type=DataType.UNCATEGORIZED):
-        return CAKe.from_stream(six.BytesIO(utils.ensure_bytes(s)),
-                                data_type = data_type)
+        return Cake.from_stream(six.BytesIO(utils.ensure_bytes(s)),
+                                data_type=data_type)
     @staticmethod
     def from_file(file, data_type=DataType.UNCATEGORIZED):
-        return CAKe.from_stream(open(file, 'rb'), data_type = data_type)
+        return Cake.from_stream(open(file, 'rb'), data_type=data_type)
 
     @staticmethod
     def new_guid(data_type = DataType.UNCATEGORIZED):
-        return CAKe(os.urandom(32), id_structure=KeyStructure.GUID256,
+        return Cake(os.urandom(32), id_structure=KeyStructure.GUID256,
                     data_type = data_type)
 
     def has_data(self):
@@ -284,15 +288,28 @@ class CAKe(utils.Stringable,utils.EnsureIt):
             t_bytes=cake.digest()[:4]
         else:
             t_bytes=os.urandom(4)
-        return CAKe(t_bytes, id_structure=KeyStructure.TINYNAME,
+        return Cake(t_bytes, id_structure=KeyStructure.TINYNAME,
                     data_type = data_type)
 
+    def hash_bytes(self):
+        '''
+        :raise AssertionError when Cake is not hash based
+        :return: hash in bytes
+        '''
+        if self.key_structure != KeyStructure.SHA256:
+            raise AssertionError("Not-hash %r %r" %
+                                 (self.key_structure, self))
+
+        return self._data
+
+
     def __str__(self):
-        return BASE_ENCODING.encode(pack_header(self.key_structure,
-                                                self.data_type, self._data))
+        in_bytes = pack_in_bytes(self.key_structure, self.data_type,
+                                 self._data)
+        return BASE_ENCODING.encode(in_bytes)
 
     def __repr__(self):
-        return "CAKe(%r)" % self.__str__()
+        return "Cake(%r)" % self.__str__()
 
     def __hash__(self):
         if not(hasattr(self, '_hash')):
@@ -300,7 +317,7 @@ class CAKe(utils.Stringable,utils.EnsureIt):
         return self._hash
 
     def __eq__(self, other):
-        if not isinstance(other, CAKe):
+        if not isinstance(other, Cake):
             return False
         return self._data == other._data and \
                self.key_structure == other.key_structure and \
@@ -314,8 +331,8 @@ class NamedCAKes(utils.Jsonable):
     '''
     sorted dictionary of names and corresponding UDKs
 
-    >>> short_k = CAKe.from_string(b'The quick brown fox jumps over')
-    >>> longer_k = CAKe.from_string(b'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.')
+    >>> short_k = Cake.from_string(b'The quick brown fox jumps over')
+    >>> longer_k = Cake.from_string(b'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.')
 
     >>> udks = NamedCAKes()
     >>> udks['short'] = short_k
@@ -325,7 +342,7 @@ class NamedCAKes(utils.Jsonable):
 
     >>> udks.keys()
     ['longer', 'short']
-    >>> str(udks.udk())
+    >>> str(udks.cake())
     'gSKHC1OkVsHmrx1APDA4sq3iAwqg6wIXHVDqM3pPtwXR'
     >>> udks.size()
     117
@@ -351,7 +368,7 @@ class NamedCAKes(utils.Jsonable):
             self._inverse = {v: k for k, v in six.iteritems(self.store)}
         return self._inverse
 
-    def udk(self):
+    def cake(self):
         if self._udk is None:
             self._build_content()
         return self._udk
@@ -370,7 +387,7 @@ class NamedCAKes(utils.Jsonable):
         self._content = str(self)
         in_bytes = utils.ensure_bytes(self._content)
         self._size = len(in_bytes)
-        self._udk = CAKe.from_digest_and_inline_data(
+        self._udk = Cake.from_digest_and_inline_data(
             quick_hash(in_bytes),in_bytes,
             data_type=DataType.BUNDLE)
 
@@ -382,7 +399,7 @@ class NamedCAKes(utils.Jsonable):
             names, udks = o
         else:
             names, udks = json.load(o)
-        self.store.update(zip(names, map(CAKe.ensure_it, udks)))
+        self.store.update(zip(names, map(Cake.ensure_it, udks)))
         return self
 
     def __iter__(self):
@@ -390,7 +407,7 @@ class NamedCAKes(utils.Jsonable):
 
     def __setitem__(self, k, v):
         self._clear_cached()
-        self.store[k] = CAKe.ensure_it(v)
+        self.store[k] = Cake.ensure_it(v)
 
     def __delitem__(self, k):
         self._clear_cached()
@@ -403,7 +420,7 @@ class NamedCAKes(utils.Jsonable):
         return len(self.store)
 
     def get_name_by_udk(self, k):
-        return self.inverse()[CAKe.ensure_it(k)]
+        return self.inverse()[Cake.ensure_it(k)]
 
     def keys(self):
         names = list(self.store.keys())
@@ -420,23 +437,4 @@ class NamedCAKes(utils.Jsonable):
         return [keys, self.get_udks(keys)]
 
 
-try:
-    from sqlalchemy.types import TypeDecorator, VARCHAR
-except: # pragma: no cover
-    pass
-else:
-    class CAKeType(TypeDecorator):
-        impl = VARCHAR
-
-        def process_bind_param(self, value, dialect):
-            if isinstance(value, CAKe):
-                return str(value)
-            else:
-                return value
-
-        def process_result_value(self, value, dialect):
-            if value is None:
-                return value
-            else:
-                return CAKe(value)
-
+Cake_TYPE = varchar_type(Cake)
