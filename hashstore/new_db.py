@@ -1,7 +1,9 @@
 from sqlalchemy import *
+import os
 
 
 def varchar_type(cls):
+
     class BuiltType(TypeDecorator):
         impl = VARCHAR
 
@@ -18,13 +20,15 @@ def varchar_type(cls):
                 return cls(value)
     return BuiltType
 
+
 class Dbf:
     def __init__(self,meta,path):
         self.path = path
         self.meta = meta
+        self._engine = None
 
     def engine(self):
-        if self._engine is not None:
+        if self._engine is None:
             self._engine = create_engine('sqlite:///%s' % self.path)
         return self._engine
 

@@ -27,6 +27,12 @@ def is_it_shard(shard_name):
     True
     >>> is_it_shard('6BK')
     False
+    >>> is_it_shard('')
+    True
+    >>> is_it_shard('.5k')
+    False
+    >>> is_it_shard('abcd')
+    False
     '''
     shard_num = -1
     if len(shard_name) < 4:
@@ -41,10 +47,13 @@ class ContentAddress(Stringable, EnsureIt):
     '''
     Content Address
 
-    >>> c = Cake.from_string(b'a' * 46)
-    >>> str(c)
+    >>> a46 = Cake.from_string(b'a' * 46)
+    >>> str(a46)
     '1mXcPcYpN8zZYdpM04hafWih3o1NQbr4q5bJtPYPq7Ev'
-    >>> from_c = ContentAddress(c)
+    >>> a47 = Cake.from_string(b'a' * 47)
+    >>> str(a47)
+    '12XapfdmlTbFk68YtOwlzH6hoO8IaV3KOkPG9Ng33FXv'
+    >>> from_c = ContentAddress(a46)
     >>> str(from_c)
     '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
     >>> from_id = ContentAddress(from_c.file_id)
@@ -52,7 +61,10 @@ class ContentAddress(Stringable, EnsureIt):
     '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
     >>> from_id.hash_bytes == from_c.hash_bytes
     True
-
+    >>> from_id.match(a46)
+    True
+    >>> from_id.match(a47)
+    False
     '''
     def __init__(self, cake_or_str):
         if isinstance(cake_or_str, Cake):

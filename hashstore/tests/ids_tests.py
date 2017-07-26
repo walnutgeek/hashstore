@@ -86,31 +86,7 @@ def test_Bundle():
 
 
 
-def test_Alchemy():
-    meta = MetaData()
-    #'sqlite:///:memory:'
-    engine = create_engine('sqlite:///%s' % test.file_path('test.sqlite3'))
 
-    tbl = Table("mytable", meta,
-                Column("guid", ids.Cake_TYPE(),
-                       primary_key=True,
-                       default=lambda: ids.Cake.new_guid()),
-                Column('name', types.String()),
-                Column("attachment", ids.Cake_TYPE(), nullable=True))
-    meta.create_all(engine)
-
-    r = engine.execute(tbl.insert().values(name='abc'))
-    guid1 = r.last_inserted_params()['guid']
-    log.debug( guid1 )
-    r = engine.execute(tbl.insert().values(name='xyz',attachment=None))
-    guid2 = r.last_inserted_params()['guid']
-    log.debug( guid2 )
-    engine.execute(tbl.update().where(tbl.c.guid == guid1)
-                   .values(name='ed', attachment = ids.Cake.from_string('asdf')))
-    fetch = engine.execute(select([tbl])).fetchall()
-    attach = {r.guid: r.attachment for r in fetch}
-    eq_(attach[guid1], ids.Cake('01ME5Mi'))
-    eq_(attach[guid2], None)
 
 
 
