@@ -43,3 +43,11 @@ def test_Alchemy():
     attach = {r.guid: r.attachment for r in fetch}
     eq_(attach[guid1], ids.Cake('01ME5Mi'))
     eq_(attach[guid2], None)
+
+
+def test_schemas():
+    import importlib
+    for schema in ['incoming','auth','shard']:
+        m = importlib.import_module('hashstore.bakery.%s_schema' % schema)
+        dbf = Dbf(m.meta,test.file_path('%s.sqlite3' % schema ))
+        dbf.ensure_db()
