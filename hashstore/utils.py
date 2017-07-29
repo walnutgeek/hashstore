@@ -82,10 +82,12 @@ def call_if_defined (o, k, *args):
 
 
 if bytes == str:  # python2
+    binary_type = str
     ensure_bytes = lambda s: s if isinstance(s, bytes) else str(s)
     ensure_unicode = lambda s: s if isinstance(s, unicode) else unicode(s,'utf-8')
     ensure_string = ensure_bytes
 else:  # python3
+    binary_type = bytes
     ensure_bytes = lambda s: s if isinstance(s, bytes) else str(s).encode('utf-8')
     ensure_unicode = lambda s: s if isinstance(s, str) else str(s)
     ensure_string = lambda s: s.decode('utf-8') if isinstance(s, bytes) else s

@@ -1,9 +1,16 @@
+import os
+import shutil
+
 from hashstore.base_x import base_x,iseq
 from hashstore.ids import Cake
-from hashstore.new_db import varchar_type
+from hashstore.new_db import varchar_type,Dbf
+from hashstore.utils import binary_type, ensure_bytes, Stringable,\
+    EnsureIt,ensure_directory
+
 
 import logging
-from hashstore.utils import Stringable,EnsureIt
+import hashlib
+
 
 log = logging.getLogger(__name__)
 
@@ -59,6 +66,8 @@ class ContentAddress(Stringable, EnsureIt):
     >>> from_id = ContentAddress(from_c.file_id)
     >>> str(from_id)
     '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
+    >>> from_id
+    ContentAddress('2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv')
     >>> from_id.hash_bytes == from_c.hash_bytes
     True
     >>> from_id.match(a46)
@@ -66,13 +75,16 @@ class ContentAddress(Stringable, EnsureIt):
     >>> from_id.match(a47)
     False
     '''
-    def __init__(self, cake_or_str):
-        if isinstance(cake_or_str, Cake):
-            self.hash_bytes = cake_or_str.hash_bytes()
+    def __init__(self, cake_or_str_or_hash):
+        if hasattr(cake_or_str_or_hash, 'digest'):
+            self.hash_bytes = cake_or_str_or_hash.digest()
+            self.file_id = b36.encode(self.hash_bytes)
+        elif isinstance(cake_or_str_or_hash, Cake):
+            self.hash_bytes = cake_or_str_or_hash.hash_bytes()
             self.file_id = b36.encode(self.hash_bytes)
         else:
-            self.file_id = cake_or_str
-            self.hash_bytes = b36.decode(cake_or_str)
+            self.file_id = cake_or_str_or_hash
+            self.hash_bytes = b36.decode(cake_or_str_or_hash)
         b1, b2 = iseq(self.hash_bytes[:2])
         self.modulus = (b1*256+b2) % MAX_NUM_OF_SHARDS
         self.shard_name = b36._encode_int(self.modulus)
@@ -80,7 +92,14 @@ class ContentAddress(Stringable, EnsureIt):
     def __str__(self):
         return self.file_id
 
+    def __repr__(self):
+        return "ContentAddress(%r)" % self.__str__()
+
     def match(self, cake):
         return cake.hash_bytes() == self.hash_bytes
 
 ContentAddress_TYPE = varchar_type(ContentAddress)
+
+
+
+

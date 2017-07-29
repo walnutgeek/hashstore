@@ -1,4 +1,4 @@
-from hashstore.content_address import ContentAddress_TYPE
+from hashstore.bakery.content import ContentAddress_TYPE
 from sqlalchemy import *
 import datetime
 

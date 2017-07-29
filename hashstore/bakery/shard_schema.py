@@ -1,5 +1,5 @@
 from hashstore.ids import Cake, Cake_TYPE
-from hashstore.content_address import ContentAddress_TYPE
+from hashstore.bakery.content import ContentAddress_TYPE
 from sqlalchemy import *
 import datetime
 
@@ -15,8 +15,8 @@ blob = Table('blob', shard_meta,
            default = lambda: datetime.datetime.utcnow()),
     )
 
-shard = Table(
-    'shard', shard_meta,
+catalog = Table(
+    'catalog', shard_meta,
     Column('cake', Cake_TYPE, primary_key=True),
     Column('file_id', ContentAddress_TYPE, nullable=False),
     Column('blob_id', None, ForeignKey('blob.blob_id'), nullable=True),

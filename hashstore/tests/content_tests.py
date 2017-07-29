@@ -16,7 +16,7 @@ log = test.log
 
 
 def test_docs():
-    import hashstore.content_address as test_subject
+    import hashstore.bakery.content as test_subject
     doctest_it(test_subject)
 
 
