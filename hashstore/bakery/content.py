@@ -57,9 +57,6 @@ class ContentAddress(Stringable, EnsureIt):
     >>> a46 = Cake.from_bytes(b'a' * 46)
     >>> str(a46)
     '1mXcPcYpN8zZYdpM04hafWih3o1NQbr4q5bJtPYPq7Ev'
-    >>> a47 = Cake.from_bytes(b'a' * 47)
-    >>> str(a47)
-    '12XapfdmlTbFk68YtOwlzH6hoO8IaV3KOkPG9Ng33FXv'
     >>> from_c = ContentAddress(a46)
     >>> str(from_c)
     '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
@@ -72,6 +69,9 @@ class ContentAddress(Stringable, EnsureIt):
     True
     >>> from_id.match(a46)
     True
+    >>> a47 = Cake.from_bytes(b'a' * 47)
+    >>> str(a47)
+    '12XapfdmlTbFk68YtOwlzH6hoO8IaV3KOkPG9Ng33FXv'
     >>> from_id.match(a47)
     False
     '''
@@ -83,8 +83,8 @@ class ContentAddress(Stringable, EnsureIt):
             self.hash_bytes = hash_or_cake_or_str.hash_bytes()
             self._id = b36.encode(self.hash_bytes)
         else:
-            self._id = hash_or_cake_or_str
-            self.hash_bytes = b36.decode(hash_or_cake_or_str)
+            self._id = hash_or_cake_or_str.lower()
+            self.hash_bytes = b36.decode(self._id)
         b1, b2 = iseq(self.hash_bytes[:2])
         self.modulus = (b1*256+b2) % MAX_NUM_OF_SHARDS
         self.shard_name = b36._encode_int(self.modulus)

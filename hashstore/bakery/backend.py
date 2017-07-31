@@ -3,8 +3,8 @@ import shutil
 import datetime
 import six
 
-from hashstore.ids import Cake, KeyStructure, DataType
-from hashstore.new_db import varchar_type,Dbf
+from hashstore.ids import Cake
+from hashstore.new_db import Dbf
 from hashstore.utils import binary_type, ensure_bytes,ensure_directory
 
 from sqlalchemy import func,select
@@ -12,97 +12,64 @@ from sqlalchemy import func,select
 import hashlib
 
 from .content import ContentAddress, is_it_shard
-from .shard_schema import shard_meta, catalog, blob
+from .shard_schema import shard_meta, blob
 from .incoming_schema import incoming_meta, incoming
 
 import logging
 log = logging.getLogger(__name__)
 
 class Lookup:
-    def __init__(self, store, file_id, cake):
+    def __init__(self, store, file_id):
         self.size = None
         self.created_dt = None
         self.file_id = file_id
-        self.cake = cake
         self.store = store
-        if self.file_id is not None:
-            if self.cake is not None:
-                if self.file_id.match(self.cake):
-                    return
-                log.warning('file_id:%r  does not mach %r' %
-                            (file_id,cake))
-                data_type = cake.data_type
-            else:
-                data_type = DataType.UNCATEGORIZED
-            self.cake = Cake(file_id.hash_bytes, KeyStructure.SHA256,
-                                 data_type)
 
     def found(self):
         return self.size is not None and self.size >= 0
 
-    def open_fd(self):
+    def open_fd(self): # pragma: no cover
         return None
 
     def stream(self):
         return None
 
-    def delete(self):
-        return False
 
-NULL_LOOKUP = Lookup(None, None, None)
+NULL_LOOKUP = Lookup(None, None)
 
 
 class ContentAddressLookup(Lookup):
-    def __init__(self, store, file_id, cake):
-        Lookup.__init__(self,store,file_id, cake)
+    def __init__(self, store, file_id):
+        Lookup.__init__(self,store,file_id)
         self.dir = os.path.join(store.root, self.file_id.shard_name)
 
     def blob_db(self):
         return self.store.blob_dbf(self.file_id.shard_name)
 
-    def store_in_catalog(self, conn, blob_id = None):
-        rp = conn.execute(select([catalog.c.cake])
-                          .where(catalog.c.cake == self.cake))
-        rowcount = len(rp.fetchall())
-        if rowcount > 1 :
-            raise AssertionError("more ten one PK? :%r" % self.cake)
-        if rowcount == 0:
-            rp = conn.execute(catalog.insert().values(
-                cake=self.cake,
-                file_id=self.file_id,
-                blob_id=blob_id,
-            ))
-            if rp.rowcount != 1:
-                raise AssertionError('cannot catalog %r' %
-                                     rp.last_inserted_params())
-
-
 class DbLookup(ContentAddressLookup):
-    def __init__(self, store, file_id, cake = None):
-        ContentAddressLookup.__init__(self,store,file_id,cake)
+    def __init__(self, store, file_id):
+        ContentAddressLookup.__init__(self,store,file_id)
         blob_db = self.blob_db()
         if blob_db.exists():
             q = select([
                     func.char_length(blob.c.content).label('size'),
                     blob.c.created_dt
                 ]).where(blob.c.file_id == self.file_id)
-            result = blob_db.execute(q).fetchone()
-            if result is not None:
-                self.size = result.size
-                self.created_dt = result.created_dt
-
+            result = blob_db.execute(q).fetchall()
+            if len(result) == 1:
+                self.size = result[0].size
+                self.created_dt = result[0].created_dt
+            elif len(result) != 0:
+                raise AssertionError('PK?: %r' % self.file_id)
 
     def save_content(self, content):
         blob_db = self.blob_db()
         if not self.found():
             ensure_directory(self.dir)
             blob_db.ensure_db()
-            with blob_db.connect() as conn:
-                rp = conn.execute(blob.insert().values(
+            blob_db.execute(blob.insert().values(
                     content = content,
                     file_id = self.file_id ))
-                blob_id = rp.lastrowid
-                self.store_in_catalog(conn, blob_id=blob_id)
             return True
         else:
             return False
@@ -113,15 +80,10 @@ class DbLookup(ContentAddressLookup):
             .where(blob.c.file_id == self.file_id)).fetchone()
         return six.BytesIO(row.content)
 
-    def delete(self):
-        r = self.blob_db.execute(blob.delete()
-                             .where(blob.c.file_id == self.file_id))
-        return r.rowcont() == 1
-
 
 class FileLookup(ContentAddressLookup):
-    def __init__(self, store, file_id, cake=None):
-        ContentAddressLookup.__init__(self, store, file_id, cake)
+    def __init__(self, store, file_id):
+        ContentAddressLookup.__init__(self, store, file_id)
         self.file = os.path.join(self.dir, str(self.file_id) )
         try:
             (self.size, _, _, ctime) = os.stat(self.file)[6:]
@@ -136,15 +98,7 @@ class FileLookup(ContentAddressLookup):
     def stream(self):
         return open(self.file,'rb')
 
-    def delete(self):
-        os.remove( self.file )
-        return True
 
-    def update_catalog(self):
-        blob_db = self.blob_db()
-        blob_db.ensure_db()
-        with blob_db.connect() as conn:
-            self.store_in_catalog(conn)
 
 MAX_DB_BLOB_SIZE = 1 << 16
 
@@ -166,31 +120,33 @@ class LiteBackend:
         path = os.path.join(self.root, shard_name, 'blob.db')
         return Dbf(shard_meta, path)
 
-    def iterate_cakes(self):
+    def __iter__(self):
         for shard_name in filter(is_it_shard, os.listdir(self.root)):
             blob_db = self.blob_dbf(shard_name)
-            result = blob_db.execute(select([catalog.c.cake]))
-            for row in result:
-                yield row.cake
+            if blob_db.exists():
+                for row in blob_db.execute(select([blob.c.file_id])):
+                    yield row.file_id
+            shard_path = os.path.join(self.root, shard_name)
+            for f in os.listdir(shard_path):
+                if len(f) > 48:
+                    yield ContentAddress(f)
 
     def get_content(self, k):
         return self.lookup(k).stream()
 
-    def lookup(self, k):
-        if isinstance(k, Cake):
-            file_id = ContentAddress(k)
-            cake = k
+    def lookup(self, cake_or_cadr):
+        if isinstance(cake_or_cadr, Cake):
+            file_id = ContentAddress(cake_or_cadr)
         else:
-            file_id = ContentAddress.ensure_it(k)
-            cake = None
+            file_id = ContentAddress.ensure_it(cake_or_cadr)
         for lookup_contr in (FileLookup, DbLookup):
-            l = lookup_contr(self, file_id, cake)
+            l = lookup_contr(self, file_id)
             if l.found():
                 return l
         return NULL_LOOKUP
 
-    def writer(self, external_cake = None):
-        return ContentWriter(self, external_cake)
+    def writer(self):
+        return ContentWriter(self)
 
 
 class IncomingFile:
@@ -205,41 +161,26 @@ class IncomingFile:
     def write(self, input):
         return self.fd.write(input)
 
-    def save_as(self, cake):
-        cake = Cake.ensure_it(cake)
+    def close(self, lookup):
+        new = not lookup.found()
         self.fd.close()
         self.fd = None
-        dest = FileLookup(self.backend, cake)
-        new = not dest.found()
         if new:
-            ensure_directory(dest.dir)
-            log.debug('mv %s %s' % (self.file, dest.file))
-            shutil.move(self.file, dest.file)
+            ensure_directory(lookup.dir)
+            log.debug('mv %s %s' % (self.file, lookup.file))
+            shutil.move(self.file, lookup.file)
         else:
-            self.backend.in_db.execute(
-            incoming.update(new=new, cake=cake)
-                .where(incoming.c.incoming_id == self.incoming_id))
-        return dest.cake
-
-    def close(self, file_id, move_to=None):
-        self.fd.close()
-        self.fd = None
-        found = move_to is None
-        if found:
             log.debug('rm %s' % self.file)
             os.remove(self.file)
-        else:
-            log.debug('mv %s %s' % (self.file, move_to))
-            shutil.move(self.file, move_to)
         self.backend.in_db.execute(
-            incoming.update().values(new=not found, file_id=file_id)
+            incoming.update().values(new=new,
+                                     file_id=lookup.file_id)
                 .where( incoming.c.incoming_id == self.incoming_id))
 
 
 class ContentWriter:
-    def __init__(self, backend, external_cake ):
+    def __init__(self, backend):
         self.backend = backend
-        self.cake = external_cake
         self.buffer = binary_type()
         self.incoming_file = None
         self.digest = hashlib.sha256()
@@ -268,20 +209,14 @@ class ContentWriter:
         if self.file_id is None:
             self.file_id = ContentAddress(self.digest)
             if self.buffer is not None:
-                lookup = DbLookup(self.backend, self.file_id, self.cake)
+                lookup = DbLookup(self.backend, self.file_id)
                 lookup.save_content(self.buffer)
                 self.buffer = None
             elif self.incoming_file is not None:
-                lookup = FileLookup(self.backend, self.file_id, self.cake)
-                new = not lookup.found()
-                if new:
-                    ensure_directory(lookup.dir)
-                    self.incoming_file.close(self.file_id, move_to=lookup.file)
-                else:
-                    self.incoming_file.close(self.file_id)
+                file_lookup = FileLookup(self.backend, self.file_id)
+                self.incoming_file.close(file_lookup)
                 self.incoming_file = None
-                lookup.update_catalog()
             else:
-                raise AssertionError('what else: %r' % self.cake )
+                raise AssertionError('what else: %r' % self.file_id )
         return self.file_id
 

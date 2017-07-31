@@ -37,6 +37,7 @@ def test_LiteBackend():
         eq_(False, r0 == 0 )
         eq_(False, r0a == 0 )
         eq_(hash(r0), hash(r0a))
+        ok_(hs.lookup(Cake.from_bytes(s)).found())
         w1 = hs.writer()
         for _ in range(3):
             w1.write(random_bytes(100))
@@ -69,21 +70,8 @@ def test_LiteBackend():
 
     #retrieve non existent
     eq_(None, hs.get_content(not_existent))
-    udks = list(hs.iterate_cakes())
-    eq_(3,len(udks))
-    # No delete functionality
-    # seed(0)
-    # eq_(str(udk.UDK.from_bytes(random_bytes(40))), inline_udk)
-    # eq_(str(udk.UDK.from_file(os.path.join(hs.root, file_udk[0:3], file_udk[3:]))), file_udk)
-    # for u in udks:
-    #     ok_(hs.delete(u))
-    #     ok_(not(hs.delete(u)))
-    # eq_(hs.delete(not_existent),False)
-    # eq_(hs.delete(inline_udk),False)
-    # udks = list(hs.iterate_cakes())
-    # eq_(0,len(udks))
-
-    # ok_(False)
+    all = list(hs)
+    eq_(3,len(all))
 
 
 

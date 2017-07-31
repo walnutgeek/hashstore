@@ -15,11 +15,4 @@ blob = Table('blob', shard_meta,
            default = lambda: datetime.datetime.utcnow()),
     )
 
-catalog = Table(
-    'catalog', shard_meta,
-    Column('cake', Cake_TYPE, primary_key=True),
-    Column('file_id', ContentAddress_TYPE, nullable=False),
-    Column('blob_id', None, ForeignKey('blob.blob_id'), nullable=True),
-    )
-
 
