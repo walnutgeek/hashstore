@@ -22,7 +22,7 @@ def test_docs():
 
 def test_CAKe():
     def do_test(c, s, d=None):
-        u1 = ids.Cake.from_string(c)
+        u1 = ids.Cake.from_bytes(c)
         eq_(s, str(u1))
         u1n = ids.Cake(str(u1))
         eq_(u1.digest(), u1n.digest())

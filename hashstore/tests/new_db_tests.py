@@ -38,7 +38,7 @@ def test_Alchemy():
         guid2 = r.last_inserted_params()['guid']
         log.debug( guid2 )
     dbf.execute(tbl.update().where(tbl.c.guid == guid1)
-                   .values(name='ed', attachment = ids.Cake.from_string('asdf')))
+                .values(name='ed', attachment = ids.Cake.from_bytes(b'asdf')))
     fetch = dbf.execute(select([tbl])).fetchall()
     attach = {r.guid: r.attachment for r in fetch}
     eq_(attach[guid1], ids.Cake('01ME5Mi'))

@@ -151,7 +151,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
     <KeyStructure.GUID256: 2>, <KeyStructure.TINYNAME: 3>]
 
     >>> short_content = b'The quick brown fox jumps over'
-    >>> short_k = Cake.from_string(short_content)
+    >>> short_k = Cake.from_bytes(short_content)
     >>> short_k.key_structure
     <KeyStructure.INLINE: 0>
     >>> short_k.has_data()
@@ -166,7 +166,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
     Longer content is hashed with SHA256:
 
     >>> longer_content = b'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
-    >>> longer_k = Cake.from_string(longer_content)
+    >>> longer_k = Cake.from_bytes(longer_content)
     >>> longer_k.key_structure
     <KeyStructure.SHA256: 1>
     >>> longer_k.has_data()
@@ -254,8 +254,8 @@ class Cake(utils.Stringable, utils.EnsureIt):
                                                 data_type=data_type)
 
     @staticmethod
-    def from_string(s, data_type=DataType.UNCATEGORIZED):
-        return Cake.from_stream(six.BytesIO(utils.ensure_bytes(s)),
+    def from_bytes(s, data_type=DataType.UNCATEGORIZED):
+        return Cake.from_stream(six.BytesIO(s),
                                 data_type=data_type)
     @staticmethod
     def from_file(file, data_type=DataType.UNCATEGORIZED):
@@ -331,8 +331,8 @@ class NamedCAKes(utils.Jsonable):
     '''
     sorted dictionary of names and corresponding UDKs
 
-    >>> short_k = Cake.from_string(b'The quick brown fox jumps over')
-    >>> longer_k = Cake.from_string(b'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.')
+    >>> short_k = Cake.from_bytes(b'The quick brown fox jumps over')
+    >>> longer_k = Cake.from_bytes(b'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.')
 
     >>> udks = NamedCAKes()
     >>> udks['short'] = short_k

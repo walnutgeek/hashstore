@@ -54,16 +54,16 @@ class ContentAddress(Stringable, EnsureIt):
     '''
     Content Address
 
-    >>> a46 = Cake.from_string(b'a' * 46)
+    >>> a46 = Cake.from_bytes(b'a' * 46)
     >>> str(a46)
     '1mXcPcYpN8zZYdpM04hafWih3o1NQbr4q5bJtPYPq7Ev'
-    >>> a47 = Cake.from_string(b'a' * 47)
+    >>> a47 = Cake.from_bytes(b'a' * 47)
     >>> str(a47)
     '12XapfdmlTbFk68YtOwlzH6hoO8IaV3KOkPG9Ng33FXv'
     >>> from_c = ContentAddress(a46)
     >>> str(from_c)
     '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
-    >>> from_id = ContentAddress(from_c.file_id)
+    >>> from_id = ContentAddress(str(from_c))
     >>> str(from_id)
     '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
     >>> from_id
@@ -75,28 +75,38 @@ class ContentAddress(Stringable, EnsureIt):
     >>> from_id.match(a47)
     False
     '''
-    def __init__(self, cake_or_str_or_hash):
-        if hasattr(cake_or_str_or_hash, 'digest'):
-            self.hash_bytes = cake_or_str_or_hash.digest()
-            self.file_id = b36.encode(self.hash_bytes)
-        elif isinstance(cake_or_str_or_hash, Cake):
-            self.hash_bytes = cake_or_str_or_hash.hash_bytes()
-            self.file_id = b36.encode(self.hash_bytes)
+    def __init__(self, hash_or_cake_or_str):
+        if hasattr(hash_or_cake_or_str, 'digest'):
+            self.hash_bytes = hash_or_cake_or_str.digest()
+            self._id = b36.encode(self.hash_bytes)
+        elif isinstance(hash_or_cake_or_str, Cake):
+            self.hash_bytes = hash_or_cake_or_str.hash_bytes()
+            self._id = b36.encode(self.hash_bytes)
         else:
-            self.file_id = cake_or_str_or_hash
-            self.hash_bytes = b36.decode(cake_or_str_or_hash)
+            self._id = hash_or_cake_or_str
+            self.hash_bytes = b36.decode(hash_or_cake_or_str)
         b1, b2 = iseq(self.hash_bytes[:2])
         self.modulus = (b1*256+b2) % MAX_NUM_OF_SHARDS
         self.shard_name = b36._encode_int(self.modulus)
 
     def __str__(self):
-        return self.file_id
+        return self._id
 
     def __repr__(self):
         return "ContentAddress(%r)" % self.__str__()
 
     def match(self, cake):
         return cake.hash_bytes() == self.hash_bytes
+
+    def __eq__(self, other):
+        return isinstance(other, ContentAddress) and \
+               self._id == other._id
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(self._id)
 
 ContentAddress_TYPE = varchar_type(ContentAddress)
 
