@@ -1,5 +1,4 @@
-from hashstore.bakery.shard_schema import *
-from hashstore.bakery.auth_schema import *
+from hashstore.bakery.auth_model import *
 
 from hashstore.bakery.content import *
 
@@ -36,7 +35,7 @@ class CakeStore:
         if hasattr(self, 'backend'):
             return
         self.backend = LiteBackend(self.root)
-        self.auth_db = Dbf(auth_meta, os.path.join(self.root,'auth.db'))
+        self.auth_db = Dbf(Base.metadata, os.path.join(self.root,'auth.db'))
         self.auth_db.ensure_db()
 
 

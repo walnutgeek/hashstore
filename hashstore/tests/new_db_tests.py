@@ -45,9 +45,11 @@ def test_Alchemy():
     eq_(attach[guid2], None)
 
 
-def test_schemas():
+def test_models():
     import importlib
-    for schema in ['incoming','auth','shard']:
-        m = importlib.import_module('hashstore.bakery.%s_schema' % schema)
-        dbf = Dbf(m.meta,test.file_path('%s.sqlite3' % schema ))
+    for name in ['incoming','shard', 'auth', 'client', 'dir']:
+        m = importlib.import_module('hashstore.bakery.%s_model' % name)
+        # doctest_it(m)
+        dbf = Dbf(m.Base.metadata,test.file_path('%s_model.sqlite3' % name ))
         dbf.ensure_db()
+

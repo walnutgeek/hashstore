@@ -12,11 +12,13 @@ from sqlalchemy import func,select
 import hashlib
 
 from .content import ContentAddress, is_it_shard
-from .shard_schema import shard_meta, blob
-from .incoming_schema import incoming_meta, incoming
+from .shard_model import shard_meta, blob
+from .incoming_model import incoming_meta, incoming
 
 import logging
+
 log = logging.getLogger(__name__)
+
 
 class Lookup:
     def __init__(self, store, file_id):

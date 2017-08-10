@@ -27,7 +27,7 @@ def execute_one_test(*args):
     case += ' hashstore.tests.new_db_tests'
     # case += ' hashstore.tests.content_address_tests'
     case += ' hashstore.tests.ids_tests'
-    # case += ' hashstore.tests.utils_tests'
+    case += ' hashstore.tests.utils_tests'
     # case += ' hashstore.tests.mymime_tests'
     # case += ' hashstore.tests.base_x_tests'
     # case += ' hashstore.tests.udk_tests'

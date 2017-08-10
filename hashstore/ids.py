@@ -7,11 +7,14 @@ import sys
 import hashstore.base_x as bx
 import hashstore.utils as utils
 from hashstore.new_db import varchar_type
+import base64
 
 import json
 import enum
 
 import logging
+from hashstore.utils import path_split_all
+
 log = logging.getLogger(__name__)
 
 BASE_ENCODING = bx.base_x(62)
@@ -175,7 +178,12 @@ class Cake(utils.Stringable, utils.EnsureIt):
     True
     >>> str(longer_k)
     '1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV'
-
+    >>> len(longer_k.hash_bytes())
+    32
+    >>> len(longer_k.digest())
+    32
+    >>> len(set([hash(longer_k) , hash(longer_k)]))
+    1
 
     Global Unique ID can be generated, it is 32 byte
     random sequence packed in same way.
@@ -232,9 +240,8 @@ class Cake(utils.Stringable, utils.EnsureIt):
             self.data_type = DataType(header >> 4)
         if self.key_structure not in \
                 (KeyStructure.INLINE, KeyStructure.TINYNAME):
-            l = len(self._data)
-            if l != 32:
-                 raise AssertionError('invalid CAKey: %r ' % s)
+            if len(self._data) != 32:
+                raise AssertionError('invalid CAKey: %r ' % s)
 
 
     @staticmethod
@@ -438,3 +445,114 @@ class NamedCAKes(utils.Jsonable):
 
 
 Cake_TYPE = varchar_type(Cake)
+
+
+class CakePath(utils.Stringable, utils.EnsureIt):
+    '''
+    >>> absolute = CakePath('/SCI/x/y')
+    >>> absolute
+    CakePath('/SCI/x/y')
+    >>> relative = CakePath('y/z')
+    >>> relative
+    CakePath('y/z')
+    >>> relative.make_absolute(absolute)
+    CakePath('/SCI/x/y/y/z')
+    >>> CakePath('/10Bd/r/f').make_absolute(absolute)
+    CakePath('/10Bd/r/f')
+
+
+    '''
+    def __init__(self, s, _root = None, _path = None):
+        if s is  None:
+            self.root = _root
+            self.path = _path
+        else:
+            split = path_split_all(s, ensure_trailing_slash=False)
+            if split[0] == '/' :
+                self.root = Cake(split[1])
+                self.path = split[2:]
+            else:
+                self.root = None
+                self.path = split
+
+    def relative(self):
+        return self.root is None
+
+    def make_absolute(self, current_cake_path):
+        if self.relative():
+            path = list(current_cake_path.path)
+            path.extend(self.path)
+            return CakePath( None ,
+                             _root=current_cake_path.root,
+                             _path=path)
+        else:
+            return self
+
+    def __str__(self):
+        if self.relative():
+            return self.path_join()
+        else:
+            return '/%s/%s' % (self.root,self.path_join())
+
+    def path_join(self):
+        return '/'.join(self.path)
+
+
+Path_TYPE = varchar_type(CakePath)
+
+SSHA_MARK='{SSHA}'
+
+
+class SaltedSha(utils.Stringable, utils.EnsureIt):
+    '''
+    >>> ssha = SaltedSha.from_secret('abc')
+    >>> ssha.check_secret('abc')
+    True
+    >>> ssha.check_secret('zyx')
+    False
+    >>> ssha = SaltedSha('{SSHA}5wRHUQxypw7C4AVd4yZRW/8pXy2Gwvh/')
+    >>> ssha.check_secret('abc')
+    True
+    >>> ssha.check_secret('Abc')
+    False
+    >>> ssha.check_secret('zyx')
+    False
+    >>> str(ssha)
+    '{SSHA}5wRHUQxypw7C4AVd4yZRW/8pXy2Gwvh/'
+    >>> ssha
+    SaltedSha('{SSHA}5wRHUQxypw7C4AVd4yZRW/8pXy2Gwvh/')
+
+    '''
+    def __init__(self, s, _digest=None, _salt=None):
+        if s is None:
+            self.digest = _digest
+            self.salt = _salt
+        else:
+            len_of_mark = len(SSHA_MARK)
+            if SSHA_MARK == s[:len_of_mark]:
+                challenge_bytes = base64.b64decode(s[len_of_mark:])
+                self.digest = challenge_bytes[:20]
+                self.salt = challenge_bytes[20:]
+            else:
+                raise AssertionError('cannot init: %r' % s)
+
+    @staticmethod
+    def from_secret(secret):
+        secret = utils.ensure_bytes(secret)
+        h=hashlib.sha1(secret)
+        salt = os.urandom(4)
+        h.update(salt)
+        return SaltedSha(None, _digest=h.digest(), _salt=salt)
+
+    def check_secret(self, secret):
+        secret = utils.ensure_bytes(secret)
+        h=hashlib.sha1(secret)
+        h.update(self.salt)
+        return self.digest == h.digest()
+
+    def __str__(self):
+        encode = base64.b64encode(self.digest + self.salt)
+        return SSHA_MARK + utils.ensure_string(encode)
+
+
+SSHA_TYPE = varchar_type(SaltedSha)

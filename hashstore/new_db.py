@@ -3,7 +3,6 @@ import os
 
 
 def varchar_type(cls):
-
     class BuiltType(TypeDecorator):
         impl = VARCHAR
 
@@ -43,3 +42,4 @@ class Dbf:
 
     def connect(self):
         return self.engine().connect()
+

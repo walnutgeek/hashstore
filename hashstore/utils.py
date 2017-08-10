@@ -135,6 +135,20 @@ def create_path_resolver(substitutions = {}):
 
 
 def path_split_all(path, ensure_trailing_slash = None):
+    '''
+    >>> path_split_all('/a/b/c')
+    ['/', 'a', 'b', 'c']
+    >>> path_split_all('/a/b/c/' )
+    ['/', 'a', 'b', 'c', '']
+    >>> path_split_all('/a/b/c', ensure_trailing_slash=True)
+    ['/', 'a', 'b', 'c', '']
+    >>> path_split_all('/a/b/c/', ensure_trailing_slash=True)
+    ['/', 'a', 'b', 'c', '']
+    >>> path_split_all('/a/b/c/', ensure_trailing_slash=False)
+    ['/', 'a', 'b', 'c']
+    >>> path_split_all('/a/b/c', ensure_trailing_slash=False)
+    ['/', 'a', 'b', 'c']
+    '''
     def tails(head):
         while(True):
             head,tail = os.path.split(head)
@@ -168,9 +182,12 @@ class EnsureIt:
 class Stringable(object):
     '''
     Marker to inform json_encoder to use `str(o)` to
-    serialize in json
+    serialize in json. Also assumes that any implementing
+    class has constructor that recreate same object from
+    its string representation as single parameter.
     '''
-    pass
+    def __repr__(self):
+        return '%s(%r)' % (type(self).__name__, str(self))
 
 Stringable.register(uuid.UUID)
 
@@ -274,3 +291,19 @@ def is_file_in_directory(file, dir):
     dir = os.path.join(realdir, '')
     file = os.path.realpath(file)
     return file == realdir or os.path.commonprefix([file, dir]) == dir
+
+
+def _camel2var(c):
+    return c if c.islower() else '_' + c.lower()
+
+
+def from_camel_case_to_underscores(s):
+    '''
+    >>> from_camel_case_to_underscores('CamelCase')
+    'camel_case'
+    '''
+    return ''.join(map(_camel2var, s)).strip('_')
+
+
+
+
