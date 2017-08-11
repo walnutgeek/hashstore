@@ -1,5 +1,5 @@
 from hashstore.bakery.db_mixins import ReprIt, NameIt, Cdt, Udt
-from hashstore.ids import Cake_TYPE
+from hashstore.ids import Cake_TYPE, SSHA_TYPE
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Integer, Column, String
 
@@ -11,4 +11,4 @@ class RemoteServer(NameIt, ReprIt, Cdt, Udt, Base):
     path = Column(String, index=True, unique=True)
     server_id = Column(Cake_TYPE)
     server_url = Column(String)
-    server_session = Column(String) #SaltedHash
+    server_session = Column(SSHA_TYPE)

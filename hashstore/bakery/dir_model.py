@@ -4,7 +4,6 @@ from hashstore.bakery.db_mixins import ReprIt, NameIt
 from hashstore.ids import Cake_TYPE, Cake
 import enum
 
-
 Base = declarative_base()
 
 

@@ -24,8 +24,8 @@ setup(name='hashstore',
       package_data={'': ['app/*']},
       entry_points={
           'console_scripts': [
-              'shash=hashstore.shash:main',
-              'shashd=hashstore.shashd:main',
+              '%s=hashstore.%s:main'%(n, n) for n in
+              'shash shashd hsi hsd'.split()
           ],
       },
       install_requires=install_requires,
