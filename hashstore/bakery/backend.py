@@ -4,7 +4,7 @@ import datetime
 import six
 
 from hashstore.ids import Cake
-from hashstore.new_db import Dbf
+from hashstore.ndb import Dbf
 from hashstore.utils import binary_type, ensure_bytes,ensure_directory
 
 from sqlalchemy import func,select
@@ -12,8 +12,8 @@ from sqlalchemy import func,select
 import hashlib
 
 from .content import ContentAddress, is_it_shard
-from .shard_model import shard_meta, blob
-from .incoming_model import incoming_meta, incoming
+from ..ndb.models.shard import shard_meta, blob
+from ..ndb.models.incoming import incoming_meta, incoming
 
 import logging
 

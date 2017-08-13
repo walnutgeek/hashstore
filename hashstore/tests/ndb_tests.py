@@ -6,7 +6,7 @@ from hashstore.tests import TestSetup, doctest_it
 from sqlalchemy import Table, MetaData, Column, types, \
     create_engine, select
 
-from hashstore.new_db import Dbf
+from hashstore.ndb import Dbf
 
 import logging
 logging.basicConfig()
@@ -46,10 +46,9 @@ def test_Alchemy():
 
 
 def test_models():
-    import importlib
-    for name in ['incoming','shard', 'auth', 'client', 'dir']:
-        m = importlib.import_module('hashstore.bakery.%s_model' % name)
-        # doctest_it(m)
+    from hashstore.ndb.models import MODELS
+    for m in MODELS:
+        name = m.__name__.split('.')[-1]
         dbf = Dbf(m.Base.metadata,test.file_path('%s_model.sqlite3' % name ))
         dbf.ensure_db()
 

@@ -1,4 +1,6 @@
-from sqlalchemy import *
+from sqlalchemy import VARCHAR, TypeDecorator, create_engine
+from sqlalchemy.orm import scoped_session, sessionmaker
+
 import os
 
 

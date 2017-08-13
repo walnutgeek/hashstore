@@ -6,7 +6,7 @@ import sys
 
 import hashstore.base_x as bx
 import hashstore.utils as utils
-from hashstore.new_db import varchar_type
+from hashstore.ndb import varchar_type
 import base64
 
 import json

@@ -1,7 +1,4 @@
-from hashstore.server import StoreServer
-from hashstore.mount import Mount
-import six
-import yaml
+import hashstore.ndb.models.server
 import logging
 
 def args_parser():
@@ -37,15 +34,8 @@ def main():
     cmd_picked = [args.command == n for n in COMMANDS]
     doing = dict(zip(COMMANDS, cmd_picked))
     store_dir = args.store_dir
+
     port = args.port
-    access_mode = AccessMode.from_bool(args.secure)
-    mounts = None
-    if args.config:
-        config = yaml.safe_load(open(args.config))
-        store_dir = config['store_dir']
-        port = config['port']
-        access_mode = AccessMode[config['access_mode']]
-        mounts = { n: Mount(n,p) for n,p in six.iteritems(config['mounts'])}
     server = StoreServer(store_dir, port, access_mode, mounts)
     if doing['init']:
         pass

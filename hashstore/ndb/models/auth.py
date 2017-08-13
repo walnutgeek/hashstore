@@ -1,6 +1,8 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Enum, ForeignKey, Column, String
-from hashstore.bakery.db_mixins import ReprIt, GuidPk, Cdt, Udt
+from sqlalchemy.orm import relationship
+from sqlalchemy import Enum, ForeignKey, Column, String, Boolean
+from hashstore.ndb.mixins import ReprIt, GuidPk, Cdt, Udt, \
+    NameIt, ServersMixin
 from hashstore.ids import Cake_TYPE, SSHA_TYPE
 import enum
 
@@ -43,58 +45,43 @@ class PermissionType(enum.Enum):
     can read, write create doors and grant rights to anything
     '''
 
+
 class UserState(enum.Enum):
     disabled = 0
     active = 1
     invitation = 2
 
 
-class User(GuidPk, Cdt, Udt, ReprIt, Base):
-    __tablename__ = 'users'
+class User(GuidPk, NameIt, Cdt, Udt, ReprIt, Base):
     email= Column(String, nullable=False)
     user_state = Column(Enum(UserState), nullable=False)
     passwd = Column(SSHA_TYPE, nullable=False)
     name = Column(String, nullable=True)
 
 
-class Door(GuidPk, Cdt, Udt, Base):
-    __tablename__ = 'doors'
+class Portal(GuidPk, NameIt, Cdt, Udt, Base):
     latest = Column(Cake_TYPE, nullable=True)
+    service = Column(Boolean, nullable=False, default=False)
 
 
-class DoorEvent(GuidPk, Cdt, Base):
-    __tablename__ = 'door_events'
-    door_id =  Column(None, ForeignKey('doors.id'))
-    modified_by = Column(None, ForeignKey('users.id'))
+class PortalRoute(GuidPk, NameIt, Cdt, Base):
+    portal_id = Column(None, ForeignKey('portal.id'))
+    modified_by = Column(None, ForeignKey('user.id'))
     cake = Column(Cake_TYPE, nullable=False)
 
 
-class Permission(GuidPk, Cdt, Udt, Base):
-    __tablename__ = 'permissions'
-    door_id = Column(None, ForeignKey('doors.id'))
-    user_id = Column(None, ForeignKey('users.id'))
+class Permission(GuidPk, NameIt, Cdt, Udt, Base):
+    door_id = Column(None, ForeignKey('portal.id'))
+    user_id = Column(None, ForeignKey('user.id'))
     cake = Column(Cake_TYPE, nullable=False)
     permission_type = Column(Enum(PermissionType), nullable=False)
 
 
-class HostType(enum.Enum):
-    client = 0
-    server = 1
+class Server(ServersMixin, Base):
+    seen_by = Column(None,ForeignKey('server.id'))
+    services = relationship('Portal', secondary="service_home")
 
 
-class Host(GuidPk, Cdt, Udt, Base):
-    __tablename__ = 'known_hosts'
-    id = Column(Cake_TYPE, primary_key=True)
-    secret = Column(SSHA_TYPE,nullable=False)
-    host_name = Column(String)
-    host_type = Column(Enum(HostType))
-    authorized = Column(None, ForeignKey('users.id'), nullable=True)
-
-
-# not part of replicated state
-class Session(GuidPk,Cdt,Udt,ReprIt, Base):
-    __tablename__ = 'user_sessions'
-    user = Column(None, ForeignKey('users.id'), nullable=True)
-    host = Column(None, ForeignKey('known_hosts.id'), nullable=True)
-    state = Column(String)
-
+class ServiceHome(NameIt,Base):
+    server_id = Column(None, ForeignKey("server.id"), primary_key=True)
+    service_id = Column(None, ForeignKey("portal.id"), primary_key=True)

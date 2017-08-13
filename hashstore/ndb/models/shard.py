@@ -1,5 +1,5 @@
 from hashstore.bakery.content import ContentAddress_TYPE
-from hashstore.bakery.db_mixins import ReprIt, NameIt, Cdt
+from hashstore.ndb.mixins import ReprIt, NameIt, Cdt
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Integer, Column, LargeBinary
 

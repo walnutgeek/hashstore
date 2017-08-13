@@ -12,7 +12,7 @@ from hashstore.ids import Cake, NamedCAKes, Cake_TYPE, KeyStructure
 
 from hashstore.bakery.content import ContentAddress, is_it_shard
 from .backend import LiteBackend
-from hashstore.new_db import Dbf
+from hashstore.ndb import Dbf
 from hashstore.utils import v2s,quict,ensure_directory,ensure_bytes,\
     read_in_chunks
 

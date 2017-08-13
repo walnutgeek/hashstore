@@ -1,6 +1,6 @@
 from sqlalchemy import Enum, Integer, Column, String
 from sqlalchemy.ext.declarative import declarative_base
-from hashstore.bakery.db_mixins import ReprIt, NameIt
+from hashstore.ndb.mixins import ReprIt, NameIt, Singleton
 from hashstore.ids import Cake_TYPE, Cake
 import enum
 
@@ -20,7 +20,5 @@ class DirEntry(NameIt, ReprIt, Base):
     modtime = Column(Integer)
 
 
-class DirKey(NameIt, ReprIt, Base):
-    id = Column(Integer,primary_key=True, default=1)
-    dir_id = Column(Cake_TYPE,nullable=False,default=Cake.new_guid)
-
+class DirKey(Singleton, Base):
+    pass
