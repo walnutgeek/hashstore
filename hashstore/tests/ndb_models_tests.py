@@ -22,3 +22,9 @@ def test_server():
     pass
 
 
+def test_models():
+    from hashstore.ndb.models import MODELS
+    for m in MODELS:
+        name = m.__name__.split('.')[-1]
+        dbf = Dbf(m.Base.metadata,test.file_path('%s_model.sqlite3' % name ))
+        dbf.ensure_db()

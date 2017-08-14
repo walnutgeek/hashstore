@@ -1,26 +1,16 @@
 from hashstore.bakery.auth_model import *
 
-from hashstore.bakery.content import *
-
-import hashlib
 import os
-import shutil
-import datetime
 import six
 from hashstore.local_store import AccessMode
-from hashstore.ids import Cake, NamedCAKes, Cake_TYPE, KeyStructure
 
-from hashstore.bakery.content import ContentAddress, is_it_shard
 from .backend import LiteBackend
 from hashstore.ndb import Dbf
-from hashstore.utils import v2s,quict,ensure_directory,ensure_bytes,\
-    read_in_chunks
-
+from hashstore.utils import quict
 
 
 import logging
 log = logging.getLogger(__name__)
-
 
 
 class CakeStore:
@@ -30,15 +20,12 @@ class CakeStore:
         if init:
             self.initialize()
 
-
     def initialize(self):
         if hasattr(self, 'backend'):
             return
         self.backend = LiteBackend(self.root)
         self.auth_db = Dbf(Base.metadata, os.path.join(self.root,'auth.db'))
         self.auth_db.ensure_db()
-
-
 
     def create_invitation(self, body=None):
         self.initialize()

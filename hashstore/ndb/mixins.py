@@ -1,4 +1,5 @@
-from hashstore.ids import Cake_TYPE, Cake, SSHA_TYPE
+from hashstore.ndb import StringCast
+from hashstore.ids import Cake, SaltedSha
 import datetime
 from sqlalchemy import Column, DateTime, String, Integer
 from sqlalchemy.ext.declarative import declared_attr
@@ -22,7 +23,7 @@ class NameIt(object):
 
 
 class GuidPk:
-    id = Column(Cake_TYPE, primary_key=True,
+    id = Column(StringCast(Cake), primary_key=True,
                 default=Cake.new_guid)
 
 
@@ -37,11 +38,11 @@ class Udt:
 
 
 class ServersMixin(NameIt, Cdt, Udt):
-    id = Column(Cake_TYPE, primary_key=True)
+    id = Column(StringCast(Cake), primary_key=True)
     server_url = Column(String)
-    secret = Column(SSHA_TYPE, nullable=False)
+    secret = Column(StringCast(SaltedSha), nullable=False)
 
 
 class Singleton(NameIt, ReprIt):
     single = Column(Integer,primary_key=True, default=1)
-    id = Column(Cake_TYPE,nullable=False,default=Cake.new_guid)
+    id = Column(StringCast(Cake),nullable=False,default=Cake.new_guid)

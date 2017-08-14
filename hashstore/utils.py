@@ -6,6 +6,7 @@ import json
 import sys
 import uuid
 import abc
+import enum
 
 
 def quict(**kwargs):
@@ -305,5 +306,43 @@ def from_camel_case_to_underscores(s):
     return ''.join(map(_camel2var, s)).strip('_')
 
 
+class AltKeyMapper:
+    '''
+    >>> class X(enum.IntEnum):
+    ...     a = 1
+    ...     b = 2
+    ...     c = 3
 
+    >>> m = AltKeyMapper(X)
+    >>> m.to_value(2)
+    <X.b: 2>
+    >>> m.to_altkey(X.c)
+    3
+    >>> m.to_value(None)
+    >>> m.to_altkey(None)
+
+    With custom `get_altkey` lambda:
+    >>> m2 = AltKeyMapper(X, get_altkey=lambda v:v.value+1)
+    >>> m2.to_value(3)
+    <X.b: 2>
+    >>> m2.to_altkey(X.c)
+    4
+    '''
+    def __init__(self, values, get_altkey = None):
+        if get_altkey is None:
+            get_altkey = lambda v: v.value
+        self._extract_altkey = get_altkey
+        self._altkey_dict = {self._extract_altkey(v):v for v in values}
+
+    def to_altkey(self, val):
+        if val is None:
+            return val
+        else:
+            return self._extract_altkey(val)
+
+    def to_value(self, i):
+        if i is None:
+            return None
+        else:
+            return self._altkey_dict[i]
 

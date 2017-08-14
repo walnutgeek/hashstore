@@ -1,16 +1,7 @@
-import os
-import shutil
-
 from hashstore.base_x import base_x,iseq
 from hashstore.ids import Cake
-from hashstore.ndb import varchar_type
-from hashstore.utils import binary_type, ensure_bytes, Stringable,\
-    EnsureIt,ensure_directory
-
-
+from hashstore.utils import Stringable, EnsureIt
 import logging
-import hashlib
-
 
 log = logging.getLogger(__name__)
 
@@ -108,7 +99,6 @@ class ContentAddress(Stringable, EnsureIt):
     def __hash__(self):
         return hash(self._id)
 
-ContentAddress_TYPE = varchar_type(ContentAddress)
 
 
 

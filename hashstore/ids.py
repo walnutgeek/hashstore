@@ -6,7 +6,6 @@ import sys
 
 import hashstore.base_x as bx
 import hashstore.utils as utils
-from hashstore.ndb import varchar_type
 import base64
 
 import json
@@ -444,8 +443,6 @@ class NamedCAKes(utils.Jsonable):
         return [keys, self.get_udks(keys)]
 
 
-Cake_TYPE = varchar_type(Cake)
-
 
 class CakePath(utils.Stringable, utils.EnsureIt):
     '''
@@ -498,7 +495,6 @@ class CakePath(utils.Stringable, utils.EnsureIt):
         return '/'.join(self.path)
 
 
-Path_TYPE = varchar_type(CakePath)
 
 SSHA_MARK='{SSHA}'
 
@@ -555,4 +551,3 @@ class SaltedSha(utils.Stringable, utils.EnsureIt):
         return SSHA_MARK + utils.ensure_string(encode)
 
 
-SSHA_TYPE = varchar_type(SaltedSha)

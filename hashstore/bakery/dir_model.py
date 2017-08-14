@@ -1,7 +1,8 @@
 from sqlalchemy import Enum, Integer, Column, String
 from sqlalchemy.ext.declarative import declarative_base
 from hashstore.ndb.mixins import ReprIt, NameIt, Singleton
-from hashstore.ids import Cake_TYPE, Cake
+from hashstore.ids import Cake
+from hashstore.ndb import StringCast
 import enum
 
 Base = declarative_base()
@@ -15,7 +16,7 @@ class FileType(enum.Enum):
 class DirEntry(NameIt, ReprIt, Base):
     name = Column(String, primary_key=True)
     file_type = Column(Enum(FileType), nullable=False)
-    cake = Column(Cake_TYPE)
+    cake = Column(StringCast(Cake))
     size = Column(Integer)
     modtime = Column(Integer)
 

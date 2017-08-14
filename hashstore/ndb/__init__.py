@@ -1,25 +1,45 @@
-from sqlalchemy import VARCHAR, TypeDecorator, create_engine
+from sqlalchemy import VARCHAR, String, Integer, TypeDecorator, create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
+from hashstore.utils import AltKeyMapper
 
 import os
 
 
-def varchar_type(cls):
-    class BuiltType(TypeDecorator):
-        impl = VARCHAR
+class StringCast(TypeDecorator):
+    impl = VARCHAR
 
-        def process_bind_param(self, value, dialect):
-            if isinstance(value, cls):
-                return str(value)
-            else:
-                return value
+    def __init__(self, stringable_cls, *args, **kw):
+        TypeDecorator.__init__(self, *args, **kw)
+        self.cls = stringable_cls
 
-        def process_result_value(self, value, dialect):
-            if value is None:
-                return value
-            else:
-                return cls(value)
-    return BuiltType
+    def process_bind_param(self, value, dialect):
+        if isinstance(value, self.cls):
+            return str(value)
+        else:
+            return value
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        else:
+            return self.cls(value)
+
+
+class IntCast(TypeDecorator):
+    impl = Integer
+
+    def __init__(self, values, get_altkey=None,*arg, **kw):
+        TypeDecorator.__init__(self, *arg, **kw)
+        if isinstance(values,AltKeyMapper):
+            self.mapper = values
+        else:
+            self.mapper = AltKeyMapper(values, get_altkey=get_altkey)
+
+    def process_bind_param(self, value, dialect):
+        return self.mapper.to_altkey(value)
+
+    def process_result_value(self, value, dialect):
+        return self.mapper.to_value(value)
 
 
 class Dbf:

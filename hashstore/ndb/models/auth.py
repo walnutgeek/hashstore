@@ -3,7 +3,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import Enum, ForeignKey, Column, String, Boolean
 from hashstore.ndb.mixins import ReprIt, GuidPk, Cdt, Udt, \
     NameIt, ServersMixin
-from hashstore.ids import Cake_TYPE, SSHA_TYPE
+from hashstore.ndb import StringCast, IntCast
+from hashstore.ids import Cake, SaltedSha
 import enum
 
 
@@ -51,30 +52,34 @@ class UserState(enum.Enum):
     active = 1
     invitation = 2
 
+class PortalType(enum.IntEnum):
+    bundle = 0
+    service = 1
 
 class User(GuidPk, NameIt, Cdt, Udt, ReprIt, Base):
     email= Column(String, nullable=False)
-    user_state = Column(Enum(UserState), nullable=False)
-    passwd = Column(SSHA_TYPE, nullable=False)
+    user_state = Column(IntCast(UserState), nullable=False)
+    passwd = Column(StringCast(SaltedSha), nullable=False)
     name = Column(String, nullable=True)
 
 
 class Portal(GuidPk, NameIt, Cdt, Udt, Base):
-    latest = Column(Cake_TYPE, nullable=True)
-    service = Column(Boolean, nullable=False, default=False)
+    latest = Column(StringCast(Cake), nullable=True)
+    portal_type = Column(IntCast(PortalType), nullable=False,
+                         default=PortalType.bundle)
 
 
 class PortalRoute(GuidPk, NameIt, Cdt, Base):
     portal_id = Column(None, ForeignKey('portal.id'))
     modified_by = Column(None, ForeignKey('user.id'))
-    cake = Column(Cake_TYPE, nullable=False)
+    cake = Column(StringCast(Cake), nullable=False)
 
 
 class Permission(GuidPk, NameIt, Cdt, Udt, Base):
     door_id = Column(None, ForeignKey('portal.id'))
     user_id = Column(None, ForeignKey('user.id'))
-    cake = Column(Cake_TYPE, nullable=False)
-    permission_type = Column(Enum(PermissionType), nullable=False)
+    cake = Column(StringCast(Cake), nullable=False)
+    permission_type = Column(IntCast(PermissionType), nullable=False)
 
 
 class Server(ServersMixin, Base):
