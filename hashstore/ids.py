@@ -551,3 +551,10 @@ class SaltedSha(utils.Stringable, utils.EnsureIt):
         return SSHA_MARK + utils.ensure_string(encode)
 
 
+class InetAddress(utils.Stringable, utils.EnsureIt):
+
+    def __init__(self, k):
+        self.k = k
+
+    def __str__(self):
+        return self.k

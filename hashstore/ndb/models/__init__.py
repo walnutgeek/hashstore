@@ -1,3 +1,3 @@
-from hashstore.ndb.models import incoming, shard, auth, server, client
+from hashstore.ndb.models import incoming, shard, glue, server, client
 
-MODELS = (auth,incoming,client,server,shard)
+MODELS = (glue, incoming, client, server, shard)

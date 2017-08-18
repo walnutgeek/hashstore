@@ -1,4 +1,5 @@
-from collections import Mapping
+from collections import Mapping, namedtuple
+import argparse
 import functools
 import six
 import os
@@ -306,43 +307,121 @@ def from_camel_case_to_underscores(s):
     return ''.join(map(_camel2var, s)).strip('_')
 
 
-class AltKeyMapper:
+class KeyMapper:
     '''
+    Mapper that extracts keys out of sequence of values
+    and create mapping from these keys to values from
+    sequence.
+
     >>> class X(enum.IntEnum):
     ...     a = 1
     ...     b = 2
     ...     c = 3
 
-    >>> m = AltKeyMapper(X)
+    >>> m = KeyMapper(X)
+    >>> list(m.keys())
+    [1, 2, 3]
     >>> m.to_value(2)
     <X.b: 2>
-    >>> m.to_altkey(X.c)
+    >>> m.to_key(X.c)
     3
     >>> m.to_value(None)
-    >>> m.to_altkey(None)
+    >>> m.to_key(None)
 
-    With custom `get_altkey` lambda:
-    >>> m2 = AltKeyMapper(X, get_altkey=lambda v:v.value+1)
+    With custom `extract_key` lambda:
+    >>> m2 = KeyMapper(X, extract_key=lambda v:v.value+1)
+    >>> list(m2.keys())
+    [2, 3, 4]
     >>> m2.to_value(3)
     <X.b: 2>
-    >>> m2.to_altkey(X.c)
+    >>> m2.to_key(X.c)
     4
     '''
-    def __init__(self, values, get_altkey = None):
-        if get_altkey is None:
-            get_altkey = lambda v: v.value
-        self._extract_altkey = get_altkey
-        self._altkey_dict = {self._extract_altkey(v):v for v in values}
+    def __init__(self, values, extract_key = None):
+        if extract_key is None:
+            extract_key = lambda v: v.value
+        self._extract_key = extract_key
+        self._altkey_dict = {self._extract_key(v):v for v in values}
 
-    def to_altkey(self, val):
+    def to_key(self, val):
         if val is None:
             return val
         else:
-            return self._extract_altkey(val)
+            return self._extract_key(val)
 
     def to_value(self, i):
         if i is None:
             return None
         else:
             return self._altkey_dict[i]
+
+    def keys(self):
+        return self._altkey_dict.keys()
+
+
+_Opt = namedtuple("_Opt", 'name help default type choices'.split())
+
+
+class Opt(_Opt):
+    def __new__(cls, name, help='', default=None, type=None, choices=None):
+        if default is not None:
+            help += 'Default is: %r. ' % default
+        if choices is not None:
+            help +=  'Choices are: %r. ' % (choices,)
+        return _Opt.__new__(cls, name, help, default, type, choices)
+
+    def add_itself(self, parser):
+        parser.add_argument('--%s' % self.name,
+                            metavar=self.name, help=self.help,
+                            dest=self.name, type=self.type,
+                            default=self.default,
+                            choices=self.choices)
+
+class Switch(_Opt):
+    def __new__(cls, name, help='', default=False):
+        return _Opt.__new__(cls, name, help, default, bool, None)
+
+    def add_itself(self, parser):
+        parser.set_defaults(**{ self.name : self.default})
+        action = 'store_false' if self.default else 'store_true'
+        parser.set_defaults(debug=False)
+        parser.add_argument('--%s' % self.name,
+                            dest=self.name,
+                            action=action,
+                            help=self.help)
+
+
+_SPECIAL = ('', '*')
+
+
+def argparse_optdict(opt_dict, description=None):
+    def_opts = opt_dict.get('*', [])
+    global_opts = opt_dict.get('', [])
+    commands = {c: list(def_opts) for c in opt_dict
+                if c not in _SPECIAL }
+    for c in commands:
+        commands[c].extend(opt_dict[c])
+
+    parser = argparse.ArgumentParser(description=description)
+
+    for opt in global_opts:
+        opt.add_itself(parser)
+
+    subparsers = parser.add_subparsers()
+    for c in commands:
+        opts = commands[c]
+        help = None
+        command = c
+        split = c.split(' - ', maxsplit=2)
+        if len(split) > 1:
+            command = split[0]
+            help = split[1]
+        subparser = subparsers.add_parser(command,help=help)
+        subparser.description = help
+        subparser.set_defaults(command=command)
+        for opt in opts:
+            opt.add_itself(subparser)
+
+
+    return parser
 

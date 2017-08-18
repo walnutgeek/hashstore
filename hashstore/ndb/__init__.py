@@ -1,6 +1,7 @@
 from sqlalchemy import VARCHAR, String, Integer, TypeDecorator, create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
-from hashstore.utils import AltKeyMapper
+from sqlalchemy.orm import sessionmaker
+from hashstore.utils import KeyMapper
+from inspect import ismodule
 
 import os
 
@@ -28,15 +29,15 @@ class StringCast(TypeDecorator):
 class IntCast(TypeDecorator):
     impl = Integer
 
-    def __init__(self, values, get_altkey=None,*arg, **kw):
+    def __init__(self, values, extract_key=None, *arg, **kw):
         TypeDecorator.__init__(self, *arg, **kw)
-        if isinstance(values,AltKeyMapper):
+        if isinstance(values, KeyMapper):
             self.mapper = values
         else:
-            self.mapper = AltKeyMapper(values, get_altkey=get_altkey)
+            self.mapper = KeyMapper(values, extract_key=extract_key)
 
     def process_bind_param(self, value, dialect):
-        return self.mapper.to_altkey(value)
+        return self.mapper.to_key(value)
 
     def process_result_value(self, value, dialect):
         return self.mapper.to_value(value)
@@ -44,9 +45,13 @@ class IntCast(TypeDecorator):
 
 class Dbf:
     def __init__(self,meta,path):
+        if ismodule(meta):
+            meta = meta.Base.metadata
         self.path = path
         self.meta = meta
         self._engine = None
+        self._Session = None
+
 
     def engine(self):
         if self._engine is None:
@@ -65,3 +70,7 @@ class Dbf:
     def connect(self):
         return self.engine().connect()
 
+    def session(self):
+        if self._Session is None:
+            self._Session=sessionmaker(bind=self.engine())
+        return self._Session()
