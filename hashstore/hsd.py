@@ -2,7 +2,7 @@ import os
 
 import hashstore.ndb.models.server
 import hashstore.ndb.models.glue
-from hashstore.utils import Opt, Switch, argparse_optdict
+from hashstore.utils.args import Opt, Switch, CliArgs
 from hashstore.ndb import Dbf
 from hashstore.bakery.backend import LiteBackend
 import logging
@@ -13,7 +13,7 @@ ACTIONS = ('view', 'add', 'remove')
 perm_names = ', '.join(p.name for p in
                        hashstore.ndb.models.glue.PermissionType)
 
-COMMANDS_TREE = {
+cli_args = CliArgs('hsd - hashstore server', {
     '':[
         Switch('debug', 'set logging level to DEBUG. default is INFO'),
     ],
@@ -27,14 +27,14 @@ COMMANDS_TREE = {
     'security - maintain user and acl settings': [
         Opt('user', 'email address of user'),
         Opt('acl',
-            'should be in form <Permission>[<Cake>]. Permissions '
-            'are: %s. Some  permissions require Cake id that points to '
-            'portal or data' % (perm_names,)),
+            'should be in form <Permission>:[<Cake>]. Permissions '
+            'are: %s. Permission names that ends with "_" require '
+            '`Cake` that points to  portal or data' % (perm_names,)),
         Opt('action', choices=ACTIONS),
     ],
     'start - start server': [],
     'stop - stop server': []
-}
+})
 
 
 class Server:
@@ -42,7 +42,7 @@ class Server:
         self.store_dir = store_dir
         self.server_db = Dbf(
             hashstore.ndb.models.server,
-            os.path.join(store_dir, '.shamo-server')
+            os.path.join(store_dir, 'server.db')
         )
         self.glue_db = Dbf(
             hashstore.ndb.models.glue,
@@ -86,7 +86,7 @@ class Server:
 
 
 def main():
-    args = argparse_optdict(COMMANDS_TREE, 'hsd - hashstore server').parse_args()
+    args = cli_args.parse_args()
     level = logging.DEBUG if args.debug else logging.INFO
     logging.basicConfig(level=level)
     server = Server(args.dir)
