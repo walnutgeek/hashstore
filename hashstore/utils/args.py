@@ -1,8 +1,12 @@
 from collections import Mapping, namedtuple
 import argparse
+import inspect
+
+getargspec = inspect.getargspec if bytes == str else inspect.getfullargspec
 
 _Opt = namedtuple("_Opt", 'name help default type choices'.split())
 
+Cmd = namedtuple("Cmd", 'name help options'.split())
 
 class Opt(_Opt):
     def __new__(cls, name, help='', default=None, type=None, choices=None):
@@ -34,37 +38,88 @@ class Switch(_Opt):
                             help=self.help)
 
 
-_SPECIAL = ('', '*')
 
+class CommandArgs:
+    def __init__(self):
+        self.app_help = ''
+        self.app_cls = None
+        self.commands = []
+        self.global_opts = []
 
-class CliArgs:
-    def __init__(self, description, command_definitions):
-        def_opts = command_definitions.get('*', [])
-        global_opts = command_definitions.get('', [])
-        commands = {c: list(def_opts) for c in command_definitions
-                    if c not in _SPECIAL}
-        for c in commands:
-            commands[c].extend(command_definitions[c])
+    def app(self, app_help):
+        self.app_help = app_help
+        def decorate(fn):
+            self.app_cls = fn
+            return fn
+        return decorate
 
-        self.parser = argparse.ArgumentParser(description=description)
+    def command(self, command_help='', **opthelp_kw):
+        def decorate(fn):
+            options = []
+            opt_names, _, _, opt_defaults = getargspec(fn)[:4]
+            if opt_names is None:
+                opt_names = []
+            if opt_defaults is None:
+                opt_defaults = []
+            def_offset = len(opt_names) - len(opt_defaults)
+            for i, n in enumerate(opt_names):
+                if i == 0:
+                    continue
+                default = None
+                sw = False
+                opt_type = None
+                opt_help = opthelp_kw.get(n, '')
+                if isinstance(opt_help,tuple):
+                    opt_type = opt_help[1]
+                    opt_help = opt_help[0]
+                if opt_type == Switch:
+                    default = False
+                    sw = True
+                if i >= def_offset:
+                    default = opt_defaults[i - def_offset]
+                if sw:
+                    options.append( Switch(n, opt_help, default))
+                else:
+                    options.append( Opt(n, opt_help, default, opt_type ))
+            self.commands.append(Cmd(fn.__name__, command_help, options))
+            return fn
+        return decorate
 
-        for opt in global_opts:
-            opt.add_itself(self.parser)
-
-        subparsers = self.parser.add_subparsers()
-        for c in commands:
-            opts = commands[c]
-            help = None
-            command = c
-            split = c.split(' - ', maxsplit=2)
-            if len(split) > 1:
-                command = split[0]
-                help = split[1]
-            subparser = subparsers.add_parser(command,help=help)
+    def get_parser(self, args=None, namespace=None):
+        parser = argparse.ArgumentParser(description=self.app_help)
+        global_cmd = [c for c in self.commands if c.name == '__init__']
+        if len(global_cmd) == 1:
+            self.global_opts = global_cmd[0].options
+        for opt in self.global_opts:
+            opt.add_itself(parser)
+        subparsers = parser.add_subparsers()
+        for c in self.commands:
+            if c.name == '__init__':
+                continue
+            opts = c.options
+            help = c.help
+            subparser = subparsers.add_parser(c.name,help=help)
             subparser.description = help
-            subparser.set_defaults(command=command)
+            subparser.set_defaults(command=c.name)
             for opt in opts:
                 opt.add_itself(subparser)
 
+        return parser
+
     def parse_args(self, args=None, namespace=None):
-        return self.parser.parse_args(args, namespace)
+        return self.get_parser().parse_args(args, namespace)
+
+    def main(self):
+        args = self.parse_args()
+        def extract_values(opts):
+            return {o.name : getattr(args, o.name) for o in opts}
+        constructor_args=extract_values(self.global_opts)
+        instance = self.app_cls(**constructor_args)
+        for c in self.commands:
+            if args.command == c.name:
+                run_args = extract_values(c.options)
+                getattr(instance, c.name)(**run_args)
+
+
+
+
