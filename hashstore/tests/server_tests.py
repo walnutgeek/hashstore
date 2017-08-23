@@ -50,18 +50,18 @@ mounts:
   files: {files}
 '''.format(**locals())
             )
-            test.run_shash('d start --config '+yaml_config)
+            test.run_script('d start --config ' + yaml_config)
         else:
-            test.run_shash('d start --store_dir {hashery_dir} --port {port}'
+            test.run_script('d start --store_dir {hashery_dir} --port {port}'
                        '{server_opt}'.format(**locals()))
         time.sleep(3)
         if do_invitation:
             invite_log = test.file_path(store_dir + '_invite.log')
             if use_config:
-                rc,invitation = test.run_shash_and_wait(
+                rc,invitation = test.run_script_and_wait(
                     'd invite --config ' + yaml_config, invite_log, expect_rc=0)
             else:
-                rc,invitation = test.run_shash_and_wait(
+                rc,invitation = test.run_script_and_wait(
                     'd invite --store_dir {hashery_dir}'.format(**locals()),
                     invite_log, expect_rc=0)
             eq_(rc, 0)
@@ -72,41 +72,41 @@ mounts:
             time.sleep(.1)
             log.info(invitation)
 
-            test.run_shash_and_wait('register --url http://localhost:{port}/ '
+            test.run_script_and_wait('register --url http://localhost:{port}/ '
                                     '--invitation {invitation} '
                                     '--dir {files}'.format(**locals()),
-                                        expect_rc=0)
+                                     expect_rc=0)
         else:
-            test.run_shash_and_wait('register --url http://localhost:{port}/ '
+            test.run_script_and_wait('register --url http://localhost:{port}/ '
                                     '--dir {files}'.format(**locals()),
-                                        expect_rc=0)
+                                     expect_rc=0)
 
-        _,h1 = test.run_shash_and_wait('backup --dir {files}'.format(**locals()),
+        _,h1 = test.run_script_and_wait('backup --dir {files}'.format(**locals()),
                                         expect_rc=0)
 
         update_mount(files, file_set2)
-        _,h2 = test.run_shash_and_wait('backup --dir {files}'.format(**locals()),
+        _,h2 = test.run_script_and_wait('backup --dir {files}'.format(**locals()),
                                         expect_rc=0)
         eq_(h1, fileset1_udk)
         eq_(h2, fileset2_udk)
         f1 = os.path.join(test.dir, 'sfiles1')
-        test.run_shash_and_wait('restore --dir {files} --udk {h1} '
+        test.run_script_and_wait('restore --dir {files} --udk {h1} '
                                 '--dest {f1}'.format(**locals()))
 
         f2 = os.path.join(test.dir, 'sfiles2')
-        test.run_shash_and_wait('restore --dir {files} --udk {h2} '
+        test.run_script_and_wait('restore --dir {files} --udk {h2} '
                                 '--dest {f2}'.format(**locals()))
 
-        _, s1 = test.run_shash_and_wait('scan --dir {f1}'.format(**locals()),
-                                        expect_rc=0)
-        _, s2 = test.run_shash_and_wait('scan --dir {f2}'.format(**locals()),
-                                        expect_rc=0)
+        _, s1 = test.run_script_and_wait('scan --dir {f1}'.format(**locals()),
+                                         expect_rc=0)
+        _, s2 = test.run_script_and_wait('scan --dir {f2}'.format(**locals()),
+                                         expect_rc=0)
         eq_(s1, fileset1_udk)
         eq_(s2, fileset2_udk)
-        _, s1 = test.run_shash_and_wait('ls --dir {f1}'.format(**locals()),
-                                        expect_rc=0)
-        _, s2 = test.run_shash_and_wait('ls --dir {f2}'.format(**locals()),
-                                        expect_rc=0)
+        _, s1 = test.run_script_and_wait('ls --dir {f1}'.format(**locals()),
+                                         expect_rc=0)
+        _, s2 = test.run_script_and_wait('ls --dir {f2}'.format(**locals()),
+                                         expect_rc=0)
         eq_(s1, '119767')
         eq_(s2, '225926')
 
@@ -146,9 +146,9 @@ mounts:
                               hexdigest='8d6eaa485bc21f46df59127f4670a8ad7ae14d8ea2064efff49aae8e2a8fb8e4')
 
         if use_config:
-            test.run_shash_and_wait('d stop --config ' +yaml_config)
+            test.run_script_and_wait('d stop --config ' + yaml_config)
         else:
-            test.run_shash_and_wait('d stop --port %d' % port)
+            test.run_script_and_wait('d stop --port %d' % port)
         # test.wait_bg()
         # ok_(False)
 
@@ -161,4 +161,4 @@ mounts:
 
 
 def test_dummies():
-    test.run_shash('nonsense')
+    test.run_script('nonsense')

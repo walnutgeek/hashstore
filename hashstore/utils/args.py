@@ -1,4 +1,4 @@
-from collections import Mapping, namedtuple
+from collections import namedtuple
 import argparse
 import inspect
 
@@ -7,6 +7,7 @@ getargspec = inspect.getargspec if bytes == str else inspect.getfullargspec
 _Opt = namedtuple("_Opt", 'name help default type choices'.split())
 
 Cmd = namedtuple("Cmd", 'name help options'.split())
+
 
 class Opt(_Opt):
     def __new__(cls, name, help='', default=None, type=None, choices=None):
@@ -36,7 +37,6 @@ class Switch(_Opt):
                             dest=self.name,
                             action=action,
                             help=self.help)
-
 
 
 class CommandArgs:
@@ -78,9 +78,9 @@ class CommandArgs:
                 if i >= def_offset:
                     default = opt_defaults[i - def_offset]
                 if sw:
-                    options.append( Switch(n, opt_help, default))
+                    options.append(Switch(n, opt_help, default))
                 else:
-                    options.append( Opt(n, opt_help, default, opt_type ))
+                    options.append(Opt(n, opt_help, default, opt_type ))
             self.commands.append(Cmd(fn.__name__, command_help, options))
             return fn
         return decorate

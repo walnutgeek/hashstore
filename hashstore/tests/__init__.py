@@ -10,6 +10,9 @@ from doctest import OutputChecker, DocTestRunner, DocTestFinder
 
 pyenv = 'py' + sys.version[0]
 
+def normalize_space(s):
+    return re.sub(r'\s+', ' ', ' ' + s + ' ')
+
 class TestSetup:
     def __init__(self, name, ensure_empty = False):
         self.log = logging.getLogger(name)
@@ -23,8 +26,9 @@ class TestSetup:
         self.processes = {}
         self.counter = 0
 
-    def run_shash_and_wait(self, cmd, log_file=None, expect_rc=None):
-        p_id = self.run_shash(cmd,log_file)
+    def run_script_and_wait(self, cmd, log_file=None, expect_rc=None,
+                            expect_read = None):
+        p_id = self.run_script(cmd, log_file)
         popen, cmd, logpath = self.processes[p_id]
         rc = popen.wait()
         read = open(logpath).read()
@@ -33,13 +37,20 @@ class TestSetup:
             if expect_rc != rc:
                 print(read)
                 eq_(expect_rc, rc)
+        if expect_read is not None:
+            if normalize_space(read) != normalize_space(expect_read):
+                print(read)
+                ok_(False)
         return rc, split[-1] if len(split) else None
 
-    def run_shash(self, cmd, log_file=None):
+    def run_script(self, cmd, log_file=None):
         p_id = self.counter
         self.counter += 1
         executable = 'hashstore.shash'
-        if 'd ' == cmd[:2]:
+        if cmd[:4] in ('hsi ','hsd '):
+            executable = 'hashstore.' +cmd[:3]
+            cmd = cmd[4:]
+        elif 'd ' == cmd[:2]:
             cmd = cmd[2:]
             executable = 'hashstore.shashd'
         if log_file is None:

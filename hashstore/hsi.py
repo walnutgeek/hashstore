@@ -27,7 +27,7 @@ class ClientApp:
 
     @ca.command('authorize client to interact with server',
                 url='a url where server is running',
-                user='email used for login. password '
+                user='email used for login. Password '
                      'will be prompted.',
                 dir='mount dir. Any directory within mount tree '
                    'will be authorized to access url above. '
@@ -68,7 +68,7 @@ class ClientApp:
         find_recursively(dir, Cake.ensure_it(cake))
         print_pad(results, 'file_type size cake name'.split())
 
-    @ca.command('scan tree and recalcualte hashes for all changed files')
+    @ca.command('scan tree and recalculate hashes for all changed files')
     def scan(self, dir='.'):
         udk = dscan.DirScan(dir).udk
         print(udk)
