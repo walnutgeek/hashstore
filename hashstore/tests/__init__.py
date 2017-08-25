@@ -10,8 +10,35 @@ from doctest import OutputChecker, DocTestRunner, DocTestFinder
 
 pyenv = 'py' + sys.version[0]
 
+
 def normalize_space(s):
     return re.sub(r'\s+', ' ', ' ' + s + ' ')
+
+
+def match_text(src,expect):
+    src_it = iter(src.split())
+    expect_it = iter(expect.split())
+    while True:
+        s1,s2=None,None
+        try:
+            s1 = next(src_it)
+        except StopIteration:
+            try:
+                next(expect_it)
+            except StopIteration:
+                break
+            print(src)
+            ok_(False,'expecting longer text')
+        try:
+            s2 = next(expect_it)
+        except StopIteration:
+            print(src)
+            ok_(False,'expecting shorter text')
+        if s2 != '...':
+            if s1 != s2:
+                print(src)
+                eq_(s1,s2)
+
 
 class TestSetup:
     def __init__(self, name, ensure_empty = False):
@@ -38,9 +65,7 @@ class TestSetup:
                 print(read)
                 eq_(expect_rc, rc)
         if expect_read is not None:
-            if normalize_space(read) != normalize_space(expect_read):
-                print(read)
-                ok_(False)
+            match_text(read,expect_read)
         return rc, split[-1] if len(split) else None
 
     def run_script(self, cmd, log_file=None):
@@ -102,6 +127,7 @@ reseed_random = lambda : int(time.clock() * 1000)
 def seed(a):
     np_rnd.seed(a)
 
+
 def random_content_fn(sz, reset_random):
     def _(dir, path, abs_path):
         if reset_random is not None:
@@ -110,10 +136,12 @@ def random_content_fn(sz, reset_random):
         open(abs_path,'wb').write(b)
     return _
 
+
 def move(src):
     def _(dir, path,abs_path):
         shutil.move(os.path.join(dir,src),abs_path)
     return _
+
 
 def delete(dir, path, abs_path):
     os.remove(abs_path)
@@ -183,6 +211,9 @@ def update_mount(dir, file_set):
 
 fileset1_udk = 'X7cb3ecebc582de3d18c6d12fb6109402718cf11ad06cb4ec4c1d7be23998f60f'
 fileset2_udk = 'Xf4eec87b810074535c8be8624ebb72129446c7936f10e62643f2e16e6fe081f7'
+fileset1_cake = 'hozMa8oJozEdgOSKXayFcrEwuGaGfW2rxBUeS6MKEdaK'
+fileset2_cake = 'hAHMGpM0Etn1TGntqB434ckKJzQKUxwLDvfnjz9feiqk'
+
 
 def ensure_dir(d):
     if not os.path.isdir(d):

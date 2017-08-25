@@ -88,5 +88,7 @@ class DaemonApp():
         pass
 
 
+main = ca.main
+
 if __name__ == '__main__':
-    ca.main()
+    main()

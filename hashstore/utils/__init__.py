@@ -14,6 +14,27 @@ def quict(**kwargs):
     r.update(**kwargs)
     return r
 
+def failback(fn, default):
+    '''
+    >>> divmod(3,2)
+    (1, 1)
+    >>> divmod(3,0)
+    Traceback (most recent call last):
+    ...
+    ZeroDivisionError: integer division or modulo by zero
+    >>> divmod_nofail = failback(divmod,(0,0))
+    >>> divmod_nofail(3,2)
+    (1, 1)
+    >>> divmod_nofail(3,0)
+    (0, 0)
+    '''
+    def failback_fn(*args, **kwargs):
+        try:
+            return fn(*args,**kwargs)
+        except:
+            return default
+    return failback_fn
+
 
 class LazyVars(Mapping):
     def __init__(self, **kw ):
@@ -246,11 +267,13 @@ class FileNotFound(Exception):
         super(FileNotFound, self).__init__(path)
 
 
-def print_pad(data, columns):
+def print_pad(data, columns, get = None):
+    if get is None:
+        get = lambda r,c: r[c]
     sdata = []
     if len(data) > 0 :
         for c in columns:
-            sdata.append(['' if r[c] is None else str(r[c]) for r in data])
+            sdata.append(['' if get(r,c) is None else str(get(r,c)) for r in data])
         max_lens =[max(len(cell) for cell in scolumn) for scolumn in sdata]
         for irow in range(len(data)):
             pad = 2

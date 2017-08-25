@@ -1,19 +1,19 @@
 import logging
 import os
 
-from hashstore.ids import Cake
+from hashstore.bakery.ids import Cake
 from hashstore.utils.args import CommandArgs, Switch
 
 from hashstore import utils
 from hashstore.udk import UDK
 from hashstore.utils import print_pad
-import hashstore.dir_scan as dscan
+import hashstore.bakery.cake_scan as cscan
 
 
 log = logging.getLogger(__name__)
 
-
 ca = CommandArgs()
+
 
 @ca.app('hsi - hashstore client')
 class ClientApp:
@@ -43,51 +43,58 @@ class ClientApp:
 
     @ca.command('list directory as of last scan.')
     def ls(self, dir='.'):
-        shamo = dscan.Shamo(dir)
-        usage = shamo.directory_usage()
-        print(shamo.dir_id())
-        print_pad(usage, 'file_type size name'.split())
-        print('total_size: %d' % sum( r['size'] for r in usage))
+        entries = cscan.CakeEntries(dir)
+        usage = entries.directory_usage()
+        print("DirId: %s" % entries.dir_key().id)
+        print("Cake: %s" % entries.bundle().cake())
+        print('')
+        print_pad(usage, 'file_type size name'.split(), getattr)
+        print('total_size: %d' % sum( r.size for r in usage))
 
     @ca.command('find file with particular criteria.')
     def find(self, cake, dir='.'):
-        results = []
-
-        def find_recursively(directory, cake):
-            try:
-                files=dscan.Shamo(directory).directory_usage()
-                for f in files:
-                    f['name'] = os.path.join(directory, f['name'])
-                    if f['file_type'] == 'DIR':
-                        find_recursively(f['name'], cake)
-                    f_cake = UDK.ensure_it(f['cake'])
-                    if f_cake == cake:
-                        results.append(f)
-            except:
-                log.warning(utils.exception_message())
-        find_recursively(dir, Cake.ensure_it(cake))
-        print_pad(results, 'file_type size cake name'.split())
+        # results = []
+        #
+        # def find_recursively(directory, cake):
+        #     try:
+        #         files=dscan.Shamo(directory).directory_usage()
+        #         for f in files:
+        #             f['name'] = os.path.join(directory, f['name'])
+        #             if f['file_type'] == 'DIR':
+        #                 find_recursively(f['name'], cake)
+        #             f_cake = UDK.ensure_it(f['cake'])
+        #             if f_cake == cake:
+        #                 results.append(f)
+        #     except:
+        #         log.warning(utils.exception_message())
+        # find_recursively(dir, Cake.ensure_it(cake))
+        # print_pad(results, 'file_type size cake name'.split())
+        pass
 
     @ca.command('scan tree and recalculate hashes for all changed files')
     def scan(self, dir='.'):
-        udk = dscan.DirScan(dir).udk
-        print(udk)
+        cake = cscan.DirScan(dir).entry.cake
+        print(cake)
 
     @ca.command('save local files on remote server')
     def backup(self, dir):
-        m = dscan.Remote(dir)
-        print(m.backup())
+        # m = scan.Remote(dir)
+        # print(m.backup())
+        pass
 
     @ca.command('download remote changes for a dir',
                 dir='directory where to restore. ',
                 cake='content address or portal to restore from')
     def pull(self, cake, dir='.'):
-        m = dscan.Remote(dir)
-        m.restore(cake, dir)
+        # m = dscan.Remote(dir)
+        # m.restore(cake, dir)
+        pass
 
     @ca.command('backup and pull. Use dir_id as portal.')
     def sync(self, dir='.'):
         pass
 
+main = ca.main
+
 if __name__ == '__main__':
-    ca.main()
+    main()

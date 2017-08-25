@@ -2,7 +2,7 @@ import uuid
 import os
 from hashstore.tests import TestSetup, seed, random_bytes
 from hashstore.bakery.backend import LiteBackend
-from hashstore.ids import Cake
+from hashstore.bakery.ids import Cake
 from hashstore.bakery.content import ContentAddress
 from hashstore.utils import exception_message
 from nose.tools import eq_,ok_,with_setup

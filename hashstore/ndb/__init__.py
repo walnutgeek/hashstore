@@ -2,6 +2,7 @@ from sqlalchemy import VARCHAR, String, Integer, TypeDecorator, create_engine
 from sqlalchemy.orm import sessionmaker
 from hashstore.utils import KeyMapper
 from inspect import ismodule
+from contextlib import contextmanager
 
 import os
 
@@ -72,5 +73,18 @@ class Dbf:
 
     def session(self):
         if self._Session is None:
-            self._Session=sessionmaker(bind=self.engine())
+            self._Session=sessionmaker(bind=self.engine(),
+                                       expire_on_commit=False)
         return self._Session()
+
+    @contextmanager
+    def session_scope(self):
+        session = self.session()
+        try:
+            yield session
+            session.commit()
+        except:
+            session.rollback()
+            raise
+        finally:
+            session.close()

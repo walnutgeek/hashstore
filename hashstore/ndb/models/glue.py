@@ -23,7 +23,7 @@ from sqlalchemy import ForeignKey, Column, String, desc
 from hashstore.ndb.mixins import ReprIt, GuidPk, Cdt, Udt, \
     NameIt, ServersMixin
 from hashstore.ndb import StringCast, IntCast
-from hashstore.ids import Cake, SaltedSha
+from hashstore.bakery.ids import Cake, SaltedSha
 import enum
 
 doctest=True

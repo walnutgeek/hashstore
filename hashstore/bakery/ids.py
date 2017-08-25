@@ -457,7 +457,6 @@ class CakePath(utils.Stringable, utils.EnsureIt):
     >>> CakePath('/10Bd/r/f').make_absolute(absolute)
     CakePath('/10Bd/r/f')
 
-
     '''
     def __init__(self, s, _root = None, _path = None):
         if s is  None:
@@ -493,8 +492,6 @@ class CakePath(utils.Stringable, utils.EnsureIt):
 
     def path_join(self):
         return '/'.join(self.path)
-
-
 
 SSHA_MARK='{SSHA}'
 

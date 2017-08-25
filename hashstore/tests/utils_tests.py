@@ -13,10 +13,12 @@ u.ensure_directory(test.dir)
 
 def test_docs():
     import doctest
-    import hashstore.utils as test_subject
-    r = doctest.testmod(test_subject)
-    ok_(r.attempted > 0, 'There is not doctests in module')
-    eq_(r.failed,0)
+    import hashstore.utils as test1
+    import hashstore.utils.ignore_file as test2
+    for t in (test1,test2):
+        r = doctest.testmod(t)
+        ok_(r.attempted > 0, 'There is not doctests in module')
+        eq_(r.failed,0)
 
 
 def test_path_resolver():

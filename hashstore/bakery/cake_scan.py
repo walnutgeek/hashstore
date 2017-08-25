@@ -1,24 +1,21 @@
 import six
-from hashstore.utils import ensure_unicode, quict, json_encoder,\
-    reraise_with_msg, ensure_directory, read_in_chunks, \
-    is_file_in_directory
+from hashstore.utils import ensure_unicode, failback
 from hashstore.utils.ignore_file import ignore_files, \
     parse_ignore_specs, check_if_path_should_be_ignored
-from hashstore.db import DbFile
-from hashstore.session import Session, _session
-from hashstore.udk import process_stream,\
-    UDK,UDKBundle,quick_hash
-import uuid
-from hashstore.client import RemoteStorage
+from hashstore.bakery.ids import Cake, process_stream, NamedCAKes
+from hashstore.ndb.models.scan import Base as ScanBase, \
+    DirEntry, DirKey, FileType
+from hashstore.ndb.models.client import Base as ClientBase, \
+    ClientKey, Server
+from sqlalchemy import desc
+
+from hashstore.ndb import Dbf
+
 import os
 import sys
-import hashstore.base_x as bx
 
 import logging
 log = logging.getLogger(__name__)
-
-b58 = bx.base_x(58)
-
 
 
 class ScanStats:
@@ -40,128 +37,98 @@ class Scan:
         self.file_type = file_type
         self.stats = stats
         if addname is None:
-            self.name = os.path.basename(path)
+            name = os.path.basename(path)
         else:
             addname = ensure_unicode(addname)
             path = os.path.join(path, addname)
-            self.name = addname
+            name = addname
         self.path = os.path.abspath(path)
-
-    def new_db_entry(self):
-        return {
-            "_name": self.name,
-            "file_type": self.file_type,
-            "udk": self.udk,
-            "size": self.size,
-            "modtime": self.modtime,
-        }
+        self.entry = DirEntry(name=name, file_type=file_type)
 
     def __str__(self):
-        return json_encoder.encode(self.new_db_entry())
+        return str(self.entry)
 
 
 class FileScan(Scan):
     def __init__(self, path, addname, from_db, stats):
-        Scan.__init__(self, path, addname, 'FILE', stats)
+        Scan.__init__(self, path, addname, FileType.FILE, stats)
         stat = os.stat(self.path)
-        self.modtime = stat.st_mtime
-        self.size = stat.st_size
+        self.entry.modtime = stat.st_mtime
+        self.entry.size = stat.st_size
         if stats.force_rehash or from_db is None \
-                or self.modtime > from_db['modtime']:
+                or self.entry.modtime > from_db.modtime:
             self.stats.increment_count()
             digest, _, inline_data = process_stream(
                 open(self.path, 'rb'),
                 process_buffer=self.stats.count_bytes
             )
-            self.udk = UDK.from_digest_and_inline_data(digest, inline_data)
+            self.entry.cake = Cake.from_digest_and_inline_data(digest, inline_data)
         else:
-            self.udk = from_db['udk']
-
-DIRKEY = 'dirkey'
-
-ENTRY = 'entry'
-
-ENTRY_DM= '''
-    table:{ENTRY}
-      name TEXT PK
-      file_type TEXT OPTIONS('DIR','FILE')
-      udk UDK
-      size INTEGER
-      modtime INTEGER
-    table:{DIRKEY}
-      singleton_id PK
-      dir_id TEXT
-'''.format(**locals())
+            self.entry.cake = from_db.cake
 
 
-class Shamo:
-
+class CakeEntries:
     def __init__(self, path):
-        self.dbf = DbFile(os.path.join(path, '.shamo'), ENTRY_DM)
-        self._dir_id = None
+        self.dbf = Dbf(ScanBase.metadata, os.path.join(path, '.cake_entries'))
+        self._dir_key = None
+        if self.dbf.exists():
+            with self.dbf.session_scope() as session:
+                self.dir_key(session)
+
+    def dir_key(self, session=None):
+        if self._dir_key is None:
+            self.dbf.ensure_db()
+            self._dir_key = session.query(DirKey).one_or_none()
+            if self._dir_key is None:
+                self._dir_key = DirKey()
+                session.merge(self._dir_key)
+        return self._dir_key
 
     def total(self):
-        return sum(f['size'] for f in self.directory_usage())
+        return sum(f.size for f in self.directory_usage())
 
     def directory_usage(self):
-        return self.dbf.select(ENTRY,{},
-                               where='1=1 order by size DESC, name')
+        if not(self.dbf.exists()):
+            raise ValueError('%r was not scanned' % self.path)
+        with self.dbf.session_scope() as session:
+            return session.query(DirEntry)\
+                .order_by(desc(DirEntry.size), DirEntry.name).all()
 
-    def read_entries(self):
-        if self.dbf.exists():
-            try:
-                q = self.dbf.select(ENTRY, {}, where='1=1')
-                return {r['name']: r for r in q}
-            except:
-                pass
-        return {}
+    def bundle(self):
+        bundle = NamedCAKes()
+        for e in self.directory_usage():
+            bundle[e.name] = e.cake
+        return bundle
 
     def store_entries(self, entries):
         try:
-            with Session(self.dbf) as session:
-                self.dir_id(session=session)
-                self.dbf.delete(ENTRY, {}, where='1=1',
-                                session=session)
+            with self.dbf.session_scope() as session:
+                self.dir_key(session=session)
+                new_names = { e.name for e in entries}
+                for e in session.query(DirEntry).all():
+                    if e.name not in new_names:
+                        session.delete(e)
                 for e in entries:
-                    self.dbf.insert(ENTRY, e, session=session)
+                    session.merge(e)
         except:
-            # from traceback import print_exc
-            # print_exc()
-            log.warning('cannot store: ' + self.dbf.file)
-
-    @_session
-    def dir_id(self, session=None):
-        if self._dir_id is None:
-            r = None
-            if not session.has_table(DIRKEY):
-                self.dbf.create_db(session=session)
-            else:
-                r = self.dbf.select_one(DIRKEY,
-                                        quict(singleton_id=1),
-                                        session=session)
-            if r is not None:
-                self._dir_id = r['dir_id']
-            else:
-                self._dir_id = b58.encode(os.urandom(32))
-                self.dbf.store(DIRKEY, {
-                    'singleton_id': 1,
-                    '_dir_id': self._dir_id},
-                               session=session)
-        return self._dir_id
+            from traceback import print_exc
+            print_exc()
+            log.warning('cannot store: ' + self.dbf.path)
 
 
-class DirScan(Shamo, Scan):
+class DirScan(CakeEntries, Scan):
     def __init__(self, path, addname=None, stats = None,
                  ignore_entries=[], on_each_dir=None, parent=None):
         self.parent = parent
         if stats is None:
             stats = ScanStats()
-        Scan.__init__(self, path, addname, "DIR", stats)
-        Shamo.__init__(self,self.path)
+        Scan.__init__(self, path, addname, FileType.DIR, stats)
+        CakeEntries.__init__(self,self.path)
 
         child_entries = []
 
-        old_db_entries = self.read_entries()
+        old_db_entries = {e.name: e for e in
+                          failback(self.directory_usage, [])()}
 
         files = sorted(filter(ignore_files, os.listdir(self.path)))
         ignore_entries = parse_ignore_specs(self.path, files, ignore_entries)
@@ -189,47 +156,36 @@ class DirScan(Shamo, Scan):
             else:
                 child_entries.append(entry)
 
-        self.bundle = UDKBundle()
+        self.bundle = NamedCAKes()
         for e in child_entries:
-            self.bundle[e.name] = e.udk
+            self.bundle[e.entry.name] = e.entry.cake
 
-        self.udk = self.bundle.udk()
-        self.size = sum(e.size for e in child_entries) \
+        self.entry.cake = self.bundle.cake()
+        self.entry.size = sum(e.entry.size for e in child_entries) \
                     + self.bundle.size()
 
         stat = os.stat(self.path)
 
-        self.modtime = stat.st_mtime
+        self.entry.modtime = stat.st_mtime
         if len(child_entries) > 0:
-            youngest_file = max(e.modtime for e in child_entries)
-            self.modtime = max(self.modtime, youngest_file)
+            youngest_file = max(e.entry.modtime for e in child_entries)
+            self.entry.modtime = max(self.entry.modtime, youngest_file)
 
-        self.new_db_entries =[ e.new_db_entry() for e in child_entries]
+        self.new_db_entries =[e.entry for e in child_entries]
 
         self.store_entries(self.new_db_entries)
 
-        log.debug(u'{self.path} -> {self.udk}'.format(**locals()))
+        log.debug(u'{self.path} -> {self.entry.cake}'.format(**locals()))
 
         if on_each_dir:
             on_each_dir(self)
 
-REMOTE = 'remote'
-
-REMOTE_DM= '''
-    table:{REMOTE}
-      remote_id PK
-      path TEXT AK
-      url_uuid UUID4
-      url_text TEXT
-      mount_session TEXT
-      created TIMESTAMP INSERT_DT
-'''.format(**locals())
 
 class Progress:
     def __init__(self,path):
         self.path = path
         try:
-            self.total = Shamo(path).total()
+            self.total = CakeEntries(path).total()
         except:
             self.total = None
         self.current = 0
@@ -265,11 +221,17 @@ class Progress:
         pct_format = '%3.2f%%' if self.terminal  else  '%3d%%'
         return pct_format % (100 * float(self.current)/self.total)
 
-class Remote:
+'''
+class CakeClient:
+    def __init__(self):
+        home_config = os.path.join(os.environ['HOME'], '.cake_config')
+        self.dbf = Dbf(ClientKey.metadata, home_config)
+
+
+
+class Mount:
     def __init__(self, directory):
         self.path = os.path.abspath(directory)
-        home_config = os.path.join(os.environ['HOME'], '.shamo')
-        self.dbf = DbFile(home_config, REMOTE_DM)
 
 
     def register(self, url, invitation=None, session=None):
@@ -299,7 +261,7 @@ class Remote:
                 return storage
         raise ValueError('cannot backup, need register mount first')
 
-    def backup(self):
+    def backup(self, path):
         progress = Progress(self.path)
         with self.storage() as storage:
             def ensure_files_on_remote(dir_scan):
@@ -352,11 +314,12 @@ class Remote:
                                     "%s -> %s" % (file_k, file_path))
             restore_inner(key,path)
 
+'''
 
 if __name__ == '__main__':
     import sys
 
     scan = DirScan(sys.argv[1])
     print('udk: %s\nhashed_counts: %s\nhashed_bytes: %s\n' %
-          (scan.bundle.udk(),scan.stats.hashed_counts,scan.stats.hashed_bytes))
+          (scan.bundle.cake(), scan.stats.hashed_counts, scan.stats.hashed_bytes))
     # print(bundle.content())

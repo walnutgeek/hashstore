@@ -1,7 +1,10 @@
-from hashstore.tests import TestSetup
+from hashstore.tests import TestSetup, file_set1, file_set2, \
+    prep_mount, update_mount, fileset1_cake, fileset2_cake
+import os
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log
+
 
 
 def test_hsi():
@@ -54,3 +57,38 @@ optional arguments:
     '''
     test.run_script_and_wait('hsd -h',expect_rc=0,
                              expect_read=test_hsd.__doc__)
+
+
+def test_scan_ls():
+    files = os.path.join(test.dir, 'files')
+    prep_mount(files, file_set1)
+
+    test.run_script_and_wait('hsi scan --dir %s' % files,expect_rc=0,
+                             expect_read=fileset1_cake)
+
+    test.run_script_and_wait('hsi ls --dir %s' % files,expect_rc=0,
+                             expect_read='''
+          DirId: ...
+          Cake: %s
+          
+            FILE  105000  too.sol
+            DIR   10955   q
+            DIR   1885    x
+            DIR   1659    a
+          total_size: 119499''' % fileset1_cake)
+
+    update_mount(files, file_set2)
+
+    test.run_script_and_wait('hsi scan --dir %s' % files, expect_rc=0,
+                             expect_read=fileset2_cake)
+
+    test.run_script_and_wait('hsi ls --dir %s' % files, expect_rc=0,
+                             expect_read='''
+          DirId: ...
+          Cake: %s
+
+            DIR   107941  x
+            FILE  105000  too.sol
+            DIR   10955   q
+            DIR   1743    a
+          total_size: 225639''' % fileset2_cake)

@@ -3,7 +3,7 @@ import shutil
 import datetime
 import six
 
-from hashstore.ids import Cake
+from hashstore.bakery.ids import Cake
 from hashstore.ndb import Dbf
 from hashstore.utils import binary_type, ensure_bytes,ensure_directory
 

@@ -1,5 +1,5 @@
 from nose.tools import eq_,ok_
-import hashstore.ids as ids
+import hashstore.bakery.ids as ids
 import six
 from hashstore.utils import ensure_bytes
 from hashstore.tests import TestSetup, doctest_it
@@ -16,7 +16,7 @@ log = test.log
 
 
 def test_docs():
-    import hashstore.ids as test_subject
+    import hashstore.bakery.ids as test_subject
     doctest_it(test_subject)
 
 

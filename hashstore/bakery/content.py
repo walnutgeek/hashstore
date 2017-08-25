@@ -1,5 +1,5 @@
 from hashstore.base_x import base_x,iseq
-from hashstore.ids import Cake
+from hashstore.bakery.ids import Cake
 from hashstore.utils import Stringable, EnsureIt
 import logging
 

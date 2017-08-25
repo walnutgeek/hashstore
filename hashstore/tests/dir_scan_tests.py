@@ -22,5 +22,3 @@ def test_scan():
     # ok_(False)
 
 
-def test_docs():
-    doctest_it(hashstore.dir_scan)
