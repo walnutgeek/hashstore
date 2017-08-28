@@ -311,7 +311,7 @@ class Remote:
                     store_dir = False
                     for h in hashes_to_push:
                         h = UDK.ensure_it(h)
-                        name = dir_scan.bundle.get_name_by_cake(h)
+                        name = dir_scan.bundle.get_name_by_udk(h)
                         file = os.path.join(dir_scan.path, name)
                         fp = open(file, 'rb')
                         stored = storage.write_content(fp)
