@@ -231,7 +231,7 @@ def ensure_no_dir(dir):
                 break
 
 
-def run_bg(module,  args=[], home=None, outfile=None):
+def run_bg(module, args=[], home=None, outfile=None):
     from subprocess import STDOUT
     env = None
     if home is not None:

@@ -381,4 +381,10 @@ class KeyMapper:
         return self._altkey_dict.keys()
 
 
+def ensure_dict(in_dict, key_type, val_type):
+    out_dict = {}
+    for k in in_dict:
+        val = in_dict[k]
+        out_dict[key_type.ensure_it(k)] = val_type.ensure_it(val)
+    return out_dict
 

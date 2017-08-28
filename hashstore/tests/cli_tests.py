@@ -35,16 +35,17 @@ optional arguments:
 def test_hsd():
     '''
 usage: hsd.py [-h] [--store_dir store_dir] [--debug]
-              {initdb,add_user,remove_user,acl,start,stop} ...
+              {initdb,add_user,remove_user,acl,backup,start,stop} ...
 
 hsd - hashstore server
 
 positional arguments:
-  {initdb,add_user,remove_user,acl,start,stop}
+  {initdb,add_user,remove_user,acl,backup,start,stop}
     initdb              initialize storage and set host specific parameters
     add_user
     remove_user
     acl                 Manage ACL
+    backup              Backup dir
     start               start server
     stop                stop server
 

@@ -1,4 +1,5 @@
 .shamo
+.cake_*
 test-out/
 dist
 *.egg-info

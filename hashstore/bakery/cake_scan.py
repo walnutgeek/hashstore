@@ -66,6 +66,12 @@ class FileScan(Scan):
         else:
             self.entry.cake = from_db.cake
 
+def build_bundle(entries):
+    bundle = NamedCAKes()
+    for e in entries:
+        bundle[e.name] = e.cake
+    return bundle
+
 
 class CakeEntries:
     def __init__(self, path):
@@ -95,10 +101,8 @@ class CakeEntries:
                 .order_by(desc(DirEntry.size), DirEntry.name).all()
 
     def bundle(self):
-        bundle = NamedCAKes()
-        for e in self.directory_usage():
-            bundle[e.name] = e.cake
-        return bundle
+        return build_bundle(self.directory_usage())
+
 
     def store_entries(self, entries):
         try:
@@ -156,10 +160,8 @@ class DirScan(CakeEntries, Scan):
             else:
                 child_entries.append(entry)
 
-        self.bundle = NamedCAKes()
-        for e in child_entries:
-            self.bundle[e.entry.name] = e.entry.cake
-
+        self.new_db_entries =[e.entry for e in child_entries]
+        self.bundle = build_bundle(self.new_db_entries)
         self.entry.cake = self.bundle.cake()
         self.entry.size = sum(e.entry.size for e in child_entries) \
                     + self.bundle.size()
@@ -171,7 +173,6 @@ class DirScan(CakeEntries, Scan):
             youngest_file = max(e.entry.modtime for e in child_entries)
             self.entry.modtime = max(self.entry.modtime, youngest_file)
 
-        self.new_db_entries =[e.entry for e in child_entries]
 
         self.store_entries(self.new_db_entries)
 
@@ -220,6 +221,38 @@ class Progress:
             return '?'
         pct_format = '%3.2f%%' if self.terminal  else  '%3d%%'
         return pct_format % (100 * float(self.current)/self.total)
+
+def backup(path, storage):
+    progress = Progress(path)
+
+    def ensure_files_on_remote(dir_scan):
+        bundles = { dir_scan.entry.cake : dir_scan.bundle}
+        store_dir = True
+        while store_dir:
+            _, hashes_to_push = storage.store_directories(bundles)
+            store_dir = False
+            for h in hashes_to_push:
+                h = Cake.ensure_it(h)
+                name = dir_scan.bundle.get_name_by_cake(h)
+                file = os.path.join(dir_scan.path, name)
+                fp = open(file, 'rb')
+                stored = storage.write_content(fp)
+                if not stored.match(h):
+                    log.info('path:%s, %s != %s' % (file, h, stored))
+                    dir_scan.bundle[name] = Cake (stored.hash_bytes(),
+                                                  h.key_structure,
+                                                  h.data_type)
+                    dir_scan.udk = dir_scan.bundle.cake()
+                    store_dir = True
+        progress.just_processed(sum(f.size for f in dir_scan.new_db_entries
+                                    if f.file_type == FileType.FILE)
+                                + dir_scan.bundle.size(), dir_scan.path)
+
+    root_scan = DirScan(path,on_each_dir=ensure_files_on_remote)
+    portal_id = root_scan.dir_key().id
+    latest_cake = root_scan.entry.cake
+    storage.create_portal(portal_id, latest_cake)
+    return portal_id, latest_cake
 
 '''
 class CakeClient:

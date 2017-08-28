@@ -354,7 +354,7 @@ class NamedCAKes(utils.Jsonable):
     117
     >>> udks.content()
     '[["longer", "short"], ["1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV", "01aMUQDApalaaYbXFjBVMMvyCAMfSPcTojI0745igi"]]'
-    >>> udks.get_name_by_udk("1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV")
+    >>> udks.get_name_by_cake("1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV")
     'longer'
     '''
     def __init__(self,o=None):
@@ -365,9 +365,10 @@ class NamedCAKes(utils.Jsonable):
 
     def _clear_cached(self):
         self._inverse = None
-        self._udk = None
+        self._cake = None
         self._content = None
         self._size = None
+        self._in_bytes = None
 
     def inverse(self):
         if self._inverse is None:
@@ -375,14 +376,19 @@ class NamedCAKes(utils.Jsonable):
         return self._inverse
 
     def cake(self):
-        if self._udk is None:
+        if self._cake is None:
             self._build_content()
-        return self._udk
+        return self._cake
 
     def content(self):
         if self._content is None:
             self._build_content()
         return self._content
+
+    def in_bytes(self):
+        if self._content is None:
+            self._build_content()
+        return self._in_bytes
 
     def size(self):
         if self._size is None:
@@ -391,10 +397,10 @@ class NamedCAKes(utils.Jsonable):
 
     def _build_content(self):
         self._content = str(self)
-        in_bytes = utils.ensure_bytes(self._content)
-        self._size = len(in_bytes)
-        self._udk = Cake.from_digest_and_inline_data(
-            quick_hash(in_bytes),in_bytes,
+        self._in_bytes = utils.ensure_bytes(self._content)
+        self._size = len(self._in_bytes)
+        self._cake = Cake.from_digest_and_inline_data(
+            quick_hash(self._in_bytes),self._in_bytes,
             data_type=DataType.BUNDLE)
 
     def parse(self, o):
@@ -425,7 +431,7 @@ class NamedCAKes(utils.Jsonable):
     def __len__(self):
         return len(self.store)
 
-    def get_name_by_udk(self, k):
+    def get_name_by_cake(self, k):
         return self.inverse()[Cake.ensure_it(k)]
 
     def keys(self):
@@ -441,6 +447,7 @@ class NamedCAKes(utils.Jsonable):
     def to_json(self):
         keys = self.keys()
         return [keys, self.get_udks(keys)]
+
 
 
 

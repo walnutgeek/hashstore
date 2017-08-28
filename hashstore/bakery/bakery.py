@@ -1,121 +1,108 @@
-from hashstore.bakery.auth_model import *
-
 import os
-import six
-from hashstore.local_store import AccessMode
-
-from .backend import LiteBackend
+from hashstore.bakery.backend import LiteBackend
+from hashstore.bakery.ids import Cake, NamedCAKes
 from hashstore.ndb import Dbf
-from hashstore.utils import quict
+from hashstore.utils import ensure_dict
 
+from hashstore.ndb.models.server import ServerKey, Base as ServerBase
+from hashstore.ndb.models.glue import PortalType, Portal, \
+    PortalHistory, Base as GlueBase
 
 import logging
 log = logging.getLogger(__name__)
 
 
 class CakeStore:
-    def __init__(self, root, access_mode=AccessMode.WRITE_SECURE, init=True):
-        self.root = root
-        self.access_mode = access_mode
-        if init:
-            self.initialize()
+    def __init__(self, store_dir):
+        self.store_dir = store_dir
+        self._backend = None
+        self.server_db = Dbf(
+            ServerBase.metadata,
+            os.path.join(self.store_dir, 'server.db')
+        )
+        self.glue_db = Dbf(
+            GlueBase.metadata,
+            os.path.join(self.store_dir, 'glue.db')
+        )
 
-    def initialize(self):
-        if hasattr(self, 'backend'):
-            return
-        self.backend = LiteBackend(self.root)
-        self.auth_db = Dbf(Base.metadata, os.path.join(self.root,'auth.db'))
-        self.auth_db.ensure_db()
+    def backend(self):
+        if self._backend is None:
+            self._backend = LiteBackend(
+                os.path.join(self.store_dir, 'backend')
+            )
+        return self._backend
 
-    def create_invitation(self, body=None):
-        self.initialize()
+    def initdb(self, external_ip, port):
+        if not os.path.exists(self.store_dir):
+            os.makedirs(self.store_dir)
+        self.server_db.ensure_db()
+        os.chmod(self.server_db.path, 0o600)
+        self.glue_db.ensure_db()
+        self.backend()
+        with self.server_db.session_scope() as session:
+            skey = session.query(ServerKey).one_or_none()
+            if skey is None:
+                skey = ServerKey()
+            skey.port = port
+            skey.external_ip = external_ip
+            session.merge(skey)
 
-        rp = self.auth_db.execute(invitation.insert().values(
-            active = True,
-            invitation_body=body
-        ))
-        return rp.lastrowid()
 
-    def register(self, remote_uuid, invitation_id, mount_meta=None):
-        if invitation is None:
-            rc = 0 if self.access_mode != AccessMode.INSECURE else 1
-        else:
-            rp = self.in_db.execute( invitation.update().where(
-                invitation_id = invitation_id,
-                active=True
-            ).values(
-                active=False
-            ))
-            rc = rp.rowcount()
-        if rc == 1:
-            mount_session = udk.quick_hash(remote_uuid)
-            return self.in_db.resolve_ak('mount', mount_session)
-        return None
-
-    def login(self, remote_uuid):
-        mount_session = udk.quick_hash(remote_uuid)
-        mount = self.in_db.select_one('mount', quict(mount_session=mount_session))
-        if mount is not None:
-            mount_id = mount['mount_id']
-            auth_session = self.in_db.insert('auth_session', quict(mount_id=mount_id, active=True))
-            return auth_session['_auth_session_id'], mount_id
-        else:
-            raise ValueError("authentication error")
-
-    def logout(self, auth_session):
-        return self.in_db.update('auth_session', quict(
-            auth_session_id = auth_session, _active = False))
-
-    def check_auth_session(self, auth_session):
-        if self.access_mode != AccessMode.INSECURE :
-            if auth_session is None:
-                raise ValueError("auth_session is required")
-            with self.auth_db.connect() as conn:
-                q = select([auth])\
-                    .where( auth.c.active == True &
-                            auth.c.session_id == auth_session)
-                n = self.auth_db.execute(q).one_or_none()
-                if n is None:
-                    raise ValueError("authentication error")
-
-    def store_directories(self, directories, mount_hash=None, auth_session = None):
-        self.check_auth_session(auth_session)
+    def store_directories(self, directories):
+        directories = ensure_dict( directories, Cake, NamedCAKes)
         unseen_file_hashes = set()
         dirs_stored = set()
-        dirs_mismatch = set()
-        for dir_hash, dir_contents in six.iteritems(directories):
-            dir_hash = udk.UDK.ensure_it(dir_hash)
-            dir_contents = udk.UDKBundle.ensure_it(dir_contents)
-            dir_content_dump = str(dir_contents)
-            lookup = self.lookup(dir_hash)
+        dirs_mismatch_input_cake = set()
+        for dir_cake in directories:
+            dir_contents =directories[dir_cake]
+            lookup = self.backend().lookup(dir_cake)
             if not lookup.found() :
-                w = self.writer(auth_session=auth_session)
-                w.write(dir_content_dump, done=True)
-                lookup = self.lookup(dir_hash)
+                w = self.backend().writer()
+                w.write(dir_contents.in_bytes(), done=True)
+                lookup = self.backend().lookup(dir_cake)
                 if lookup.found():
-                    dirs_stored.add(dir_hash)
+                    dirs_stored.add(dir_cake)
                 else: # pragma: no cover
-                    dirs_mismatch.add(dir_hash)
+                    dirs_mismatch_input_cake.add(dir_cake)
             for file_name in dir_contents:
-                file_hash = dir_contents[file_name]
-                if not file_hash.named_udk_bundle:
-                    lookup = self.lookup(file_hash)
+                file_cake = dir_contents[file_name]
+                if not(file_cake.has_data()) and \
+                        file_cake not in  directories:
+                    lookup = self.backend().lookup(file_cake)
                     if not lookup.found():
-                        unseen_file_hashes.add(file_hash)
-        if len(dirs_mismatch) > 0: # pragma: no cover
-            raise AssertionError('could not store directories: %r' % dirs_mismatch)
+                        unseen_file_hashes.add(file_cake)
+        if len(dirs_mismatch_input_cake) > 0: # pragma: no cover
+            raise AssertionError('could not store directories: %r' % dirs_mismatch_input_cake)
         return len(dirs_stored), list(unseen_file_hashes)
 
+    def get_content(self, k):
+        return self.backend().lookup(k).stream()
 
-    def get_content(self, k, auth_session = None):
-        if self.access_mode == AccessMode.ALL_SECURE:
-            self.check_auth_session(auth_session)
-        return self.lookup(k).stream()
+    def writer(self):
+        return self.backend().writer()
 
-    def delete(self, k, auth_session = None):
-        self.check_auth_session(auth_session)
-        return self.lookup(k).delete()
+    def write_content(self, fp):
+        w = self.writer()
+        while True:
+            buf = fp.read(65355)
+            if len(buf) == 0:
+                break
+            w.write(buf)
+        return w.done()
 
-    def writer(self, auth_session = None):
-        self.check_auth_session(auth_session)
-        return ContentWriter(self.backend)
+    def create_portal(self,portal_id, cake,
+                      portal_type = PortalType.content):
+        portal_id = Cake.ensure_it(portal_id)
+        cake = Cake.ensure_it(cake)
+        with self.glue_db.session_scope() as session:
+            portal = session.query(Portal)\
+                .filter(Portal.id == portal_id).one_or_none()
+            if portal is not None and portal.portal_type != portal_type:
+                raise ValueError('cannot change type. portal:%s %r->%r' %
+                                 (portal_id, portal.portal_type, portal_type))
+            session.merge(Portal(id=portal_id, latest=cake,
+                   portal_type=portal_type))
+            session.add(PortalHistory(portal_id = portal_id, cake=cake))
+
+
+
