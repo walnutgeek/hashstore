@@ -1,8 +1,9 @@
 import six
-from hashstore.utils import ensure_unicode, failback
+          mm,,,,,,,, ,,,,,,,,,,,,,,,,,,  from hashstore.utils import ensure_unicode, failback, read_in_chunks, \
+    reraise_with_msg, ensure_directory
 from hashstore.utils.ignore_file import ignore_files, \
     parse_ignore_specs, check_if_path_should_be_ignored
-from hashstore.bakery.ids import Cake, process_stream, NamedCAKes
+from hashstore.bakery.ids import Cake, process_stream, NamedCAKes, DataType
 from hashstore.ndb.models.scan import ScanBase, DirEntry, DirKey, \
     FileType
 from hashstore.ndb.models.client_config import ClientConfigBase, \
@@ -254,6 +255,29 @@ def backup(path, storage):
     storage.create_portal(portal_id, latest_cake)
     return portal_id, latest_cake
 
+def pull(store, key, path):
+    def restore_inner( k, p):
+        k = Cake.ensure_it(k)
+        if k.data_type == DataType.BUNDLE:
+            bundle = NamedCAKes(store.get_content(k))
+            ensure_directory(p)
+            for n in bundle:
+                file_path = os.path.join(p, n)
+                file_k = bundle[n]
+                if file_k.data_type == DataType.BUNDLE:
+                    restore_inner(file_k, file_path)
+                else:
+                    try:
+                        out_fp = open(file_path, "wb")
+                        in_fp = store.get_content(file_k)
+                        for chunk in read_in_chunks(in_fp):
+                            out_fp.write(chunk)
+                        out_fp.close()
+                    except:
+                        reraise_with_msg(
+                            "%s -> %s" % (file_k, file_path))
+    restore_inner(key,path)
+
 '''
 class CakeClient:
     def __init__(self):
@@ -295,30 +319,6 @@ class Mount:
         raise ValueError('cannot backup, need register mount first')
 
 
-    def restore(self, key, path):
-        with self.storage() as storage:
-            def restore_inner( k, p):
-                k = UDK.ensure_it(k)
-                if k.named_udk_bundle:
-                    content = storage.get_content(k)
-                    bundle = UDKBundle(content)
-                    ensure_directory(p)
-                    for n in bundle:
-                        file_path = os.path.join(p, n)
-                        file_k = bundle[n]
-                        if file_k.named_udk_bundle:
-                            restore_inner(file_k, file_path)
-                        else:
-                            try:
-                                out_fp = open(file_path, "wb")
-                                in_fp = storage.get_content(file_k)
-                                for chunk in read_in_chunks(in_fp):
-                                    out_fp.write(chunk)
-                                out_fp.close()
-                            except:
-                                reraise_with_msg(
-                                    "%s -> %s" % (file_k, file_path))
-            restore_inner(key,path)
 
 '''
 

@@ -1,4 +1,7 @@
 import os
+
+import six
+
 from hashstore.bakery.backend import LiteBackend
 from hashstore.bakery.ids import Cake, NamedCAKes
 from hashstore.ndb import Dbf
@@ -75,7 +78,7 @@ class CakeStore:
         dirs_stored = set()
         dirs_mismatch_input_cake = set()
         for dir_cake in directories:
-            dir_contents =directories[dir_cake]
+            dir_contents=directories[dir_cake]
             lookup = self.backend().lookup(dir_cake)
             if not lookup.found() :
                 w = self.backend().writer()
@@ -96,8 +99,11 @@ class CakeStore:
             raise AssertionError('could not store directories: %r' % dirs_mismatch_input_cake)
         return len(dirs_stored), list(unseen_file_hashes)
 
-    def get_content(self, k):
-        return self.backend().lookup(k).stream()
+    def get_content(self, cake):
+        cake = Cake.ensure_it(cake)
+        if cake.has_data():
+            return six.BytesIO(cake.data())
+        return self.backend().lookup(cake).stream()
 
     def writer(self):
         return self.backend().writer()

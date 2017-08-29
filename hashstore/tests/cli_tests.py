@@ -35,17 +35,18 @@ optional arguments:
 def test_hsd():
     '''
 usage: hsd.py [-h] [--store_dir store_dir] [--debug]
-              {initdb,add_user,remove_user,acl,backup,start,stop} ...
+              {initdb,add_user,remove_user,acl,backup,pull,start,stop} ...
 
 hsd - hashstore server
 
 positional arguments:
-  {initdb,add_user,remove_user,acl,backup,start,stop}
+  {initdb,add_user,remove_user,acl,backup,pull,start,stop}
     initdb              initialize storage and set host specific parameters
     add_user
     remove_user
     acl                 Manage ACL
     backup              Backup dir
+    pull                Restore dir
     start               start server
     stop                stop server
 
@@ -136,8 +137,20 @@ def test_scan_ls():
                                  expect_rc=rc, expect_read=text)
     test.run_script_and_wait('hsd --store_dir {store} acl '
                              '--user {email}'.format(**locals()),
-                             )
-    test.run_script_and_wait('hsd --store_dir {store} backup --dir {files}'.format(**locals()))
+                             expect_rc = 0)
+
+    test.run_script_and_wait('hsd --store_dir {store} backup --dir {files}'.format(**locals()),
+                             expect_rc=0)
 
     test.run_script_and_wait('hsd --store_dir {store} remove_user '
-                             '--email {email}'.format(**locals()))
+                             '--user {email}'.format(**locals()),
+                             expect_rc=0)
+
+    pull_cake = fileset2_cake
+    pull_dir = os.path.join(test.dir, 'pull')
+    test.run_script_and_wait('hsd --store_dir {store} pull '
+                             '--cake {pull_cake} --dir {pull_dir}'.format(**locals()),
+                             expect_rc=0)
+
+    test.run_script_and_wait('hsi scan --dir {pull_dir}'.format(**locals()),
+                             expect_rc=0, expect_read=fileset2_cake)

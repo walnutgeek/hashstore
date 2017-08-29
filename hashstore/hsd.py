@@ -1,9 +1,9 @@
 import os
-from hashstore.bakery.bakery import CakeStore
+from hashstore.bakery.cake_store import CakeStore
 from hashstore.ndb.models.glue import PermissionType, Acl
 from hashstore.utils import print_pad
 from hashstore.utils.args import Switch, CommandArgs
-from hashstore.bakery.cake_scan import DirScan,backup
+from hashstore.bakery.cake_scan import pull,backup
 from hashstore.bakery.ids import SaltedSha
 import getpass
 
@@ -75,6 +75,13 @@ class DaemonApp():
     def backup(self, dir):
         print('DirId: %s\nCake:  %s' % backup(dir,self.store))
 
+    @ca.command('Restore dir',
+                dir='destination directory.',
+                cake='version '
+                )
+
+    def pull(self, cake, dir):
+        pull(self.store, cake, dir)
 
     @ca.command('start server')
     def start(self):
