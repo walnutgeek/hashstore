@@ -32,6 +32,9 @@ def _find_permission(session, user, acl):
     return query.one_or_none()
 
 
+_sort_perms = lambda r: (r.permission_type.name, str(r.cake))
+
+
 class CakeStore:
     def __init__(self, store_dir):
         self.store_dir = store_dir
@@ -119,7 +122,7 @@ class CakeStore:
 
     def add_user(self, email, ssha_pwd, full_name = None):
         with self.glue_db.session_scope() as session:
-            session.add(User(email=email, passwd=ssha_pwd,
+            session.merge(User(email=email, passwd=ssha_pwd,
                              full_name=full_name,
                              user_state=UserState.active))
 
@@ -138,7 +141,7 @@ class CakeStore:
                         user=user,
                         permission_type=acl.permission_type,
                         cake=acl.cake))
-            return user, user.permissions
+            return user, sorted(user.permissions, key=_sort_perms)
 
     def remove_permission(self, user_or_email, acl):
         with self.glue_db.session_scope() as session:
@@ -146,4 +149,4 @@ class CakeStore:
             perm = _find_permission(session, user, acl)
             if perm is not None:
                 session.delete(perm)
-            return user, user.permissions
+            return user, sorted(user.permissions, key=_sort_perms)

@@ -129,7 +129,7 @@ class Acl(Stringable,EnsureIt):
     >>> Acl('Read_')
     Traceback (most recent call last):
     ...
-    ValueError: Cake required for this permission: Read_
+    ValueError: cake field is required for permission: Read_
 
     >>> Acl('Read_:1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV')
     Acl('Read_:1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV')
@@ -140,7 +140,7 @@ class Acl(Stringable,EnsureIt):
         self.permission_type = PermissionType[p[0]]
         self.cake = Cake.ensure_it(p[1]) if len(p) == 2 else None
         if '_' == self.permission_type.name[-1] and self.cake is None:
-            raise ValueError('Cake required for this permission: %s'
+            raise ValueError('cake field is required for permission: %s'
                              % self.permission_type.name)
 
     def __str__(self):

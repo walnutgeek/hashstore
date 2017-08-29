@@ -93,3 +93,51 @@ def test_scan_ls():
             DIR   10955   q
             DIR   1743    a
           total_size: 225639''' % fileset2_cake)
+
+    store = os.path.join(test.dir, 'store')
+    email = 'jon@doe.edu'
+    pwd = '{SSHA}V5tjhtb8YXcHCDw2wuUHFe2xKrZOQ1mR'
+
+    test.run_script_and_wait('hsd --store_dir {store} initdb'.format(**locals()),
+                             expect_rc=0, expect_read='')
+    test.run_script_and_wait('hsd --store_dir {store} add_user '
+                             '--email {email} --password {pwd}'.format(**locals()),
+                             expect_rc=0, expect_read='')
+    acls = (
+        ('Write_Any_Data+', 0, '''
+        User: jon@doe.edu
+        User.id: ...
+
+        PermissionType.Write_Any_Data  
+        '''),
+        ('Read_+', 1, '''
+        Traceback (most recent call last):
+        ....
+        ValueError: cake field is required for permission: Read_
+        '''),
+        ('Read_:1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV+', 0, '''
+            User: jon@doe.edu
+            User.id: ...
+            
+              PermissionType.Read_           1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV
+              PermissionType.Write_Any_Data  
+
+        '''),
+        ('Read_:1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV-', 0, '''
+            User: jon@doe.edu
+            User.id: ...
+            
+              PermissionType.Write_Any_Data  
+        ''')
+    )
+    for acl,rc,text in acls:
+        test.run_script_and_wait('hsd --store_dir {store} acl '
+                                 '--user {email} --acl {acl}'.format(**locals()),
+                                 expect_rc=rc, expect_read=text)
+    test.run_script_and_wait('hsd --store_dir {store} acl '
+                             '--user {email}'.format(**locals()),
+                             )
+    test.run_script_and_wait('hsd --store_dir {store} backup --dir {files}'.format(**locals()))
+
+    test.run_script_and_wait('hsd --store_dir {store} remove_user '
+                             '--email {email}'.format(**locals()))
