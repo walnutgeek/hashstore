@@ -140,9 +140,10 @@ class Cake(utils.Stringable, utils.EnsureIt):
     Stands for Content Address Key.
 
     Content addressing scheme using SHA256. For small
-    content ( <=32 bytes) data is embeded  in key. Base62 encoding is
-    used to store header byte followed by hash digest or inlined data.
-    header byte split in two halves: `KeyStructure` and `DataType`
+    content ( <=32 bytes) data is embeded  in key.  Header byte is
+    followed by hash digest or inlined data. header byte split in two
+    halves: `KeyStructure` and `DataType`. Base62 encoding is
+    used to encode bytes.
 
     We allow future extension and use different type of hash algos.
     Currently we have 4 `KeyStructure` defined, leaving 12 more for

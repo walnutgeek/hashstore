@@ -24,7 +24,7 @@ def execute_one_test(*args):
     # case += ' hashstore.tests.server_tests'
     # case += ' hashstore.tests.local_store_tests'
     # case += ' hashstore.bakery.tests.backend_tests'
-    # case += ' hashstore.tests.ndb_models_tests'
+    case += ' hashstore.tests.ndb_models_tests'
     # case += ' hashstore.tests.ndb_tests'
     # case += ' hashstore.tests.content_address_tests'
     case += ' hashstore.tests.ids_tests'

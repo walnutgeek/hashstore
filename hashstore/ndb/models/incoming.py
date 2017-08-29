@@ -4,14 +4,14 @@ from hashstore.bakery.content import ContentAddress
 from hashstore.ndb import StringCast
 from hashstore.ndb.mixins import ReprIt, NameIt, Cdt, Udt
 
-Base = declarative_base()
+Base = IncomingBase = declarative_base(name='IncomingBase')
 
 
-class Incoming(NameIt, ReprIt, Cdt, Udt, Base):
+class Incoming(NameIt, ReprIt, Cdt, Udt, IncomingBase):
     incoming_id = Column(Integer, primary_key=True, autoincrement=True)
     file_id = Column(StringCast(ContentAddress), nullable=True)
     new = Column(Boolean)
 
 incoming = Incoming.__table__
 
-incoming_meta = Base.metadata
+incoming_meta = IncomingBase.metadata

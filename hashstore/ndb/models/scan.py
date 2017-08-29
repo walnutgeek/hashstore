@@ -6,7 +6,7 @@ import enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, String, Integer
 
-Base = declarative_base()
+Base = ScanBase = declarative_base(name='ScanBase')
 
 
 class FileType(enum.Enum):
@@ -17,11 +17,11 @@ class FileType(enum.Enum):
         return self.name
 
 
-class DirKey(Singleton,Base):
+class DirKey(Singleton, ScanBase):
     pass
 
 
-class DirEntry(NameIt, ReprIt, Base):
+class DirEntry(NameIt, ReprIt, ScanBase):
     name = Column(String, primary_key=True)
     file_type = Column(IntCast(FileType), nullable=False)
     cake = Column(StringCast(Cake), nullable=False)

@@ -1,4 +1,4 @@
-from hashstore.ndb.models import incoming, shard, glue, server, \
-    client, scan
+from hashstore.ndb.models import incoming, shard, glue, server_config, \
+    client_config, scan
 
-MODELS = (glue, incoming, client, server, shard, scan)
+MODELS = (glue, incoming, client_config, server_config, shard, scan)

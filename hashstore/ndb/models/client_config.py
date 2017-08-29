@@ -5,18 +5,18 @@ from hashstore.ndb import StringCast
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, String, ForeignKey
 
-Base = declarative_base()
+Base = ClientConfigBase = declarative_base(name='ClientConfigBase')
 
 
-class ClientKey(Singleton, Cdt, Udt, Base):
+class ClientKey(Singleton, Cdt, Udt, ClientConfigBase):
     private_cake = Column(StringCast(Cake), nullable=True)
 
 
-class Server(ServersMixin, Base):
+class Server(ServersMixin, ClientConfigBase):
     pass
 
 
-class MountSession(NameIt, GuidPk, Cdt, Udt, Base):
+class MountSession(NameIt, GuidPk, Cdt, Udt, ClientConfigBase):
     path = Column(String, index=True, nullable=False, unique=True)
     username = Column(String, nullable=False)
     server_id = Column(None, ForeignKey('server.id'), nullable=False)

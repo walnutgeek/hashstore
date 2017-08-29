@@ -5,7 +5,7 @@ from hashstore.tests import TestSetup, doctest_it
 from sqlalchemy import Table, MetaData, Column, types, select
 
 from hashstore.ndb import Dbf
-import hashstore.ndb.models.server as server
+from hashstore.ndb.models import glue
 import logging
 logging.basicConfig()
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
@@ -22,7 +22,7 @@ def test_server():
 
 def test_glue():
     import hashstore.ndb.models.glue as glue
-    dbf = Dbf(glue.Base.metadata, test.file_path('test_glue.sqlite3'))
+    dbf = Dbf(glue.GlueBase.metadata, test.file_path('test_glue.sqlite3'))
     dbf.ensure_db()
     session = dbf.session()
     joe = glue.User(email='joe@doe.com',
@@ -31,7 +31,7 @@ def test_glue():
     cake = Cake.from_bytes(b'a' * 100)
     portal = glue.Portal(latest=cake)
     perm1 = glue.Permission(
-        user = joe, portal=portal,
+        user = joe, cake=portal.id,
         permission_type=glue.PermissionType.Read_,
     )
     perm2 = glue.Permission(

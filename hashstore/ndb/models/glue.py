@@ -19,16 +19,18 @@ configuration.
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from sqlalchemy import ForeignKey, Column, String, desc
+from sqlalchemy import ForeignKey, Column, String, Boolean, desc
 from hashstore.ndb.mixins import ReprIt, GuidPk, Cdt, Udt, \
     NameIt, ServersMixin
 from hashstore.ndb import StringCast, IntCast
 from hashstore.bakery.ids import Cake, SaltedSha
+from hashstore.utils import Stringable, EnsureIt
+
 import enum
 
 doctest=True
 
-Base = declarative_base()
+Base = GlueBase = declarative_base(name='GlueBase')
 
 
 class PermissionType(enum.Enum):
@@ -118,6 +120,34 @@ PermissionType.Admin.expand_to = (
     )
 
 
+class Acl(Stringable,EnsureIt):
+    '''
+
+    >>> Acl('Write_Any_Data')
+    Acl('Write_Any_Data')
+
+    >>> Acl('Read_')
+    Traceback (most recent call last):
+    ...
+    ValueError: Cake required for this permission: Read_
+
+    >>> Acl('Read_:1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV')
+    Acl('Read_:1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV')
+
+    '''
+    def __init__(self, s):
+        p = s.split(':',2)
+        self.permission_type = PermissionType[p[0]]
+        self.cake = Cake.ensure_it(p[1]) if len(p) == 2 else None
+        if '_' == self.permission_type.name[-1] and self.cake is None:
+            raise ValueError('Cake required for this permission: %s'
+                             % self.permission_type.name)
+
+    def __str__(self):
+        tail = '' if self.cake is None else ':%s' % self.cake
+        return self.permission_type.name + tail
+
+
 class UserState(enum.Enum):
     disabled = 0
     active = 1
@@ -129,7 +159,7 @@ class PortalType(enum.IntEnum):
     service = 1
 
 
-class User(GuidPk, NameIt, Cdt, Udt, ReprIt, Base):
+class User(GuidPk, NameIt, Cdt, Udt, ReprIt, GlueBase):
     email= Column(String, nullable=False)
     user_state = Column(IntCast(UserState), nullable=False)
     passwd = Column(StringCast(SaltedSha), nullable=False)
@@ -139,39 +169,35 @@ class User(GuidPk, NameIt, Cdt, Udt, ReprIt, Base):
         back_populates = "user")
 
 
-class Portal(GuidPk, NameIt, Cdt, Udt, Base):
+class Portal(GuidPk, NameIt, Cdt, Udt, GlueBase):
     latest = Column(StringCast(Cake), nullable=True)
     portal_type = Column(IntCast(PortalType), nullable=False,
                          default=PortalType.content)
-    permissions = relationship("Permission",
-                              back_populates = "portal")
     history = relationship("PortalHistory",
                            order_by=desc("PortalHistory.created_dt"),
                            back_populates = "portal")
     servers = relationship('Server', secondary="service_home")
 
 
-class PortalHistory(GuidPk, NameIt, Cdt, Base):
+class PortalHistory(GuidPk, NameIt, Cdt, GlueBase):
     portal_id = Column(None, ForeignKey('portal.id'))
     modified_by = Column(None, ForeignKey('user.id'))
     cake = Column(StringCast(Cake), nullable=False)
     portal = relationship("Portal", back_populates="history")
 
 
-class Permission(GuidPk, NameIt, Cdt, Udt, Base):
-    portal_id = Column(None, ForeignKey('portal.id'),nullable=True)
+class Permission(GuidPk, NameIt, Cdt, Udt, GlueBase):
     user_id = Column(None, ForeignKey('user.id'))
     cake = Column(StringCast(Cake), nullable=True)
     permission_type = Column(IntCast(PermissionType), nullable=False)
     user = relationship("User", back_populates="permissions")
-    portal = relationship("Portal", back_populates="permissions")
 
 
-class Server(ServersMixin, Base):
+class Server(ServersMixin, GlueBase):
     seen_by = Column(None,ForeignKey('server.id'))
     services = relationship('Portal', secondary="service_home")
 
 
-class ServiceHome(NameIt,Base):
+class ServiceHome(NameIt, GlueBase):
     server_id = Column(None, ForeignKey("server.id"), primary_key=True)
     service_id = Column(None, ForeignKey("portal.id"), primary_key=True)

@@ -4,24 +4,42 @@ from hashstore.bakery.ids import Cake, NamedCAKes
 from hashstore.ndb import Dbf
 from hashstore.utils import ensure_dict
 
-from hashstore.ndb.models.server import ServerKey, Base as ServerBase
+from hashstore.ndb.models.server_config import ServerKey, \
+    ServerConfigBase
 from hashstore.ndb.models.glue import PortalType, Portal, \
-    PortalHistory, Base as GlueBase
+    PortalHistory, GlueBase, User, UserState, Permission
 
 import logging
 log = logging.getLogger(__name__)
+
+
+def _find_user(session, user_or_email):
+    if '@' in user_or_email:
+        column = User.email
+    else:
+        column = User.id
+        user_or_email = Cake.ensure_it(user_or_email)
+    user = session.query(User).filter(column == user_or_email).one()
+    return user
+
+
+def _find_permission(session, user, acl):
+    conditions = [Permission.user == user,
+                  Permission.permission_type == acl.permission_type]
+    if acl.cake is not None:
+        Permission.cake == acl.cake
+    query = session.query(Permission).filter(*conditions)
+    return query.one_or_none()
 
 
 class CakeStore:
     def __init__(self, store_dir):
         self.store_dir = store_dir
         self._backend = None
-        self.server_db = Dbf(
-            ServerBase.metadata,
+        self.server_db = Dbf(ServerConfigBase.metadata,
             os.path.join(self.store_dir, 'server.db')
         )
-        self.glue_db = Dbf(
-            GlueBase.metadata,
+        self.glue_db = Dbf(GlueBase.metadata,
             os.path.join(self.store_dir, 'glue.db')
         )
 
@@ -81,10 +99,10 @@ class CakeStore:
     def writer(self):
         return self.backend().writer()
 
-    def write_content(self, fp):
+    def write_content(self, fp, chunk_size=65355):
         w = self.writer()
         while True:
-            buf = fp.read(65355)
+            buf = fp.read(chunk_size)
             if len(buf) == 0:
                 break
             w.write(buf)
@@ -95,14 +113,37 @@ class CakeStore:
         portal_id = Cake.ensure_it(portal_id)
         cake = Cake.ensure_it(cake)
         with self.glue_db.session_scope() as session:
-            portal = session.query(Portal)\
-                .filter(Portal.id == portal_id).one_or_none()
-            if portal is not None and portal.portal_type != portal_type:
-                raise ValueError('cannot change type. portal:%s %r->%r' %
-                                 (portal_id, portal.portal_type, portal_type))
             session.merge(Portal(id=portal_id, latest=cake,
                    portal_type=portal_type))
             session.add(PortalHistory(portal_id = portal_id, cake=cake))
 
+    def add_user(self, email, ssha_pwd, full_name = None):
+        with self.glue_db.session_scope() as session:
+            session.add(User(email=email, passwd=ssha_pwd,
+                             full_name=full_name,
+                             user_state=UserState.active))
 
+    def remove_user(self, user_or_email):
+        with self.glue_db.session_scope() as session:
+            user = _find_user(session, user_or_email)
+            user.user_state = UserState.disabled
 
+    def add_permission(self, user_or_email, acl):
+        with self.glue_db.session_scope() as session:
+            user = _find_user(session, user_or_email)
+            if acl is not None:
+                perm = _find_permission(session, user, acl)
+                if perm is None:
+                    session.add(Permission(
+                        user=user,
+                        permission_type=acl.permission_type,
+                        cake=acl.cake))
+            return user, user.permissions
+
+    def remove_permission(self, user_or_email, acl):
+        with self.glue_db.session_scope() as session:
+            user = _find_user(session, user_or_email)
+            perm = _find_permission(session, user, acl)
+            if perm is not None:
+                session.delete(perm)
+            return user, user.permissions

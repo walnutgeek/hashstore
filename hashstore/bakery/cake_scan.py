@@ -3,9 +3,9 @@ from hashstore.utils import ensure_unicode, failback
 from hashstore.utils.ignore_file import ignore_files, \
     parse_ignore_specs, check_if_path_should_be_ignored
 from hashstore.bakery.ids import Cake, process_stream, NamedCAKes
-from hashstore.ndb.models.scan import Base as ScanBase, \
-    DirEntry, DirKey, FileType
-from hashstore.ndb.models.client import Base as ClientBase, \
+from hashstore.ndb.models.scan import ScanBase, DirEntry, DirKey, \
+    FileType
+from hashstore.ndb.models.client_config import ClientConfigBase, \
     ClientKey, Server
 from sqlalchemy import desc
 
@@ -294,33 +294,6 @@ class Mount:
                 return storage
         raise ValueError('cannot backup, need register mount first')
 
-    def backup(self, path):
-        progress = Progress(self.path)
-        with self.storage() as storage:
-            def ensure_files_on_remote(dir_scan):
-                bundles = { dir_scan.udk: dir_scan.bundle}
-                mount_hash = dir_scan.udk if dir_scan.parent is None else None
-                store_dir = True
-                while store_dir:
-                    _, hashes_to_push = storage.store_directories(bundles, mount_hash)
-                    store_dir = False
-                    for h in hashes_to_push:
-                        h = UDK.ensure_it(h)
-                        name = dir_scan.bundle.get_name_by_udk(h)
-                        file = os.path.join(dir_scan.path, name)
-                        fp = open(file, 'rb')
-                        stored = storage.write_content(fp)
-                        if stored != h:
-                            log.info('path:%s, %s != %s' % (file, h, stored))
-                            dir_scan.bundle[name] = stored
-                            dir_scan.udk = dir_scan.bundle.udk()
-                            store_dir = True
-                progress.just_processed(sum(f['size'] for f in dir_scan.new_db_entries
-                                            if f['file_type'] == 'FILE')
-                                        + dir_scan.bundle.size(), dir_scan.path)
-
-            dir = DirScan(self.path,on_each_dir=ensure_files_on_remote)
-            return dir.udk
 
     def restore(self, key, path):
         with self.storage() as storage:
