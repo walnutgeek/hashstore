@@ -90,7 +90,8 @@ class TestSetup:
             cmd = cmd[2:]
             executable = 'hashstore.shashd'
         if log_file is None:
-            cmd_name = cmd.split()[0]
+            cmd_name = next(n for n in (cmd+' log').split()
+                            if not('-' in n or '/' in n or '.' in n))
             log_file = '{cmd_name}{p_id:03d}.log'.format(**locals())
         if os.path.isabs(log_file):
             path = log_file

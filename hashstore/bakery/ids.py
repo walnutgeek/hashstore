@@ -450,8 +450,6 @@ class NamedCAKes(utils.Jsonable):
         return [keys, self.get_udks(keys)]
 
 
-
-
 class CakePath(utils.Stringable, utils.EnsureIt):
     '''
     >>> absolute = CakePath('/SCI/x/y')

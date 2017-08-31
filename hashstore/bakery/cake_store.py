@@ -1,7 +1,5 @@
 import os
-
 import six
-
 from hashstore.bakery.backend import LiteBackend
 from hashstore.bakery.ids import Cake, NamedCAKes
 from hashstore.ndb import Dbf

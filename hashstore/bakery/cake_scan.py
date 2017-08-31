@@ -1,5 +1,5 @@
 import six
-          mm,,,,,,,, ,,,,,,,,,,,,,,,,,,  from hashstore.utils import ensure_unicode, failback, read_in_chunks, \
+from hashstore.utils import ensure_unicode, failback, read_in_chunks, \
     reraise_with_msg, ensure_directory
 from hashstore.utils.ignore_file import ignore_files, \
     parse_ignore_specs, check_if_path_should_be_ignored

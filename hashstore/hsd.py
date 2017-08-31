@@ -12,8 +12,9 @@ import logging
 perm_names = ', '.join(p.name for p in PermissionType)
 
 ca = CommandArgs()
-
 USER='email or guid of user'
+
+
 @ca.app('hsd - hashstore server')
 class DaemonApp():
 
