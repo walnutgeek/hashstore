@@ -44,7 +44,6 @@ def cast_to_tiny_alphabet(text):
 class DataType(enum.IntEnum):
     UNCATEGORIZED = 0
     BUNDLE = 1
-    TXT_WITH_CAKEURLS = 2
 
 
 inline_max_bytes=32
@@ -73,8 +72,8 @@ def _header(id_structure,data_type):
     '''
     >>> _header(KeyStructure.INLINE,DataType.UNCATEGORIZED)
     0
-    >>> _header(KeyStructure.SHA256,DataType.TXT_WITH_CAKEURLS)
-    33
+    >>> _header(KeyStructure.SHA256,DataType.BUNDLE)
+    17
     '''
     return (data_type.value << 4) | id_structure.value
 
@@ -82,8 +81,8 @@ def pack_in_bytes(id_structure, data_type, data_bytes):
     r'''
     >>> pack_in_bytes(KeyStructure.INLINE,DataType.UNCATEGORIZED, b'ABC')
     b'\x00ABC'
-    >>> pack_in_bytes(KeyStructure.SHA256,DataType.TXT_WITH_CAKEURLS,b'XYZ')
-    b'!XYZ'
+    >>> pack_in_bytes(KeyStructure.SHA256,DataType.BUNDLE, b'XYZ')
+    b'\x11XYZ'
     '''
     return to_byte(_header(id_structure, data_type)) + data_bytes
 
@@ -269,9 +268,9 @@ class Cake(utils.Stringable, utils.EnsureIt):
         return Cake.from_stream(open(file, 'rb'), data_type=data_type)
 
     @staticmethod
-    def new_guid(data_type = DataType.UNCATEGORIZED):
+    def new_guid(data_type=DataType.UNCATEGORIZED):
         return Cake(os.urandom(32), id_structure=KeyStructure.GUID256,
-                    data_type = data_type)
+                    data_type=data_type)
 
     def has_data(self):
         return self.key_structure == KeyStructure.INLINE
@@ -298,17 +297,19 @@ class Cake(utils.Stringable, utils.EnsureIt):
         return Cake(t_bytes, id_structure=KeyStructure.TINYNAME,
                     data_type = data_type)
 
+    def is_resolved(self):
+        return self.key_structure == KeyStructure.SHA256
+
     def hash_bytes(self):
         '''
         :raise AssertionError when Cake is not hash based
         :return: hash in bytes
         '''
-        if self.key_structure != KeyStructure.SHA256:
+        if not self.is_resolved():
             raise AssertionError("Not-hash %r %r" %
                                  (self.key_structure, self))
 
         return self._data
-
 
     def __str__(self):
         in_bytes = pack_in_bytes(self.key_structure, self.data_type,
@@ -452,6 +453,9 @@ class NamedCAKes(utils.Jsonable):
 
 class CakePath(utils.Stringable, utils.EnsureIt):
     '''
+    >>> root = CakePath('/SCI')
+    >>> root
+    CakePath('/SCI/')
     >>> absolute = CakePath('/SCI/x/y')
     >>> absolute
     CakePath('/SCI/x/y')
@@ -464,7 +468,9 @@ class CakePath(utils.Stringable, utils.EnsureIt):
     CakePath('/10Bd/r/f')
 
     '''
-    def __init__(self, s, _root = None, _path = None):
+    def __init__(self, s, data_type=DataType.UNCATEGORIZED,
+                 _root = None, _path = None):
+        self.data_type = data_type
         if s is  None:
             self.root = _root
             self.path = _path
@@ -476,6 +482,12 @@ class CakePath(utils.Stringable, utils.EnsureIt):
             else:
                 self.root = None
                 self.path = split
+
+    def child(self, name, data_type = DataType.UNCATEGORIZED):
+        path = list(self.path)
+        path.append(name)
+        return CakePath(None, data_type=data_type,
+                        _path=path, _root=self.root)
 
     def relative(self):
         return self.root is None

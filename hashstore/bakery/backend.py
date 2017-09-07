@@ -1,7 +1,7 @@
 import os
 import shutil
 import datetime
-import six
+import pylru
 
 from hashstore.bakery.ids import Cake
 from hashstore.ndb import Dbf
@@ -11,7 +11,7 @@ from sqlalchemy import func,select
 
 import hashlib
 
-from .content import ContentAddress, is_it_shard
+from .content import ContentAddress, is_it_shard, Content
 from ..ndb.models.shard import shard_meta, blob
 from ..ndb.models.incoming import incoming_meta, incoming
 
@@ -30,10 +30,7 @@ class Lookup:
     def found(self):
         return self.size is not None and self.size >= 0
 
-    def open_fd(self): # pragma: no cover
-        return None
-
-    def stream(self):
+    def content(self):
         return None
 
 
@@ -47,6 +44,19 @@ class ContentAddressLookup(Lookup):
 
     def blob_db(self):
         return self.store.blob_dbf(self.file_id.shard_name)
+
+
+class CacheLookup(Lookup):
+    def __init__(self, lookup, data):
+        Lookup.__init__(self, lookup.store, lookup.file_id)
+        self.size = lookup.size
+        self.created_dt = lookup.created_dt
+        self.data = data
+        self.store.cache[self.file_id] = self
+
+    def content(self):
+        return Content(data=self.data)
+
 
 class DbLookup(ContentAddressLookup):
     def __init__(self, store, file_id):
@@ -76,11 +86,13 @@ class DbLookup(ContentAddressLookup):
         else:
             return False
 
-    def stream(self):
+    def content(self):
         row = self.blob_db().execute(
             select([blob.c.content])
             .where(blob.c.file_id == self.file_id)).fetchone()
-        return six.BytesIO(row.content)
+        if self.size < self.store.cached_max_size:
+            return CacheLookup(self, row.content).content()
+        return Content(row.content)
 
 
 class FileLookup(ContentAddressLookup):
@@ -94,11 +106,11 @@ class FileLookup(ContentAddressLookup):
             if e.errno != 2:  # No such file
                  raise # pragma: no cover
 
-    def open_fd(self):
-        return os.open(self.file,os.O_RDONLY)
-
-    def stream(self):
-        return open(self.file,'rb')
+    def content(self):
+        content = Content(file=self.file)
+        if self.size < self.store.cached_max_size:
+            return CacheLookup(self, content.stream().read()).content()
+        return content
 
 
 
@@ -111,8 +123,10 @@ class LiteBackend:
     as individual files in directory
 
     '''
-    def __init__(self, root):
+    def __init__(self, root, cache_size=1000, cached_max_size=80000):
         self.root = root
+        self.cache = pylru.lrucache(cache_size)
+        self.cached_max_size = cached_max_size
         self.incoming_dir = os.path.join(self.root,'incoming')
         ensure_directory(self.incoming_dir)
         self.in_db = Dbf(incoming_meta, self.incoming_dir + '.db')
@@ -121,6 +135,13 @@ class LiteBackend:
     def blob_dbf(self, shard_name):
         path = os.path.join(self.root, shard_name, 'blob.db')
         return Dbf(shard_meta, path)
+
+    @staticmethod
+    def cache_lookup_factory(self, file_id):
+        try:
+            return self.cache[file_id]
+        except KeyError:
+            return NULL_LOOKUP
 
     def __iter__(self):
         for shard_name in filter(is_it_shard, os.listdir(self.root)):
@@ -134,14 +155,15 @@ class LiteBackend:
                     yield ContentAddress(f)
 
     def get_content(self, k):
-        return self.lookup(k).stream()
+        return self.lookup(k).content()
 
     def lookup(self, cake_or_cadr):
         if isinstance(cake_or_cadr, Cake):
             file_id = ContentAddress(cake_or_cadr)
         else:
             file_id = ContentAddress.ensure_it(cake_or_cadr)
-        for lookup_contr in (FileLookup, DbLookup):
+        for lookup_contr in (self.cache_lookup_factory,
+                             FileLookup, DbLookup):
             l = lookup_contr(self, file_id)
             if l.found():
                 return l

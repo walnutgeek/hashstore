@@ -76,6 +76,7 @@ def build_bundle(entries):
 
 class CakeEntries:
     def __init__(self, path):
+        self.path = path
         self.dbf = Dbf(ScanBase.metadata, os.path.join(path, '.cake_entries'))
         self._dir_key = None
         if self.dbf.exists():
@@ -223,10 +224,11 @@ class Progress:
         pct_format = '%3.2f%%' if self.terminal  else  '%3d%%'
         return pct_format % (100 * float(self.current)/self.total)
 
+
 def backup(path, storage):
     progress = Progress(path)
 
-    def ensure_files_on_remote(dir_scan):
+    def ensure_files_in_store(dir_scan):
         bundles = { dir_scan.entry.cake : dir_scan.bundle}
         store_dir = True
         while store_dir:
@@ -249,34 +251,41 @@ def backup(path, storage):
                                     if f.file_type == FileType.FILE)
                                 + dir_scan.bundle.size(), dir_scan.path)
 
-    root_scan = DirScan(path,on_each_dir=ensure_files_on_remote)
+    root_scan = DirScan(path,on_each_dir=ensure_files_in_store)
     portal_id = root_scan.dir_key().id
     latest_cake = root_scan.entry.cake
     storage.create_portal(portal_id, latest_cake)
     return portal_id, latest_cake
 
+
 def pull(store, key, path):
-    def restore_inner( k, p):
-        k = Cake.ensure_it(k)
-        if k.data_type == DataType.BUNDLE:
-            bundle = NamedCAKes(store.get_content(k))
-            ensure_directory(p)
-            for n in bundle:
-                file_path = os.path.join(p, n)
-                file_k = bundle[n]
+    def child(key, name, cake):
+        if isinstance(key,Cake):
+            return cake
+        else:
+            return key.child(name,cake.data_type)
+
+    def restore_inner(key, path):
+        if key.data_type == DataType.BUNDLE:
+            bundle = NamedCAKes(store.get_content(key).stream())
+            ensure_directory(path)
+            for name in bundle:
+                file_path = os.path.join(path, name)
+                file_k = child(key,name, bundle[name])
                 if file_k.data_type == DataType.BUNDLE:
                     restore_inner(file_k, file_path)
                 else:
                     try:
                         out_fp = open(file_path, "wb")
-                        in_fp = store.get_content(file_k)
+                        in_fp = store.get_content(file_k).stream()
                         for chunk in read_in_chunks(in_fp):
                             out_fp.write(chunk)
+                        in_fp.close()
                         out_fp.close()
                     except:
                         reraise_with_msg(
                             "%s -> %s" % (file_k, file_path))
-    restore_inner(key,path)
+    restore_inner(key, path)
 
 '''
 class CakeClient:

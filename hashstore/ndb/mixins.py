@@ -1,9 +1,11 @@
 from hashstore.ndb import StringCast
-from hashstore.bakery.ids import Cake, SaltedSha
+from hashstore.bakery.ids import Cake, SaltedSha, DataType
 import datetime
 from sqlalchemy import Column, DateTime, String, Integer
 from sqlalchemy.ext.declarative import declared_attr
 from hashstore.utils import from_camel_case_to_underscores
+
+new_bundle_guid = lambda: Cake.new_guid(DataType.BUNDLE)
 
 
 class ReprIt:
@@ -45,4 +47,4 @@ class ServersMixin(NameIt, Cdt, Udt):
 
 class Singleton(NameIt, ReprIt):
     single = Column(Integer,primary_key=True, default=1)
-    id = Column(StringCast(Cake),nullable=False,default=Cake.new_guid)
+    id = Column(StringCast(Cake), nullable=False, default=new_bundle_guid)

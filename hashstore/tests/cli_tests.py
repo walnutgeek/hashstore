@@ -65,6 +65,13 @@ def test_scan_ls():
     files = os.path.join(test.dir, 'files')
     prep_mount(files, file_set1)
 
+    test.run_script_and_wait('hsi ls --dir %s' % files, expect_rc=1,
+                             expect_read='''
+                Traceback (most recent call last):
+                ....
+                ValueError: ... was not scanned
+    ''' )
+
     test.run_script_and_wait('hsi scan --dir %s' % files,expect_rc=0,
                              expect_read=fileset1_cake)
 
@@ -80,6 +87,7 @@ def test_scan_ls():
           total_size: 119499''' % fileset1_cake)
 
     update_mount(files, file_set2)
+
 
     test.run_script_and_wait('hsi scan --dir %s' % files, expect_rc=0,
                              expect_read=fileset2_cake)

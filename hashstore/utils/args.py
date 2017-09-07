@@ -119,3 +119,4 @@ class CommandArgs:
             if args.command == c.name:
                 run_args = extract_values(c.options)
                 getattr(instance, c.name)(**run_args)
+

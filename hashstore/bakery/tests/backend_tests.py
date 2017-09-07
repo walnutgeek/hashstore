@@ -54,14 +54,14 @@ def test_LiteBackend():
     r0, r1, r2 = store()
     #test recall
     seed(0)
-    o0 = hs.get_content(r0)
+    o0 = hs.get_content(r0).stream()
     eq_(o0.read(40), random_bytes(40))
     eq_(0, len(o0.read()))
-    o1=hs.get_content(r1)
+    o1=hs.get_content(r1).stream()
     for _ in range(3):
         eq_(o1.read(100), random_bytes(100))
     eq_(0, len(o1.read()))
-    o2 = hs.get_content(r2)
+    o2 = hs.get_content(r2).stream()
     for _ in range(100):
         eq_(o2.read(1000), random_bytes(1000))
     eq_(0, len(o2.read()))

@@ -11,11 +11,28 @@ from doctest import OutputChecker, DocTestRunner, DocTestFinder
 pyenv = 'py' + sys.version[0]
 
 
-def normalize_space(s):
-    return re.sub(r'\s+', ' ', ' ' + s + ' ')
+def assert_text(src, expect):
+    '''
+    matches texts ignoring spaces.
 
+    Some fragment of the `src` could be ignored if it is specified
+    in `expect` by certain placeholders:
 
-def match_text(src,expect):
+    ... - ignore word
+    .... - ignore any number of words until next word match
+
+    TODO: it works but it is inconsistent with ellipsis syntax in
+    doctest. I guess you could se bit of irony bellow.
+
+    >>> assert_text('abc   xyz', ' abc xyz ')
+    >>> assert_text('abc asdf  xyz', ' abc ... xyz ')
+    >>> assert_text('abc asdf iklmn xyz', ' abc ... xyz ')
+    Traceback (most recent call last):
+    ...
+    AssertionError: 'iklmn' != 'xyz'
+    >>> assert_text('abc asdf iklmn xyz', ' abc .... xyz ')
+
+    '''
     src_it = iter(src.split())
     expect_it = iter(expect.split())
     look_until_match = False
@@ -51,6 +68,7 @@ def match_text(src,expect):
                 print(src)
                 eq_(s1,s2)
 
+
 class TestSetup:
     def __init__(self, name, ensure_empty = False):
         self.log = logging.getLogger(name)
@@ -76,7 +94,7 @@ class TestSetup:
                 print(read)
                 eq_(expect_rc, rc)
         if expect_read is not None:
-            match_text(read,expect_read)
+            assert_text(read, expect_read)
         return rc, split[-1] if len(split) else None
 
     def run_script(self, cmd, log_file=None):
@@ -131,7 +149,8 @@ import numpy.random as np_rnd
 import time
 import array
 
-random_bytes = lambda l: array.array('B', np_rnd.randint(0, 255,l)).tostring()
+random_bytes = lambda l: array.array('B', np_rnd.randint(0, 255,l))\
+    .tostring()
 
 reseed_random = lambda : int(time.clock() * 1000)
 
@@ -274,3 +293,7 @@ def doctest_it(m):
     runner.summarize()
     ok_(runner.tries > 0, 'There is not doctests in module')
     eq_(runner.failures, 0)
+
+if __name__ == '__main__':
+    import sys
+    doctest_it(sys.modules[__name__])
