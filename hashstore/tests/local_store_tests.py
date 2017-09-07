@@ -94,7 +94,7 @@ def test_SecureStore():
     eq_(s4k, hs.get_content(h4k, auth_session=auth_session).read())
     eq_(['5694182274e5a6cab47ce45024b72f94dcfd7de584f2b4432fb3556ebb870fad',
          'b99268b77ce16d561a78b9a533349e46882f2df0b735e73d7441943074e214e5'],
-        [str(k) for k in hs.iterate_udks(auth_session=auth_session)])
+        list(sorted(str(k) for k in hs.iterate_udks(auth_session=auth_session))) )
 
     d = udk.UDKBundle()
     d['100k'] = h100k

@@ -62,7 +62,7 @@ class UserSessionActions:
         Read_Any_* . Also if there are portals in the path permissions
         will be validated on them before you able to proceed further.
 
-    write_data (data)        -> data_cake        Write_Any_Data
+    store_directories(directories)    -> data_cake        Write_Any_Data
         Write data
 
     write_data (data)        -> data_cake        Write_Any_Data
