@@ -11,7 +11,6 @@ from hashstore.ndb.models.server_config import ServerKey, \
 from hashstore.ndb.models.glue import PortalType, Portal, \
     PortalHistory, GlueBase, User, UserState, Permission, \
     PermissionType as PT, Acl
-from hashstore.utils import `is_str
 import logging
 
 log = logging.getLogger(__name__)
