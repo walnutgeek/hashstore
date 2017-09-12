@@ -3,6 +3,7 @@ from sqlalchemy.orm import sessionmaker
 from hashstore.utils import KeyMapper
 from inspect import ismodule
 from contextlib import contextmanager
+import re
 
 import os
 
@@ -53,7 +54,6 @@ class Dbf:
         self._engine = None
         self._Session = None
 
-
     def engine(self):
         if self._engine is None:
             self._engine = create_engine('sqlite:///%s' % self.path)
@@ -87,4 +87,38 @@ class Dbf:
             session.rollback()
             raise
         finally:
+            session.close()
+
+
+class MultiSessionContextManager:
+
+    def __init__(self):
+        self._open_sessions = {}
+
+    def session_factory(self, name):
+        raise AssertionError('session_factory(name) has to be '
+                             'implemented in %s' % type(self).__name__)
+
+    @staticmethod
+    def decorate(fn):
+        session_name = re.sub(r'_session$', '', fn.__name__)
+
+        def lazy_session(self):
+            if session_name in self._open_sessions:
+                return self._open_sessions[session_name]
+            session = self.session_factory(session_name)
+            self._open_sessions[session_name] = session
+            return session
+        return lazy_session
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, tb):
+        for n in self._open_sessions:
+            session = self._open_sessions[n]
+            if type is None:
+                session.commit()
+            else:
+                session.rollback()
             session.close()

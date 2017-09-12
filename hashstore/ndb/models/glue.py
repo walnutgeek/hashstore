@@ -19,7 +19,7 @@ configuration.
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from sqlalchemy import ForeignKey, Column, String, Boolean, desc
+from sqlalchemy import and_,ForeignKey, Column, String, Boolean, desc
 from hashstore.ndb.mixins import ReprIt, GuidPk, Cdt, Udt, \
     NameIt, ServersMixin
 from hashstore.ndb import StringCast, IntCast
@@ -106,6 +106,10 @@ class PermissionType(enum.Enum):
         return "code:%d %s expands->%s" % (
             self.value, needs_cake, expands)
 
+    @staticmethod
+    def from_names(names):
+        return [PermissionType[n] for n in names.split()]
+
 
 PermissionType.Write_Any_Data.expand_to = (
     PermissionType.Read_Any_Data,
@@ -123,6 +127,74 @@ PermissionType.Admin.expand_to = (
     PermissionType.Create_Portals,
     PermissionType.Read_Any_Portal,
     )
+
+
+class UserState(enum.Enum):
+    disabled = 0
+    active = 1
+    invitation = 2
+
+
+class PortalType(enum.IntEnum):
+    content = 0
+    service = 1
+
+
+class User(GuidPk, NameIt, Cdt, Udt, ReprIt, GlueBase):
+    email= Column(String, nullable=False)
+    user_state = Column(IntCast(UserState), nullable=False)
+    passwd = Column(StringCast(SaltedSha), nullable=False)
+    full_name = Column(String, nullable=True)
+    permissions = relationship(
+        "Permission",
+        order_by="Permission.id",
+        back_populates = "user")
+
+    def acls(self):
+        if not hasattr(self, 'acls'):
+            self.acls = set()
+            for p in self.permissions:
+                self.acls.update(p.expanded_acls())
+        return self.acls
+
+
+class Portal(GuidPk, NameIt, Cdt, Udt, GlueBase):
+    latest = Column(StringCast(Cake), nullable=True)
+    portal_type = Column(IntCast(PortalType), nullable=False,
+                         default=PortalType.content)
+    active = Column(Boolean, default=True)
+    history = relationship("PortalHistory",
+                           order_by=desc("PortalHistory.created_dt"),
+                           back_populates = "portal")
+    servers = relationship('Server', secondary="service_home")
+
+
+class PortalHistory(GuidPk, NameIt, Cdt, GlueBase):
+    portal_id = Column(None, ForeignKey('portal.id'))
+    modified_by = Column(None, ForeignKey('user.id'))
+    cake = Column(StringCast(Cake), nullable=False)
+    portal = relationship("Portal", back_populates="history")
+
+
+class Permission(GuidPk, NameIt, Cdt, Udt, GlueBase):
+    user_id = Column(None, ForeignKey('user.id'))
+    cake = Column(StringCast(Cake), nullable=True)
+    permission_type = Column(IntCast(PermissionType), nullable=False)
+    user = relationship("User", back_populates="permissions")
+
+    def expanded_acls(self):
+        for pt in self.permission_type.expand():
+            yield Acl(None, pt, self.cake)
+
+
+class Server(ServersMixin, GlueBase):
+    seen_by = Column(None,ForeignKey('server.id'))
+    services = relationship('Portal', secondary="service_home")
+
+
+class ServiceHome(NameIt, GlueBase):
+    server_id = Column(None, ForeignKey("server.id"), primary_key=True)
+    service_id = Column(None, ForeignKey("portal.id"), primary_key=True)
 
 
 class Acl(Stringable,EnsureIt):
@@ -155,6 +227,10 @@ class Acl(Stringable,EnsureIt):
                 'cake field is required for permission: %s'
                 % self.permission_type.name)
 
+    @staticmethod
+    def cake_acls( cake, *permission_types):
+        return [Acl(None, pt, cake) for pt in permission_types]
+
     def __str__(self):
         tail = '' if self.cake is None else ':%s' % self.cake
         return self.permission_type.name + tail
@@ -168,66 +244,7 @@ class Acl(Stringable,EnsureIt):
     def __ne__(self,other):
         return str(self) != str(other)
 
-
-class UserState(enum.Enum):
-    disabled = 0
-    active = 1
-    invitation = 2
-
-
-class PortalType(enum.IntEnum):
-    content = 0
-    service = 1
-
-
-class User(GuidPk, NameIt, Cdt, Udt, ReprIt, GlueBase):
-    email= Column(String, nullable=False)
-    user_state = Column(IntCast(UserState), nullable=False)
-    passwd = Column(StringCast(SaltedSha), nullable=False)
-    full_name = Column(String, nullable=True)
-    permissions = relationship(
-        "Permission",
-        order_by="Permission.id",
-        back_populates = "user")
-
-    def acls(self):
-        acls = set()
-        for p in self.permissions:
-            for pt in p.permission_type.expand():
-                acls.add(Acl(None, pt, p.cake))
-        return acls
-
-
-class Portal(GuidPk, NameIt, Cdt, Udt, GlueBase):
-    latest = Column(StringCast(Cake), nullable=True)
-    portal_type = Column(IntCast(PortalType), nullable=False,
-                         default=PortalType.content)
-    active = Column(Boolean, default=True)
-    history = relationship("PortalHistory",
-                           order_by=desc("PortalHistory.created_dt"),
-                           back_populates = "portal")
-    servers = relationship('Server', secondary="service_home")
-
-
-class PortalHistory(GuidPk, NameIt, Cdt, GlueBase):
-    portal_id = Column(None, ForeignKey('portal.id'))
-    modified_by = Column(None, ForeignKey('user.id'))
-    cake = Column(StringCast(Cake), nullable=False)
-    portal = relationship("Portal", back_populates="history")
-
-
-class Permission(GuidPk, NameIt, Cdt, Udt, GlueBase):
-    user_id = Column(None, ForeignKey('user.id'))
-    cake = Column(StringCast(Cake), nullable=True)
-    permission_type = Column(IntCast(PermissionType), nullable=False)
-    user = relationship("User", back_populates="permissions")
-
-
-class Server(ServersMixin, GlueBase):
-    seen_by = Column(None,ForeignKey('server.id'))
-    services = relationship('Portal', secondary="service_home")
-
-
-class ServiceHome(NameIt, GlueBase):
-    server_id = Column(None, ForeignKey("server.id"), primary_key=True)
-    service_id = Column(None, ForeignKey("portal.id"), primary_key=True)
+    def condition(self):
+        c = Permission.permission_type == self.permission_type
+        return c if self.cake is None else \
+            and_(c,Permission.cake == self.cake)

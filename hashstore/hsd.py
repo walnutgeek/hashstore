@@ -43,12 +43,14 @@ class DaemonApp():
                 raise ValueError('Passwords does not match')
         else:
             password = SaltedSha(password)
-        self.store.add_user(email,password,
+        with self.store.system_actions() as actions:
+            actions.add_user(email,password,
                             full_name=full_name)
 
     @ca.command(user=USER)
     def remove_user(self, user):
-        self.store.remove_user(user)
+        with self.store.system_actions() as actions:
+            actions.remove_user(user)
 
     @ca.command('Manage ACL',
                 user=USER,
@@ -57,30 +59,33 @@ class DaemonApp():
                      'with "_" require  `Cake` that points to  portal '
                      'or data.' % (perm_names,))
     def acl(self, user, acl=None):
-        if acl is not None:
-            action = acl[-1]
-            acl = Acl(acl[:-1])
-        if acl is None or action == '+':
-            user,permissions = self.store.add_permission(user,acl)
-        elif action == '-':
-            user,permissions = self.store.remove_permission(user,acl)
-        else:
-            raise AssertionError('unknown action: %s' % action)
-        print("User: %s" % user.email)
-        print("User.id: %s" % user.id)
-        print('')
-        print_pad(permissions, 'permission_type cake'.split(), getattr)
+        with self.store.system_actions() as actions:
+            if acl is not None:
+                action = acl[-1]
+                acl = Acl(acl[:-1])
+            if acl is None or action == '+':
+                user,permissions = actions.add_acl(user,acl)
+            elif action == '-':
+                user,permissions = actions.remove_acl(user,acl)
+            else:
+                raise AssertionError('unknown action: %s' % action)
+            print("User: %s" % user.email)
+            print("User.id: %s" % user.id)
+            print('')
+            print_pad(permissions, 'permission_type cake'.split(), getattr)
 
 
     @ca.command('Backup dir', dir='directory to be stored. ')
     def backup(self, dir):
-        print('DirId: %s\nCake:  %s' % backup(dir,self.store))
+        with self.store.system_actions() as actions:
+            print('DirId: %s\nCake:  %s' % backup(dir, actions))
 
     @ca.command('Restore dir',
                 dir='destination directory.',
                 cake='content cake or portal' )
     def pull(self, cake, dir):
-        pull(self.store, Cake.ensure_it(cake), dir)
+        with self.store.system_actions() as actions:
+            pull(actions, Cake.ensure_it(cake), dir)
 
     @ca.command('start server')
     def start(self):

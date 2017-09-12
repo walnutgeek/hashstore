@@ -300,6 +300,10 @@ class Cake(utils.Stringable, utils.EnsureIt):
     def is_resolved(self):
         return self.key_structure == KeyStructure.SHA256
 
+    def is_portal(self):
+        return self.key_structure in (KeyStructure.TINYNAME,
+                                      KeyStructure.GUID256)
+
     def hash_bytes(self):
         '''
         :raise AssertionError when Cake is not hash based
