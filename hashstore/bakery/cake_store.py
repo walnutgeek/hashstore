@@ -1,9 +1,10 @@
 import os
+from hashstore.bakery import NotAuthorizedError
 from hashstore.bakery.backend import LiteBackend
 from hashstore.bakery.content import Content
 from hashstore.bakery.ids import Cake, NamedCAKes, CakePath
 from hashstore.ndb import Dbf, MultiSessionContextManager
-from hashstore.utils import ensure_dict
+from hashstore.utils import ensure_dict,reraise_with_msg
 import hashstore.bakery.dal as dal
 
 from hashstore.ndb.models.server_config import ServerKey, \
@@ -16,7 +17,6 @@ import logging
 log = logging.getLogger(__name__)
 
 
-class NonAllowedError(ValueError): pass
 
 
 class ActionHelper(MultiSessionContextManager):
@@ -36,7 +36,7 @@ class ActionHelper(MultiSessionContextManager):
         else:
             self.auth_user = self.ensure_user(auth_user)
 
-    def is_authentificated(self):
+    def is_authenticated(self):
         return self.auth_user is not None
 
     def ensure_user(self, user):
@@ -44,7 +44,6 @@ class ActionHelper(MultiSessionContextManager):
             return user
         else:
             return dal.find_user(self.glue_session(), user)
-
 
     def session_factory(self, name):
         return getattr(self.store, name +'_db').session()
@@ -62,8 +61,8 @@ class ActionHelper(MultiSessionContextManager):
         for acl in required_acls:
             if acl in self.auth_user.acls():
                 return
-        raise NonAllowedError('%s does not have %r permissions' %
-                              (self.auth_user.email, required_acls))
+        raise NotAuthorizedError('%s does not have %r permissions' %
+                                 (self.auth_user.email, required_acls))
 
     def get_content(self, cake):
         '''
@@ -83,17 +82,19 @@ class ActionHelper(MultiSessionContextManager):
             to be check on all portals in redirect chain. redirect chain
             cannot be longer then 10.
         '''
+        if isinstance(cake,CakePath):
+            return self.get_content_by_path(cake)
         if cake.has_data():
-            return Content(data=cake.data())
+            return Content(data=cake.data()).set_data_type(cake)
         elif cake.is_resolved():
             self.authorize(cake, self.Permissions.read_data_cake)
-            return self.store.backend().lookup(cake).content()
+            return self.store.backend().get_content(cake)
         elif cake.is_portal():
             self.authorize(cake, self.Permissions.read_portal)
             stack = dal.resolve_cake_stack(self.glue_session(), cake)
             for a in stack[:-1]:
                 self.authorize(cake, self.Permissions.read_portal)
-            return self.store.backend().lookup(cake).content(stack[-1])
+            return self.store.backend().get_content(stack[-1])
         else:
             raise AssertionError('should never get here')
 
@@ -132,11 +133,16 @@ class ActionHelper(MultiSessionContextManager):
         content=self.get_content(cake_path.root)
         for next_name in cake_path.path:
             bundle = NamedCAKes(content.stream())
-            next_cake = bundle[next_name]
+            try:
+                next_cake = bundle[next_name]
+            except:
+                reraise_with_msg(' %r %r' % (cake_path, bundle.content()))
+
             if next_cake.is_resolved():
-                content = self.store.backend().lookup(next_cake).content()
+                content = self.store.backend().get_content(next_cake)
             else:
                 content = self.get_content(next_cake)
+        return content
 
 
     def store_directories(self, directories):
@@ -241,7 +247,7 @@ class ActionHelper(MultiSessionContextManager):
             dal.edit_portal(self.glue_session(),
                             Portal(id=portal_id, latest=cake,
                                    portal_type=portal_type))
-            if self.is_authentificated():
+            if self.is_authenticated():
                 self.glue_session().add(Permission(
                     user=self.auth_user,
                     permission_type=PT.Own_Portal_,
@@ -305,7 +311,7 @@ class ActionHelper(MultiSessionContextManager):
         portal_id = Cake.ensure_it(portal_id)
         if not portal_id.is_portal():
             raise AssertionError('has to be a portal: %r' % portal_id)
-        if self.is_authentificated():
+        if self.is_authenticated():
             self.authorize(portal_id, (PT.Own_Portal_,PT.Admin))
             portal = self.glue_session().query(Portal).\
                 filter(Portal.id == portal_id).one()

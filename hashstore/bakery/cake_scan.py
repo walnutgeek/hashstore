@@ -263,29 +263,31 @@ def pull(store, key, path):
         if isinstance(key,Cake):
             return cake
         else:
-            return key.child(name,cake.data_type)
+            return key.child(name)
 
-    def restore_inner(key, path):
-        if key.data_type == DataType.BUNDLE:
-            bundle = NamedCAKes(store.get_content(key).stream())
+    def restore_inner(cake, content, path):
+        if content.data_type == DataType.BUNDLE:
+            bundle = NamedCAKes(content.stream())
             ensure_directory(path)
             for name in bundle:
                 file_path = os.path.join(path, name)
-                file_k = child(key,name, bundle[name])
-                if file_k.data_type == DataType.BUNDLE:
-                    restore_inner(file_k, file_path)
+                file_cake = child(cake,name, bundle[name])
+                file_content = store.get_content(file_cake)
+                if file_content.data_type == DataType.BUNDLE:
+                    restore_inner(file_cake, file_content, file_path)
                 else:
                     try:
                         out_fp = open(file_path, "wb")
-                        in_fp = store.get_content(file_k).stream()
+                        in_fp = store.get_content(file_cake).stream()
                         for chunk in read_in_chunks(in_fp):
                             out_fp.write(chunk)
                         in_fp.close()
                         out_fp.close()
                     except:
                         reraise_with_msg(
-                            "%s -> %s" % (file_k, file_path))
-    restore_inner(key, path)
+                            "%s -> %s" % (file_cake, file_path))
+
+    restore_inner(key, store.get_content(key), path)
 
 '''
 class CakeClient:

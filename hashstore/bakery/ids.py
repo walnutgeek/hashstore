@@ -472,9 +472,7 @@ class CakePath(utils.Stringable, utils.EnsureIt):
     CakePath('/10Bd/r/f')
 
     '''
-    def __init__(self, s, data_type=DataType.UNCATEGORIZED,
-                 _root = None, _path = None):
-        self.data_type = data_type
+    def __init__(self, s, _root = None, _path = []):
         if s is  None:
             self.root = _root
             self.path = _path
@@ -487,11 +485,10 @@ class CakePath(utils.Stringable, utils.EnsureIt):
                 self.root = None
                 self.path = split
 
-    def child(self, name, data_type = DataType.UNCATEGORIZED):
+    def child(self, name):
         path = list(self.path)
         path.append(name)
-        return CakePath(None, data_type=data_type,
-                        _path=path, _root=self.root)
+        return CakePath(None, _path=path, _root=self.root)
 
     def relative(self):
         return self.root is None
@@ -510,10 +507,19 @@ class CakePath(utils.Stringable, utils.EnsureIt):
         if self.relative():
             return self.path_join()
         else:
-            return '/%s/%s' % (self.root,self.path_join())
+            return '/%s/%s' % (self.root, self.path_join())
 
     def path_join(self):
         return '/'.join(self.path)
+
+
+def cake_or_path(s):
+    if isinstance(s, Cake) or isinstance(s, CakePath):
+        return s
+    elif s[:1] == '/':
+        return CakePath(s)
+    else:
+        return Cake(s)
 
 SSHA_MARK='{SSHA}'
 

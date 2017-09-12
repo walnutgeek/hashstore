@@ -4,7 +4,7 @@ from hashstore.ndb.models.glue import PermissionType, Acl
 from hashstore.utils import print_pad
 from hashstore.utils.args import Switch, CommandArgs
 from hashstore.bakery.cake_scan import pull,backup
-from hashstore.bakery.ids import SaltedSha, Cake
+from hashstore.bakery.ids import SaltedSha, Cake, CakePath, cake_or_path
 import getpass
 
 import logging
@@ -82,10 +82,10 @@ class DaemonApp():
 
     @ca.command('Restore dir',
                 dir='destination directory.',
-                cake='content cake or portal' )
+                cake='content cake or portal or cake_path' )
     def pull(self, cake, dir):
         with self.store.system_actions() as actions:
-            pull(actions, Cake.ensure_it(cake), dir)
+            pull(actions, cake_or_path(cake), dir)
 
     @ca.command('start server')
     def start(self):

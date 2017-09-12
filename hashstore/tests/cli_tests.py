@@ -162,3 +162,27 @@ def test_scan_ls():
 
     test.run_script_and_wait('hsi scan --dir {pull_dir}'.format(**locals()),
                              expect_rc=0, expect_read=fileset2_cake)
+
+    pull_cake2 = fileset1_cake
+    pull_dir2 = os.path.join(test.dir, 'pullpath')
+    test.run_script_and_wait('hsd --store_dir {store} pull '
+                             '--cake /{pull_cake2} --dir {pull_dir2}'.format(**locals()),
+                             expect_rc=1,
+                             expect_read='''
+                                Traceback (most recent call last):
+                                ....
+                                hashstore.bakery.NotFoundError''')
+    test.run_script_and_wait('hsd --store_dir {store} pull '
+                             '--cake {pull_cake2} --dir {pull_dir2}'.format(**locals()),
+                             expect_rc=1,
+                             expect_read='''
+                                Traceback (most recent call last):
+                                ....
+                                hashstore.bakery.NotFoundError''')
+
+    test.run_script_and_wait('hsd --store_dir {store} pull '
+                             '--cake /{pull_cake} --dir {pull_dir2}'.format(**locals()),
+                             expect_rc=0)
+
+    test.run_script_and_wait('hsi scan --dir {pull_dir2}'.format(**locals()),
+                             expect_rc=0, expect_read=fileset2_cake)

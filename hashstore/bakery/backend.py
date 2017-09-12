@@ -3,6 +3,7 @@ import shutil
 import datetime
 import pylru
 
+from hashstore.bakery import NotFoundError
 from hashstore.bakery.ids import Cake
 from hashstore.ndb import Dbf
 from hashstore.utils import binary_type, ensure_bytes,ensure_directory
@@ -31,7 +32,7 @@ class Lookup:
         return self.size is not None and self.size >= 0
 
     def content(self):
-        return None
+        raise NotFoundError
 
 
 NULL_LOOKUP = Lookup(None, None)
@@ -155,7 +156,7 @@ class LiteBackend:
                     yield ContentAddress(f)
 
     def get_content(self, k):
-        return self.lookup(k).content()
+        return self.lookup(k).content().set_data_type(k)
 
     def lookup(self, cake_or_cadr):
         if isinstance(cake_or_cadr, Cake):

@@ -1,5 +1,7 @@
 import uuid
 import os
+
+from hashstore.bakery import NotFoundError
 from hashstore.tests import TestSetup, seed, random_bytes
 from hashstore.bakery.backend import LiteBackend
 from hashstore.bakery.ids import Cake
@@ -69,7 +71,11 @@ def test_LiteBackend():
     store()
 
     #retrieve non existent
-    eq_(None, hs.get_content(not_existent))
+    try:
+        hs.get_content(not_existent)
+        ok_(False)
+    except NotFoundError:
+        pass
     all = list(hs)
     eq_(3,len(all))
 

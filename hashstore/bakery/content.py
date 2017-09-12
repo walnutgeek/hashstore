@@ -108,6 +108,12 @@ class Content:
             raise AssertionError('define data or file')
         self.data = data
         self.file = file
+        self.data_type = None
+
+    def set_data_type(self, from_cake):
+        if hasattr(from_cake, 'data_type'):
+            self.data_type = from_cake.data_type
+        return self
 
     def has_data(self):
         return self.data is not None
