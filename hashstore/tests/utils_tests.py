@@ -110,3 +110,48 @@ def test_if_defined():
     eq_(u.get_if_defined( o, 'z'), None)
     eq_(u.call_if_defined( o, 'y'), -5)
     eq_(u.call_if_defined( o, 'z'), None)
+
+
+def test_api():
+
+    from hashstore.utils.api import ApiCallRegistry
+    methods = ApiCallRegistry()
+
+    class A:
+
+        @methods.call(coerce_return_fn=lambda r: -r)
+        def returns_5(self, a, b=4):
+            '''
+            documentation
+            '''
+            return 5
+
+        @methods.call()
+        def none(self):
+            pass
+
+        @methods.call(x=lambda i: i*i)
+        def error(self, x):
+            raise ValueError('%d' % x)
+
+    eq_(set('returns_5 error none'.split()),set(methods.calls.keys()))
+    eq_(methods.calls['returns_5'].doc.strip(),'documentation')
+    a = A()
+    try:
+        methods.run(a, 'returns_5', {})
+        ok_(False)
+    except TypeError:
+        eq_("returns_5() is missing required arguments: ['a']",
+            u.exception_message())
+
+    try:
+        methods.run(a, 'returns_5', {'x':7})
+        ok_(False)
+    except TypeError:
+        eq_("returns_5() does not have argument: 'x'",
+            u.exception_message())
+
+    eq_({'result': -5}, methods.run(a, 'returns_5', {'a': 7}))
+    eq_({'error': '4'}, methods.run(a, 'error', {'x': 2}))
+    eq_({'result': None}, methods.run(a, 'none', {}))
+

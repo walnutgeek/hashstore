@@ -103,7 +103,9 @@ class ContentAddress(Stringable, EnsureIt):
 
 
 class Content:
-    def __init__(self, data=None, file=None):
+    def __init__(self, data=None, file=None,
+                 mime='application/octet-stream'):
+        self.mime = mime
         if data is None and file is None:
             raise AssertionError('define data or file')
         self.data = data
@@ -117,6 +119,9 @@ class Content:
 
     def has_data(self):
         return self.data is not None
+
+    def get_data(self):
+        return self.data if self.has_data() else self.stream().read()
 
     def stream(self):
         if self.has_data():

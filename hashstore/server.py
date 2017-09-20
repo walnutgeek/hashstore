@@ -184,7 +184,7 @@ class StoreServer(PathResover):
         signal.signal(signal.SIGINT, stop_server)
         http_server = tornado.httpserver.HTTPServer(application, max_body_size=self.max_file_size)
         http_server.listen(self.port)
-        logging.info('StoreServer({0.store.root},{0.store.access_mode}) listening=0.0.0.0:{0.port}'.format(self) )
+        logging.info('CakeServer({0.store.root},{0.store.access_mode}) listening=0.0.0.0:{0.port}'.format(self) )
         tornado.ioloop.IOLoop.instance().start()
 
 

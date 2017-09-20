@@ -32,7 +32,7 @@ class ClientApp:
                 dir='mount dir. Any directory within mount tree '
                    'will be authorized to access url above. '
                 )
-    def login(self, url, user, dir='.'):
+    def login(self, url, user, passwd=None, dir='.'):
         pass
 
     @ca.command('logout from server',

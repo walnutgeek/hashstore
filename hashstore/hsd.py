@@ -1,5 +1,6 @@
 import os
-from hashstore.bakery.cake_store import CakeStore
+from hashstore.bakery.cake_store import CakeStore, PrivilegedAccess
+from hashstore.bakery.cake_server import CakeServer
 from hashstore.ndb.models.glue import PermissionType, Acl
 from hashstore.utils import print_pad
 from hashstore.utils.args import Switch, CommandArgs
@@ -43,13 +44,15 @@ class DaemonApp():
                 raise ValueError('Passwords does not match')
         else:
             password = SaltedSha(password)
-        with self.store.system_actions() as actions:
+        with self.store.ctx() as ctx:
+            actions = PrivilegedAccess.system_access(ctx)
             actions.add_user(email,password,
                             full_name=full_name)
 
     @ca.command(user=USER)
     def remove_user(self, user):
-        with self.store.system_actions() as actions:
+        with self.store.ctx() as ctx:
+            actions = PrivilegedAccess.system_access(ctx)
             actions.remove_user(user)
 
     @ca.command('Manage ACL',
@@ -59,7 +62,8 @@ class DaemonApp():
                      'with "_" require  `Cake` that points to  portal '
                      'or data.' % (perm_names,))
     def acl(self, user, acl=None):
-        with self.store.system_actions() as actions:
+        with self.store.ctx() as ctx:
+            actions = PrivilegedAccess.system_access(ctx)
             if acl is not None:
                 action = acl[-1]
                 acl = Acl(acl[:-1])
@@ -77,23 +81,29 @@ class DaemonApp():
 
     @ca.command('Backup dir', dir='directory to be stored. ')
     def backup(self, dir):
-        with self.store.system_actions() as actions:
+        with self.store.ctx() as ctx:
+            actions = PrivilegedAccess.system_access(ctx)
             print('DirId: %s\nCake:  %s' % backup(dir, actions))
 
     @ca.command('Restore dir',
                 dir='destination directory.',
                 cake='content cake or portal or cake_path' )
     def pull(self, cake, dir):
-        with self.store.system_actions() as actions:
+        with self.store.ctx() as ctx:
+            actions = PrivilegedAccess.system_access(ctx)
             pull(actions, cake_or_path(cake), dir)
 
     @ca.command('start server')
     def start(self):
-        pass
+        server = CakeServer(self.store)
+        server.shutdown(True)
+        server.run_server()
+
 
     @ca.command('stop server')
     def stop(self):
-        pass
+        server = CakeServer(self.store)
+        server.shutdown(False)
 
 
 main = ca.main

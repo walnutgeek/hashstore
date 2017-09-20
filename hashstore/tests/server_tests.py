@@ -50,9 +50,9 @@ mounts:
   files: {files}
 '''.format(**locals())
             )
-            test.run_script('d start --config ' + yaml_config)
+            test.run_script_in_bg('d start --config ' + yaml_config)
         else:
-            test.run_script('d start --store_dir {hashery_dir} --port {port}'
+            test.run_script_in_bg('d start --store_dir {hashery_dir} --port {port}'
                        '{server_opt}'.format(**locals()))
         time.sleep(3)
         if do_invitation:
@@ -161,4 +161,4 @@ mounts:
 
 
 def test_dummies():
-    test.run_script('nonsense')
+    test.run_script_in_bg('nonsense')

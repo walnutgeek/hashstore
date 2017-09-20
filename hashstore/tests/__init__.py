@@ -84,20 +84,13 @@ class TestSetup:
 
     def run_script_and_wait(self, cmd, log_file=None, expect_rc=None,
                             expect_read = None):
-        p_id = self.run_script(cmd, log_file)
-        popen, cmd, logpath = self.processes[p_id]
-        rc = popen.wait()
-        read = open(logpath).read()
-        split = read.strip().split()
-        if expect_rc is not None:
-            if expect_rc != rc:
-                print(read)
-                eq_(expect_rc, rc)
-        if expect_read is not None:
-            assert_text(read, expect_read)
+        p_id = self.run_script_in_bg(cmd, log_file)
+        rc, logtext = self.wait_process(p_id,expect_read=expect_read,
+                                        expect_rc=expect_rc)
+        split = logtext.strip().split()
         return rc, split[-1] if len(split) else None
 
-    def run_script(self, cmd, log_file=None):
+    def run_script_in_bg(self, cmd, log_file=None):
         p_id = self.counter
         self.counter += 1
         executable = 'hashstore.shash'
@@ -122,13 +115,24 @@ class TestSetup:
     def reset_all_process(self):
         self.processes = {}
 
-    def wait_bg(self, print_all_logs=True):
+    def wait_all(self, print_all_logs=True):
         for p_id in self.processes:
-            p, cmd, logpath = self.processes[p_id]
-            rc = p.wait()
-            logtext = open(logpath).read()
-            if print_all_logs:
-                print('{cmd}\nrc:{rc}\n{logtext}\n'.format(**locals()))
+            self.wait_process(p_id, print_all_logs)
+
+    def wait_process(self, p_id , print_all_logs = False,
+                     expect_rc=None, expect_read = None):
+        p, cmd, logpath = self.processes[p_id]
+        rc = p.wait()
+        logtext = open(logpath).read()
+        if expect_rc is not None:
+            if expect_rc != rc:
+                print(logtext)
+                eq_(expect_rc, rc)
+        if expect_read is not None:
+            assert_text(logtext, expect_read)
+        if print_all_logs:
+            print('{cmd}\nrc:{rc}\n{logtext}\n'.format(**locals()))
+        return rc, logtext
 
     def file_path(self, file):
         return os.path.join(self.dir, file)

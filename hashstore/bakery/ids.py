@@ -513,11 +513,13 @@ class CakePath(utils.Stringable, utils.EnsureIt):
         return '/'.join(self.path)
 
 
-def cake_or_path(s):
+def cake_or_path(s, relative_to_root=False):
     if isinstance(s, Cake) or isinstance(s, CakePath):
         return s
     elif s[:1] == '/':
         return CakePath(s)
+    elif relative_to_root and '/' in s:
+        return CakePath('/'+s)
     else:
         return Cake(s)
 
