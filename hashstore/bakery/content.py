@@ -13,7 +13,7 @@ b36 = base_x(36)
 
 def is_it_shard(shard_name):
     '''
-    Test if directory name is can represent shard
+    Test if directory name can represent shard
 
     >>> is_it_shard('668')
     True

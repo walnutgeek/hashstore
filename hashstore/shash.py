@@ -4,6 +4,7 @@ import os
 from hashstore import utils
 from hashstore.udk import UDK
 from hashstore.utils import print_pad
+import hashstore.dir_scan as dscan
 
 log = logging.getLogger(__name__)
 
@@ -51,7 +52,6 @@ def main():
     cmd_picked = [args.command == n for n in COMMANDS]
     doing = dict(zip(COMMANDS, cmd_picked))
 
-    import hashstore.dir_scan as dscan
     if doing['ls']:
         shamo = dscan.Shamo(args.dir)
         usage = shamo.directory_usage()

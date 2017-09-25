@@ -6,10 +6,13 @@ import os
 import time
 import signal
 
+import sys
+
 from hashstore.bakery.cake_store import StoreContext, GuestAccess
 from hashstore.bakery.content import Content
-from hashstore.bakery.ids import cake_or_path
-from hashstore.utils import json_encoder, FileNotFound, ensure_bytes
+from hashstore.bakery.ids import cake_or_path, SaltedSha
+from hashstore.utils import json_encoder, FileNotFound, ensure_bytes, \
+    exception_message
 import json
 import tornado.web
 import tornado.template
@@ -28,13 +31,14 @@ class _StoreAccessMixin:
     def initialize(self, store):
         self.store = store
         self._ctx = None
-        session_id = self.request.headers.get("UserSession")
-        client_id = self.request.headers.get("ClientID")
-        remote_ip = self.request.headers.get( "X-Real-IP") or \
+        session_id = self.request.headers.get('UserSession')
+        client_id = self.request.headers.get('ClientID')
+        remote_ip = self.request.headers.get( 'X-Real-IP') or \
                     self.request.remote_ip
         self.ctx().params['remote_ip'] = remote_ip
         try:
-            self.access = self.ctx().validate_session(session_id,client_id)
+            self.access = self.ctx().validate_session(session_id,
+                                                      client_id)
         except:
             self.access = GuestAccess(self.ctx())
 
@@ -74,6 +78,10 @@ class _ContentHandler(tornado.web.RequestHandler):
 
         except FileNotFound:
             self.send_error(404)
+        except:
+            log.warning(sys.exc_info()[0])
+            log.warning(exception_message())
+            self.send_error(500)
 
     def on_file_end(self, s):
         if s:
@@ -85,7 +93,7 @@ class _ContentHandler(tornado.web.RequestHandler):
         self.flush()
 
 
-class GetCakeHandler(_ContentHandler, _StoreAccessMixin):
+class GetCakeHandler(_StoreAccessMixin, _ContentHandler):
 
     def content(self, path):
         cake = cake_or_path(path, relative_to_root=True)
@@ -93,7 +101,7 @@ class GetCakeHandler(_ContentHandler, _StoreAccessMixin):
 
 
 @tornado.web.stream_request_body
-class StreamHandler(tornado.web.RequestHandler, _StoreAccessMixin):
+class StreamHandler(_StoreAccessMixin, tornado.web.RequestHandler):
     SUPPORTED_METHODS = ['POST']
 
     def post(self):
@@ -109,11 +117,10 @@ class StreamHandler(tornado.web.RequestHandler, _StoreAccessMixin):
         self.w.write(chunk)
 
 
-class PostHandler(tornado.web.RequestHandler, _StoreAccessMixin):
+class PostHandler(_StoreAccessMixin, tornado.web.RequestHandler):
     SUPPORTED_METHODS = ['POST']
 
-    def post(self, path):
-        log.debug("post: %s" % path)
+    def post(self):
         req = json.loads(self.request.body)
         res = self.access.process_api_call(req['call'], req['msg'])
         self.write(json_encoder.encode(res))
@@ -123,6 +130,13 @@ class PostHandler(tornado.web.RequestHandler, _StoreAccessMixin):
 def stop_server(signum, frame):
     tornado.ioloop.IOLoop.instance().stop()
     logging.info('Stopped!')
+
+
+def _string_handler(s):
+    class StringHandler(_ContentHandler):
+        def content(self, _):
+            return Content(data=ensure_bytes(s), mime='text/plain')
+    return StringHandler
 
 
 class CakeServer:
@@ -151,7 +165,7 @@ class CakeServer:
 
     def run_server(self):
 
-        app_dir = os.path.join(os.path.dirname(__file__), 'app')
+        app_dir = os.path.join(os.path.dirname(__file__), '../app')
 
         class AppContentHandler(_ContentHandler):
             def content(self, path):
@@ -161,16 +175,18 @@ class CakeServer:
             def content(self, _):
                 return Content(file=os.path.join(app_dir, 'index.html'))
 
-        class PidHandler(_ContentHandler):
-            def content(self, _):
-                return Content(data=ensure_bytes(str(os.getpid())),
-                               mime='text/plain')
+        pid = str(os.getpid())
+        server_id = json_encoder.encode(
+            (str(self.config.id),
+             str(SaltedSha.from_secret(str(self.config.secret))))
+        )
 
         store_ref = {'store': self.store}
         handlers = [
-            (r'/\.up/stream$', StreamHandler, store_ref),
-            (r'/\.up/post/(.*)$', PostHandler, store_ref),
-            (r'/(\.pid)$', PidHandler,),
+            (r'/(\.pid)$', _string_handler(pid),),
+            (r'/(\.server_id)$', _string_handler(server_id),),
+            (r'/\.up_stream$', StreamHandler, store_ref),
+            (r'/\.api/post$', PostHandler, store_ref),
             (r'/\.raw/(.*)$', GetCakeHandler, store_ref),
             (r'/\.app/(.*)$', AppContentHandler, ),
             (r'(.*)$', IndexHandler,)

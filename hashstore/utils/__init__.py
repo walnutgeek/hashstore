@@ -390,3 +390,23 @@ def ensure_dict(in_dict, key_type, val_type):
         out_dict[key_type.ensure_it(k)] = val_type.ensure_it(val)
     return out_dict
 
+
+def normalize_url(url):
+    '''
+    >>> normalize_url('http://abc')
+    'http://abc/'
+    >>> normalize_url('abc')
+    'http://abc/'
+    >>> normalize_url('abc:8976')
+    'http://abc:8976/'
+    >>> normalize_url('https://abc:8976')
+    'https://abc:8976/'
+    >>> normalize_url('https://abc:8976/')
+    'https://abc:8976/'
+
+    '''
+    if url[-1:] != '/':
+        url += '/'
+    if not(url[:7] == 'http://' or url[:8] == 'https://'):
+        url = 'http://' + url
+    return url

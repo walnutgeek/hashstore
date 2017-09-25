@@ -1,6 +1,8 @@
+import getpass
 import logging
 import os
 
+from hashstore.bakery.cake_client import ClientUserSession, CakeClient
 from hashstore.bakery.ids import Cake
 from hashstore.utils.args import CommandArgs, Switch
 
@@ -27,13 +29,21 @@ class ClientApp:
 
     @ca.command('authorize client to interact with server',
                 url='a url where server is running',
-                user='email used for login. Password '
+                email='email used for login. Password '
                      'will be prompted.',
                 dir='mount dir. Any directory within mount tree '
                    'will be authorized to access url above. '
                 )
-    def login(self, url, user, passwd=None, dir='.'):
-        pass
+    def login(self, url, email, passwd=None, dir='.'):
+        if passwd is None:
+            passwd = getpass.getpass()
+        client = CakeClient()
+        if not client.has_db():
+            client.initdb()
+        cu_session = ClientUserSession(client, url)
+        cu_session.login(email, passwd=passwd)
+        cu_session.info()
+
 
     @ca.command('logout from server',
                 dir='directory within mount that was authorized '

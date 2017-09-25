@@ -7,10 +7,10 @@ from hashstore.ndb import Dbf, MultiSessionContextManager
 from hashstore.utils import ensure_dict,reraise_with_msg
 import hashstore.bakery.dal as dal
 
-from hashstore.ndb.models.server_config import Session, ServerKey, \
+from hashstore.ndb.models.server_config import UserSession, ServerKey, \
     ServerConfigBase
 from hashstore.ndb.models.glue import PortalType, Portal, \
-    PortalHistory, GlueBase, User, UserState, Permission, \
+    GlueBase, User, UserState, Permission, \
     PermissionType as PT, Acl
 
 import logging
@@ -42,17 +42,19 @@ class StoreContext(MultiSessionContextManager):
         pass
 
     def validate_session(self, session_id, client_id=None):
-        session = self.srvcfg_session().query(Session).filter(
-            Session.id == session_id, Session.active==True).one_or_none()
-        if session is not None:
-            if session.client is not None:
-                if not session.client.check_secret(str(client_id)):
-                    raise CredentialsError('client_id does not match')
-            self.params['user_id'] = session.user
-            self.params['session_id'] = session.id
-            return PrivilegedAccess(self, self.user_id)
-
-
+        if session_id is not None:
+            session = self.srvcfg_session().query(UserSession)\
+                .filter(UserSession.id == session_id,
+                        UserSession.active == True)\
+                .one_or_none()
+            if session is not None:
+                if session.client is not None:
+                    if not session.client.check_secret(str(client_id)):
+                        raise CredentialsError('client_id does not match')
+                self.params['user_id'] = session.user
+                self.params['session_id'] = session.id
+                return PrivilegedAccess(self, self.user_id)
+        raise CredentialsError('cannot validate session')
 
 
 class _Access:
@@ -75,18 +77,21 @@ class GuestAccess(_Access):
     def login(self, email, passwd, client_id=None):
         user = dal.find_user(self.ctx.glue_session(), email)
         if user.passwd.check_secret(passwd):
-            client = None
+            client_ssha = None
             if client_id is not None:
-                client = SaltedSha.from_secret(client_id)
-            user_session = Session(user=user.id,
-                                   client=client,
-                                   active=True,
-                                   host = self.ctx.remote_host)
+                client_ssha = SaltedSha.from_secret(client_id)
+            user_session = UserSession(user=user.id,
+                                       client=client_ssha,
+                                       active=True,
+                                       remote_host = self.ctx.remote_host)
             self.ctx.srvcfg_session().add(user_session)
+            self.ctx.commit()
             return user_session.id
         else:
             raise CredentialsError(email)
 
+    def server_login(self, server_id, server_secret):
+        pass # validate and create server session logic
 
 user_api = ApiCallRegistry()
 
@@ -212,6 +217,17 @@ class PrivilegedAccess(_Access):
                 content = self.get_content(next_cake)
         return content
 
+    #TODO query and
+    # @user_api.call()
+    # def get_query_cake_dict(self, query_names):
+    #     query_cake_dict = {}
+    #     return query_cake_dict
+    #
+    # @user_api.call()
+    # def get_query_content(self, query_name):
+    #     query_content = None
+    #     return query_content
+
     @user_api.call()
     def store_directories(self, directories):
         '''
@@ -280,7 +296,7 @@ class PrivilegedAccess(_Access):
             session.delete(perms[0])
         return user, sorted(user.permissions, key=dal.PERM_SORT)
 
-    @user_api.call()
+    @user_api.query()
     def list_acl_cakes(self):
         '''
         inspects Read_ permissions for user and return any specific

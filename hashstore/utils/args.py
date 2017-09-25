@@ -57,8 +57,6 @@ class CommandArgs:
         def decorate(fn):
             options = []
             opt_names, _, _, opt_defaults = getargspec(fn)[:4]
-            if opt_names is None:
-                opt_names = []
             if opt_defaults is None:
                 opt_defaults = []
             def_offset = len(opt_names) - len(opt_defaults)

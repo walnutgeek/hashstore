@@ -9,8 +9,7 @@ Base = ClientConfigBase = declarative_base(name='ClientConfigBase')
 
 
 class ClientKey(Singleton, Cdt, Udt, ClientConfigBase):
-    private_cake = Column(StringCast(Cake), nullable=True)
-
+    pass
 
 class Server(ServersMixin, ClientConfigBase):
     pass

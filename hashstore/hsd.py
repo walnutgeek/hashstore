@@ -37,7 +37,7 @@ class DaemonApp():
 
     @ca.command(email='email of user')
     def add_user(self, email, password=None, full_name=None):
-        if password is None:
+        if password is None: # pragma: no cover
             password = SaltedSha.from_secret(getpass.getpass())
             retype = getpass.getpass('Retype password:')
             if not password.check_secret(retype):

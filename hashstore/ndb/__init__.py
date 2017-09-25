@@ -114,6 +114,12 @@ class MultiSessionContextManager:
     def __enter__(self):
         return self
 
+    def commit(self):
+        for n in self._open_sessions:
+            self._open_sessions[n].commit()
+        self._open_sessions = {}
+
+
     def __exit__(self, type, value, tb):
         for n in self._open_sessions:
             session = self._open_sessions[n]

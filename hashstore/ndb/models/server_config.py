@@ -15,8 +15,9 @@ class ServerKey(Singleton, ServerConfigBase):
     port = Column(Integer, nullable=False)
 
 
-class Session(GuidPk, NameIt, Cdt, Udt, ReprIt, ServerConfigBase):
+class UserSession(GuidPk, NameIt, Cdt, Udt, ReprIt, ServerConfigBase):
     user = Column(StringCast(Cake), nullable=False)
     client = Column(StringCast(SaltedSha), nullable= True)
-    host = Column(String, nullable=True)
+    remote_host = Column(String, nullable=True)
     active = Column(Boolean, nullable=False)
+

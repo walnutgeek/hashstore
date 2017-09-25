@@ -36,13 +36,15 @@ def test_server():
 
     server_id = test.run_script_in_bg('hsd --store_dir {store} start'
                                       .format(**locals()))
-    sleep(1)
+    sleep(2)
     prep_mount(files, file_set1)
 
     test.run_script_and_wait('hsi login --url http://localhost:{port} '
-                             '--dir {files} --user {email} '
+                             '--dir {files} --email {email} '
                              '--passwd {pwd}' .format(**locals()),
-                             expect_rc=0 )
+                             expect_rc=0,
+                             expect_read="{'UserSession': ... "
+                                         "'ClientID': ..." )
 
     test.run_script_and_wait('hsi backup --dir {files}'
                              .format(**locals()), expect_rc=0)
