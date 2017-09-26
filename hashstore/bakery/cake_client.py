@@ -2,7 +2,7 @@ import os
 import requests
 import json
 from sqlalchemy import desc
-from hashstore.bakery import CredentialsError
+from hashstore.bakery import RemoteError
 from hashstore.bakery.ids import Cake, SaltedSha
 from hashstore.ndb import Dbf
 from hashstore.ndb.models.client_config import ClientConfigBase, \
@@ -70,6 +70,18 @@ class ClientUserSession:
         self.client_id = self.client.get_client_id()
         self.init_headers()
 
+        class AccessProxy:
+            def __getattr__(_, item):
+                def proxy_call(**kwargs):
+                    resp = self.call_api({
+                        'call': item,
+                        'msg': kwargs})
+                    if 'error' in resp:
+                        raise RemoteError(resp['error'])
+                    return resp['result']
+                return proxy_call
+        self.proxy = AccessProxy()
+
     def call_api(self, data):
         meta_url = self.url + '.api/post'
         in_data = json_encoder.encode(data)
@@ -81,15 +93,11 @@ class ClientUserSession:
         return json.loads(out_data)
 
     def login(self, email, passwd):
+        result = self.proxy.login(email=email,
+                                passwd = passwd,
+                                client_id = self.client_id)
         self.email = email
-        resp = self.call_api({
-            'call': 'login',
-            'msg': {'email': email,
-                    'passwd': passwd,
-                    'client_id': self.client_id}})
-        if 'error' in resp:
-            raise CredentialsError(resp['error'])
-        self.session_id = Cake.ensure_it(resp['result'])
+        self.session_id = Cake.ensure_it(result)
         self.init_headers()
 
     def init_headers(self):
@@ -115,3 +123,5 @@ class ClientUserSession:
             mount_session.username = self.email
         print("Mount: "+ abspath)
         print(self.headers)
+
+

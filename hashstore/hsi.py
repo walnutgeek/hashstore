@@ -90,8 +90,7 @@ class ClientApp:
     def backup(self, dir):
         client = CakeClient()
         cu_session = client.check_mount_session(dir)
-        resp = cu_session.call_api({ 'call': 'list_acl_cakes',
-                                     'msg': {}})
+        resp = cu_session.proxy.list_acl_cakes()
         print(resp)
 
     @ca.command('download remote changes for a dir',
