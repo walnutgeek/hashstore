@@ -19,10 +19,16 @@ def test_server():
     test.run_script_and_wait('hsd --store_dir {store} initdb '
                              '--port {port}'.format(**locals()),
                              expect_rc=0, expect_read='')
+
+    server_id = test.run_script_in_bg('hsd --debug --store_dir {store} start'
+                                      .format(**locals()))
+
+    prep_mount(files, file_set1)
     test.run_script_and_wait('hsd --store_dir {store} add_user '
                              '--email {email} --password {pwdssha}'.format(**locals()),
                              expect_rc=0, expect_read='')
     acl = 'Create_Portals+'
+
     test.run_script_and_wait('hsd --store_dir {store} acl '
                              '--user {email} --acl {acl}'
                              .format(**locals()),
@@ -34,19 +40,17 @@ def test_server():
                                 '''
                              )
 
-    server_id = test.run_script_in_bg('hsd --store_dir {store} start'
-                                      .format(**locals()))
     sleep(2)
-    prep_mount(files, file_set1)
 
     test.run_script_and_wait('hsi login --url http://localhost:{port} '
                              '--dir {files} --email {email} '
                              '--passwd {pwd}' .format(**locals()),
                              expect_rc=0,
-                             expect_read="{'UserSession': ... "
+                             expect_read="Mount: ... "
+                                         "{'UserSession': ... "
                                          "'ClientID': ..." )
 
-    test.run_script_and_wait('hsi backup --dir {files}'
+    test.run_script_and_wait('hsi --debug backup --dir {files}'
                              .format(**locals()), expect_rc=0)
 
     test.run_script_and_wait('hsd --store_dir {store} stop'

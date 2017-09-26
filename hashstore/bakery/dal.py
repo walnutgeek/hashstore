@@ -8,10 +8,11 @@ from hashstore.ndb.models.glue import PortalType, Portal, \
 
 from sqlalchemy import or_, and_
 
+from hashstore.utils import is_str
 
 
 def find_user(glue_sess, user_or_email):
-    if '@' in user_or_email:
+    if is_str(user_or_email) and '@' in user_or_email:
         column = User.email
     else:
         column = User.id

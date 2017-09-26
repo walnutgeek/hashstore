@@ -10,7 +10,7 @@ import sys
 
 from hashstore.bakery.cake_store import StoreContext, GuestAccess
 from hashstore.bakery.content import Content
-from hashstore.bakery.ids import cake_or_path, SaltedSha
+from hashstore.bakery.ids import cake_or_path, SaltedSha, Cake
 from hashstore.utils import json_encoder, FileNotFound, ensure_bytes, \
     exception_message
 import json
@@ -40,6 +40,7 @@ class _StoreAccessMixin:
             self.access = self.ctx().validate_session(session_id,
                                                       client_id)
         except:
+            log.debug(exception_message())
             self.access = GuestAccess(self.ctx())
 
     def ctx(self):

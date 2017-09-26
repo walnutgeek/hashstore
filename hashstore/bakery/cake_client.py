@@ -1,13 +1,14 @@
 import os
 import requests
 import json
-
+from sqlalchemy import desc
 from hashstore.bakery import CredentialsError
 from hashstore.bakery.ids import Cake, SaltedSha
 from hashstore.ndb import Dbf
 from hashstore.ndb.models.client_config import ClientConfigBase, \
-    ClientKey
-from hashstore.utils import json_encoder, normalize_url
+    ClientKey, Server, MountSession
+from hashstore.utils import json_encoder, normalize_url, \
+    is_file_in_directory
 import logging
 log = logging.getLogger(__name__)
 
@@ -41,25 +42,33 @@ class CakeClient:
         return self.client_key().id if self.has_db() else None
 
     def check_mount_session(self, dir):
-        pass
+        abspath = os.path.abspath(dir)
+        with self.client_config_session() as session:
+            for mount_session in session.query(MountSession)\
+                    .order_by(desc(MountSession.path)).all():
+                if is_file_in_directory(abspath, mount_session.path):
+                    server = session.query(Server)\
+                        .filter(Server.id == mount_session.server_id)\
+                        .one()
+                    return ClientUserSession(self, server.server_url,
+                                             mount_session.id)
+
 
     def logout(self):
         pass
 
 
-
-
 class ClientUserSession:
-    def __init__(self, client, url):
+    def __init__(self, client, url, session_id=None):
         self.url = normalize_url(url)
-        log.debug(self.url)
         resp = requests.get(self.url+'.server_id')
-        self.server_id, self.secret_ssha = (
+        self.server_id, self.server_secret = (
             t.ensure_it(s) for t,s in
             zip((Cake, SaltedSha), json.loads(resp.text)) )
-        self.headers = {}
         self.client = client
-        self.session_id = None
+        self.session_id = session_id
+        self.client_id = self.client.get_client_id()
+        self.init_headers()
 
     def call_api(self, data):
         meta_url = self.url + '.api/post'
@@ -72,19 +81,37 @@ class ClientUserSession:
         return json.loads(out_data)
 
     def login(self, email, passwd):
-        client_id = self.client.get_client_id()
+        self.email = email
         resp = self.call_api({
             'call': 'login',
             'msg': {'email': email,
                     'passwd': passwd,
-                    'client_id': client_id}})
+                    'client_id': self.client_id}})
         if 'error' in resp:
             raise CredentialsError(resp['error'])
         self.session_id = Cake.ensure_it(resp['result'])
-        self.headers = {}
-        self.headers['UserSession'] = self.session_id
-        if client_id is not None:
-            self.headers['ClientID'] = client_id
+        self.init_headers()
 
-    def info(self):
+    def init_headers(self):
+        self.headers = {}
+        if self.session_id is not None:
+            self.headers['UserSession'] = str(self.session_id)
+            if self.client_id is not None:
+                self.headers['ClientID'] = str(self.client_id)
+
+    def create_mount_session(self, mount_dir):
+        abspath = os.path.abspath(mount_dir)
+        with self.client.client_config_session() as session:
+            session.merge(Server(id=self.server_id,
+                   server_url=self.url,
+                   secret = self.server_secret))
+            mount_session = session.query(MountSession)\
+                .filter(MountSession.path == abspath).one_or_none()
+            if mount_session is None:
+                mount_session = MountSession(path=abspath)
+                session.add(mount_session)
+            mount_session.id = self.session_id
+            mount_session.server_id = self.server_id
+            mount_session.username = self.email
+        print("Mount: "+ abspath)
         print(self.headers)

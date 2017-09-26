@@ -42,7 +42,7 @@ class ClientApp:
             client.initdb()
         cu_session = ClientUserSession(client, url)
         cu_session.login(email, passwd=passwd)
-        cu_session.info()
+        cu_session.create_mount_session(dir)
 
 
     @ca.command('logout from server',
@@ -88,9 +88,11 @@ class ClientApp:
 
     @ca.command('save local files on remote server')
     def backup(self, dir):
-        # m = scan.Remote(dir)
-        # print(m.backup())
-        pass
+        client = CakeClient()
+        cu_session = client.check_mount_session(dir)
+        resp = cu_session.call_api({ 'call': 'list_acl_cakes',
+                                     'msg': {}})
+        print(resp)
 
     @ca.command('download remote changes for a dir',
                 dir='directory where to restore. ',

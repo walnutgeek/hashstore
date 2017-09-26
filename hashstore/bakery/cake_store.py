@@ -43,17 +43,17 @@ class StoreContext(MultiSessionContextManager):
 
     def validate_session(self, session_id, client_id=None):
         if session_id is not None:
-            session = self.srvcfg_session().query(UserSession)\
+            user_session = self.srvcfg_session().query(UserSession)\
                 .filter(UserSession.id == session_id,
                         UserSession.active == True)\
                 .one_or_none()
-            if session is not None:
-                if session.client is not None:
-                    if not session.client.check_secret(str(client_id)):
+            if user_session is not None:
+                if user_session.client is not None:
+                    if not user_session.client.check_secret(str(client_id)):
                         raise CredentialsError('client_id does not match')
-                self.params['user_id'] = session.user
-                self.params['session_id'] = session.id
-                return PrivilegedAccess(self, self.user_id)
+                self.params['user_id'] = user_session.user
+                self.params['session_id'] = user_session.id
+                return PrivilegedAccess(self, user_session.user)
         raise CredentialsError('cannot validate session')
 
 
@@ -65,6 +65,7 @@ class _Access:
         return self.ctx.store.backend()
 
     def process_api_call(self, method, params):
+        # log.debug("{self} {method}({params})".format(**locals()))
         return self.api.run(self, method, params)
 
 guest_api = ApiCallRegistry()
@@ -302,7 +303,7 @@ class PrivilegedAccess(_Access):
         inspects Read_ permissions for user and return any specific
         cakes he allowed to see
         '''
-        return [p.cake for p in self.auth_user.permissions
+        return [str(p.cake) for p in self.auth_user.permissions
             if p.permission_type.needs_cake()]
 
     @user_api.call()
