@@ -6,15 +6,11 @@ from hashstore.utils.ignore_file import ignore_files, \
 from hashstore.bakery.ids import Cake, process_stream, NamedCAKes, DataType
 from hashstore.ndb.models.scan import ScanBase, DirEntry, DirKey, \
     FileType
-from hashstore.ndb.models.client_config import ClientConfigBase, \
-    ClientKey, Server
 from sqlalchemy import desc
-
 from hashstore.ndb import Dbf
 
 import os
 import sys
-
 import logging
 log = logging.getLogger(__name__)
 
@@ -67,6 +63,7 @@ class FileScan(Scan):
         else:
             self.entry.cake = from_db.cake
 
+
 def build_bundle(entries):
     bundle = NamedCAKes()
     for e in entries:
@@ -79,17 +76,15 @@ class CakeEntries:
         self.path = path
         self.dbf = Dbf(ScanBase.metadata, os.path.join(path, '.cake_entries'))
         self._dir_key = None
-        if self.dbf.exists():
-            with self.dbf.session_scope() as session:
-                self.dir_key(session)
 
-    def dir_key(self, session=None):
+    def dir_key(self):
         if self._dir_key is None:
             self.dbf.ensure_db()
-            self._dir_key = session.query(DirKey).one_or_none()
-            if self._dir_key is None:
-                self._dir_key = DirKey()
-                session.merge(self._dir_key)
+            with self.dbf.session_scope() as session:
+                self._dir_key = session.query(DirKey).one_or_none()
+                if self._dir_key is None:
+                    self._dir_key = DirKey()
+                    session.add(self._dir_key)
         return self._dir_key
 
     def total(self):
@@ -108,8 +103,8 @@ class CakeEntries:
 
     def store_entries(self, entries):
         try:
+            self.dir_key()
             with self.dbf.session_scope() as session:
-                self.dir_key(session=session)
                 new_names = { e.name for e in entries}
                 for e in session.query(DirEntry).all():
                     if e.name not in new_names:
@@ -219,27 +214,27 @@ class Progress:
             sys.stdout.flush()
 
     def pct_value(self):
-        if self.total is None:
+        if self.total is None or self.total == 0.:
             return '?'
         pct_format = '%3.2f%%' if self.terminal  else  '%3d%%'
         return pct_format % (100 * float(self.current)/self.total)
 
 
-def backup(path, storage):
+def backup(path, access):
     progress = Progress(path)
 
     def ensure_files_in_store(dir_scan):
-        bundles = { dir_scan.entry.cake : dir_scan.bundle}
+        bundles = { str(dir_scan.entry.cake) : dir_scan.bundle}
         store_dir = True
         while store_dir:
-            _, hashes_to_push = storage.store_directories(bundles)
+            _, hashes_to_push = access.store_directories(directories=bundles)
             store_dir = False
             for h in hashes_to_push:
                 h = Cake.ensure_it(h)
                 name = dir_scan.bundle.get_name_by_cake(h)
                 file = os.path.join(dir_scan.path, name)
                 fp = open(file, 'rb')
-                stored = storage.write_content(fp)
+                stored = access.write_content(fp)
                 if not stored.match(h):
                     log.info('path:%s, %s != %s' % (file, h, stored))
                     dir_scan.bundle[name] = Cake (stored.hash_bytes(),
@@ -254,7 +249,7 @@ def backup(path, storage):
     root_scan = DirScan(path,on_each_dir=ensure_files_in_store)
     portal_id = root_scan.dir_key().id
     latest_cake = root_scan.entry.cake
-    storage.create_portal(portal_id, latest_cake)
+    access.create_portal(portal_id=portal_id, cake=latest_cake)
     return portal_id, latest_cake
 
 
@@ -289,54 +284,4 @@ def pull(store, key, path):
 
     restore_inner(key, store.get_content(key), path)
 
-'''
-class CakeClient:
-    def __init__(self):
-        home_config = os.path.join(os.environ['HOME'], '.cake_config')
-        self.dbf = Dbf(ClientKey.metadata, home_config)
 
-
-
-class Mount:
-    def __init__(self, directory):
-        self.path = os.path.abspath(directory)
-
-
-    def register(self, url, invitation=None, session=None):
-        url_uuid = uuid.uuid4()
-        storage = RemoteStorage(url)
-        server_uuid = storage.register(url_uuid,
-                             invitation=invitation,
-                             meta={'mount_path': self.path})
-        if server_uuid is not None:
-            self.dbf.ensure_db()
-            self.dbf.store('remote', quict(
-                path=self.path,
-                _url_uuid=url_uuid,
-                _url_text=url,
-                _mount_session=quick_hash(server_uuid)
-                ), session=session)
-            log.info('remote registered for {self.path} at {url}'.format(
-                **locals()))
-        else:
-            log.error('cannot register on: {url}'.format(**locals()))
-
-    def storage(self):
-        for remote in self.dbf.select('remote', {}, '1=1 order by path DESC'):
-            if is_file_in_directory(self.path, remote['path']) :
-                storage = RemoteStorage(remote['url_text'])
-                storage.login(remote['url_uuid'],remote['mount_session'])
-                return storage
-        raise ValueError('cannot backup, need register mount first')
-
-
-
-'''
-
-if __name__ == '__main__':
-    import sys
-
-    scan = DirScan(sys.argv[1])
-    print('udk: %s\nhashed_counts: %s\nhashed_bytes: %s\n' %
-          (scan.bundle.cake(), scan.stats.hashed_counts, scan.stats.hashed_bytes))
-    # print(bundle.content())

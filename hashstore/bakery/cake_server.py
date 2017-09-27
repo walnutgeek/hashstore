@@ -186,7 +186,7 @@ class CakeServer:
         handlers = [
             (r'/(\.pid)$', _string_handler(pid),),
             (r'/(\.server_id)$', _string_handler(server_id),),
-            (r'/\.up_stream$', StreamHandler, store_ref),
+            (r'/\.api/up$', StreamHandler, store_ref),
             (r'/\.api/post$', PostHandler, store_ref),
             (r'/\.raw/(.*)$', GetCakeHandler, store_ref),
             (r'/\.app/(.*)$', AppContentHandler, ),

@@ -50,8 +50,11 @@ def test_server():
                                          "{'UserSession': ... "
                                          "'ClientID': ..." )
 
-    test.run_script_and_wait('hsi --debug backup --dir {files}'
-                             .format(**locals()), expect_rc=0)
+    test.run_script_and_wait('hsi backup --dir {files}'
+                             .format(**locals()), expect_rc=0,
+                             expect_read='''....
+                             DirId: ...
+                             Cake: '''+fileset1_cake )
 
     test.run_script_and_wait('hsd --store_dir {store} stop'
                           .format(**locals()), expect_rc=0)

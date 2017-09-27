@@ -3,12 +3,13 @@ import requests
 import json
 from sqlalchemy import desc
 from hashstore.bakery import RemoteError
+from hashstore.bakery.content import ContentAddress
 from hashstore.bakery.ids import Cake, SaltedSha
 from hashstore.ndb import Dbf
 from hashstore.ndb.models.client_config import ClientConfigBase, \
     ClientKey, Server, MountSession
 from hashstore.utils import json_encoder, normalize_url, \
-    is_file_in_directory
+    is_file_in_directory, json_decode
 import logging
 log = logging.getLogger(__name__)
 
@@ -71,6 +72,13 @@ class ClientUserSession:
         self.init_headers()
 
         class AccessProxy:
+            def write_content(_, fp):
+                r = requests.post(self.url + '.api/up',
+                                  headers=self.headers, data=fp)
+                log.debug('text: {r.text}'.format(**locals()))
+                return ContentAddress.ensure_it(json_decode(r.text))
+
+
             def __getattr__(_, item):
                 def proxy_call(**kwargs):
                     resp = self.call_api({
@@ -90,7 +98,7 @@ class ClientUserSession:
         log.debug('{{ "url": "{meta_url}",\n'
                   '"in": {in_data},\n'
                   '"out": {out_data} }}'.format(**locals()))
-        return json.loads(out_data)
+        return json_decode(out_data)
 
     def login(self, email, passwd):
         result = self.proxy.login(email=email,

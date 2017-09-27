@@ -127,7 +127,6 @@ class PrivilegedAccess(_Access):
         else:
             return dal.find_user(self.ctx.glue_session(), user)
 
-
     def authorize(self, cake, pts):
         if self.system_access:
             return
@@ -407,11 +406,6 @@ class PrivilegedAccess(_Access):
             portal = self.ctx.glue_session().query(Portal).\
                 filter(Portal.id == portal_id).one()
             portal.active=False
-
-
-class CakeResolver:
-    def __init__(self,store, *initial_cakes):
-        self.dict = {}
 
 
 class CakeStore:

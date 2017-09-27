@@ -80,7 +80,10 @@ def reraise_with_msg(msg, exception=None):
     if exception is None:
         exception = sys.exc_info()[1]
     etype = type(exception)
-    new_exception = etype(exception_message(exception) + '\n'+ msg)
+    try:
+        new_exception = etype(exception_message(exception) + '\n'+ msg)
+    except:
+        new_exception = ValueError(exception_message(exception) + '\n'+ msg)
     traceback = sys.exc_info()[2]
     _raise_it(etype,new_exception,traceback)
 
@@ -245,6 +248,13 @@ class StringableEncoder(json.JSONEncoder):
 
 
 json_encoder = StringableEncoder()
+
+def json_decode(text):
+    try:
+        return json.loads(text)
+    except:
+        reraise_with_msg('text={text}'
+                         ''.format(**locals()))
 
 
 def read_in_chunks(fp, chunk_size=65535):

@@ -3,11 +3,8 @@ import logging
 import os
 
 from hashstore.bakery.cake_client import ClientUserSession, CakeClient
-from hashstore.bakery.ids import Cake
 from hashstore.utils.args import CommandArgs, Switch
 
-from hashstore import utils
-from hashstore.udk import UDK
 from hashstore.utils import print_pad
 import hashstore.bakery.cake_scan as cscan
 
@@ -90,8 +87,14 @@ class ClientApp:
     def backup(self, dir):
         client = CakeClient()
         cu_session = client.check_mount_session(dir)
-        resp = cu_session.proxy.list_acl_cakes()
-        print(resp)
+        if cu_session is None:
+            log.warning('{dir} is not mounted, use login command to '
+                        'establish mount_session with server')
+        else:
+            portal_id,latest_cake = cscan.backup(dir, cu_session.proxy)
+            print('DirId: {portal_id!s}\n'
+                  'Cake: {latest_cake!s}\n'
+                  ''.format(**locals()))
 
     @ca.command('download remote changes for a dir',
                 dir='directory where to restore. ',

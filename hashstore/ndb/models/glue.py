@@ -57,7 +57,7 @@ class PermissionType(enum.Enum):
         you can write any data, and edit portal to point to it.
 
     >>> PermissionType.Create_Portals.info()
-    'code:4  expands->Create_Portals'
+    'code:4  expands->Create_Portals,Read_Any_Data,Write_Any_Data'
 
         Allows to create new portals. For all portals created
         `Own_Portal_` pemission will be assigned to the user.
@@ -118,6 +118,9 @@ PermissionType.Edit_Portal_.expand_to = (
     PermissionType.Read_,
     PermissionType.Write_Any_Data,
     )
+PermissionType.Create_Portals.expand_to = (
+    PermissionType.Write_Any_Data,
+    )
 PermissionType.Own_Portal_.expand_to = (
     PermissionType.Edit_Portal_,
     PermissionType.Write_Any_Data,
@@ -151,11 +154,11 @@ class User(GuidPk, NameIt, Cdt, Udt, ReprIt, GlueBase):
         back_populates = "user")
 
     def acls(self):
-        if not hasattr(self, 'acls'):
-            self.acls = set()
+        if not hasattr(self, '_acls'):
+            self._acls = set()
             for p in self.permissions:
-                self.acls.update(p.expanded_acls())
-        return self.acls
+                self._acls.update(p.expanded_acls())
+        return self._acls
 
 
 class Portal(GuidPk, NameIt, Cdt, Udt, GlueBase):
@@ -228,7 +231,7 @@ class Acl(Stringable,EnsureIt):
                 % self.permission_type.name)
 
     @staticmethod
-    def cake_acls( cake, *permission_types):
+    def cake_acls( cake, permission_types):
         return [Acl(None, pt, cake) for pt in permission_types]
 
     def __str__(self):

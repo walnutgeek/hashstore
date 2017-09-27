@@ -59,7 +59,8 @@ class RemoteStorage:
         return out_data
 
     def write_content(self,fp):
-        r = requests.post(self.url+'.up/stream', headers=self.headers, data=fp)
+        r = requests.post(self.url+'.up/stream',
+                          headers=self.headers, data=fp)
         return udk.UDK.ensure_it(json.loads(r.text))
 
     def get_content(self,k):
