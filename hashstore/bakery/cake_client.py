@@ -3,7 +3,7 @@ import requests
 import json
 from sqlalchemy import desc
 from hashstore.bakery import RemoteError
-from hashstore.bakery.content import ContentAddress
+from hashstore.bakery.content import ContentAddress, Content
 from hashstore.bakery.ids import Cake, SaltedSha
 from hashstore.ndb import Dbf
 from hashstore.ndb.models.client_config import ClientConfigBase, \
@@ -81,7 +81,7 @@ class ClientUserSession:
 
             def __getattr__(_, item):
                 def proxy_call(**kwargs):
-                    resp = self.call_api({
+                    resp = self.post_json({
                         'call': item,
                         'msg': kwargs})
                     if 'error' in resp:
@@ -90,8 +90,8 @@ class ClientUserSession:
                 return proxy_call
         self.proxy = AccessProxy()
 
-    def call_api(self, data):
-        meta_url = self.url + '.api/post'
+    def post_json(self, data, endpoint='.api/post'):
+        meta_url = self.url + endpoint
         in_data = json_encoder.encode(data)
         r = requests.post(meta_url, headers=self.headers, data=in_data)
         out_data = r.text
@@ -99,6 +99,26 @@ class ClientUserSession:
                   '"in": {in_data},\n'
                   '"out": {out_data} }}'.format(**locals()))
         return json_decode(out_data)
+
+    def get_response(self, endpoint , cake_or_path, do_stream=False):
+        if isinstance(cake_or_path, Cake):
+            endpoint += '/'
+        meta_url = self.url + endpoint + str(cake_or_path)
+        return requests.get(meta_url, headers=self.headers,
+                            stream=do_stream)
+
+    def get_stream(self, cake_or_path):
+        return self.get_response('.get/data', cake_or_path,
+                                 do_stream=True).raw
+
+    def get_content(self, cake_or_path, skinny= True):
+        if skinny:
+            info = {}
+        else:
+            resp = self.get_content('.get/info', cake_or_path)
+            info = json_decode(resp.text)
+        get_stream = lambda: self.get_stream(cake_or_path)
+        return Content(stream_fn=get_stream, **info)
 
     def login(self, email, passwd):
         result = self.proxy.login(email=email,

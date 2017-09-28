@@ -42,25 +42,36 @@ def test_server():
 
     sleep(2)
 
-    test.run_script_and_wait('hsi login --url http://localhost:{port} '
-                             '--dir {files} --email {email} '
-                             '--passwd {pwd}' .format(**locals()),
-                             expect_rc=0,
-                             expect_read="Mount: ... "
-                                         "{'UserSession': ... "
-                                         "'ClientID': ..." )
+    test.run_script_and_wait(
+        'hsi login --url http://localhost:{port} '
+        '--dir {files} --email {email} '
+        '--passwd {pwd}' .format(**locals()),
+        expect_rc=0,
+        expect_read="Mount: ... "
+                    "{'UserSession': ... "
+                    "'ClientID': ..." )
 
-    test.run_script_and_wait('hsi backup --dir {files}'
-                             .format(**locals()), expect_rc=0,
-                             expect_read='''....
-                             DirId: ...
-                             Cake: '''+fileset1_cake )
+    _, save_words = test.run_script_and_wait(
+        'hsi backup --dir {files}'
+        .format(**locals()), expect_rc=0,
+        expect_read='''....
+        DirId: ...
+        Cake: %s''' % fileset1_cake, save_words=[])
+    dirId = save_words[0]
+
+    update_mount(files, file_set2)
+
+    test.run_script_and_wait(
+        'hsi backup --dir {files}'
+        .format(**locals()), expect_rc=0,
+        expect_read='''....
+        DirId: %s
+        Cake: %s''' % (dirId, fileset2_cake) )
 
     test.run_script_and_wait('hsd --store_dir {store} stop'
                           .format(**locals()), expect_rc=0)
 
     test.wait_process(server_id, expect_rc=0)
 
-    # update_mount(files, file_set2)
 
 

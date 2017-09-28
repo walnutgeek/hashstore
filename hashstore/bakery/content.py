@@ -1,6 +1,6 @@
 from hashstore.base_x import base_x,iseq
 from hashstore.bakery.ids import Cake
-from hashstore.utils import Stringable, EnsureIt
+from hashstore.utils import Stringable, EnsureIt, Jsonable
 import os
 from six import BytesIO
 import logging
@@ -102,15 +102,25 @@ class ContentAddress(Stringable, EnsureIt):
         return hash(self._id)
 
 
-class Content:
-    def __init__(self, data=None, file=None,
-                 mime='application/octet-stream'):
+class Content(Jsonable):
+    JSONABLE_FIELDS='size created_dt mime'.split()
+
+    def __init__(self, data=None, file=None, stream_fn=None,
+                 mime='application/octet-stream', created_dt=None,
+                 size=None, data_type=None, lookup=None):
         self.mime = mime
-        if data is None and file is None:
-            raise AssertionError('define data or file')
+        if data is None and file is None and stream_fn:
+            raise AssertionError('define data or file or stream_fn')
         self.data = data
         self.file = file
-        self.data_type = None
+        self.stream_fn = stream_fn
+        self.data_type = data_type
+        if lookup is None:
+            self.size = size
+            self.created_dt = created_dt
+        else:
+            self.size = lookup.size
+            self.created_dt = lookup.created_dt
 
     def set_data_type(self, from_cake):
         if hasattr(from_cake, 'data_type'):
@@ -126,12 +136,17 @@ class Content:
     def stream(self):
         if self.has_data():
             return BytesIO(self.data)
-        else:
+        elif self.file is not None:
             return open(self.file, 'rb')
+        else:
+            return self.stream_fn()
 
     def has_file(self):
         return self.file is not None
 
     def open_fd(self):
         return os.open(self.file,os.O_RDONLY)
+
+    def to_json(self):
+        return { k:getattr(self,'k') for k in self.JSONABLE_FIELDS}
 

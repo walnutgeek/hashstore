@@ -97,8 +97,16 @@ class _ContentHandler(tornado.web.RequestHandler):
 class GetCakeHandler(_StoreAccessMixin, _ContentHandler):
 
     def content(self, path):
-        cake = cake_or_path(path, relative_to_root=True)
-        return self.access.get_content(cake)
+        cake = cake_or_path(path[5:], relative_to_root=True)
+        prefix = path[:5]
+        content = self.access.get_content(cake)
+        if 'data/' == prefix:
+            return content
+        elif 'info/' == prefix:
+            return Content(data=json_encoder.encode(content),
+                           mime='application/json')
+        else:
+            raise AssertionError('Unknown prefix: %s' % prefix)
 
 
 @tornado.web.stream_request_body
@@ -188,7 +196,7 @@ class CakeServer:
             (r'/(\.server_id)$', _string_handler(server_id),),
             (r'/\.api/up$', StreamHandler, store_ref),
             (r'/\.api/post$', PostHandler, store_ref),
-            (r'/\.raw/(.*)$', GetCakeHandler, store_ref),
+            (r'/\.get/(.*)$', GetCakeHandler, store_ref),
             (r'/\.app/(.*)$', AppContentHandler, ),
             (r'(.*)$', IndexHandler,)
         ]

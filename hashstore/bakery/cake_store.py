@@ -318,10 +318,12 @@ class PrivilegedAccess(_Access):
     def create_portal(self, portal_id, cake,
                       portal_type = PortalType.content):
         '''
-            create_portal(portal, cake)                  Create_Portals
         create portal pointing to cake, if portal is already exist -
         fail. Tiny portals validated against majority of  servers to
         achieve consistency.
+
+        This call could be used to edit portal if portal is owned
+        by user.
 
         '''
         self.authorize(None, (PT.Create_Portals,))
@@ -330,15 +332,25 @@ class PrivilegedAccess(_Access):
             raise AssertionError('has to be a portal: %r' % portal_id)
         form_db = self.ctx.glue_session().query(Portal).\
             filter(Portal.id == portal_id).one_or_none()
-        if form_db is None:
+        add_portal = form_db is None
+        already_own = False
+        if not add_portal:
+            try:
+                self.authorize(portal_id, (PT.Own_Portal_,))
+                already_own = True
+            except NotAuthorizedError:
+                pass
+
+        if add_portal or already_own:
             dal.edit_portal(self.ctx.glue_session(),
                             Portal(id=portal_id, latest=cake,
                                    portal_type=portal_type))
             if self.is_authenticated():
-                self.ctx.glue_session().add(Permission(
-                    user=self.auth_user,
-                    permission_type=PT.Own_Portal_,
-                    cake=portal_id))
+                if not already_own:
+                    self.ctx.glue_session().add(Permission(
+                        user=self.auth_user,
+                        permission_type=PT.Own_Portal_,
+                        cake=portal_id))
         else:
             raise AssertionError('portal %r is already exists.' %
                                  portal_id)

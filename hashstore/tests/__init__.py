@@ -11,7 +11,7 @@ from doctest import OutputChecker, DocTestRunner, DocTestFinder
 pyenv = 'py' + sys.version[0]
 
 
-def assert_text(src, expect):
+def assert_text(src, expect, save_words=None):
     '''
     matches texts ignoring spaces.
 
@@ -31,6 +31,11 @@ def assert_text(src, expect):
     ...
     AssertionError: 'iklmn' != 'xyz'
     >>> assert_text('abc asdf iklmn xyz', ' abc .... xyz ')
+    >>> save_vars = []
+    >>> pattern = ' abc ... rrr ... xyz '
+    >>> assert_text('abc asdf rrr qqq xyz', pattern, save_vars)
+    >>> save_vars
+    ['asdf', 'qqq']
 
     '''
     src_it = iter(src.split())
@@ -63,7 +68,10 @@ def assert_text(src, expect):
                 s2 = next(expect_it)
             except StopIteration:
                 pass
-        elif s2 != '...':
+        elif s2 == '...':
+            if save_words is not None:
+                save_words.append(s1)
+        else:
             if s1 != s2:
                 print(src)
                 eq_(s1,s2)
@@ -83,12 +91,14 @@ class TestSetup:
         self.counter = 0
 
     def run_script_and_wait(self, cmd, log_file=None, expect_rc=None,
-                            expect_read = None):
+                            expect_read = None, save_words=None):
         p_id = self.run_script_in_bg(cmd, log_file)
         rc, logtext = self.wait_process(p_id,expect_read=expect_read,
-                                        expect_rc=expect_rc)
+                                        expect_rc=expect_rc,
+                                        save_words=save_words)
         split = logtext.strip().split()
-        return rc, split[-1] if len(split) else None
+        last_value = split[-1] if len(split) else None
+        return rc, (last_value if save_words is None else save_words)
 
     def run_script_in_bg(self, cmd, log_file=None):
         p_id = self.counter
@@ -119,8 +129,9 @@ class TestSetup:
         for p_id in self.processes:
             self.wait_process(p_id, print_all_logs)
 
-    def wait_process(self, p_id , print_all_logs = False,
-                     expect_rc=None, expect_read = None):
+    def wait_process(self, p_id, print_all_logs=False,
+                     expect_rc=None, expect_read=None,
+                     save_words=None):
         p, cmd, logpath = self.processes[p_id]
         rc = p.wait()
         logtext = open(logpath).read()
@@ -129,7 +140,7 @@ class TestSetup:
                 print(logtext)
                 eq_(expect_rc, rc)
         if expect_read is not None:
-            assert_text(logtext, expect_read)
+            assert_text(logtext, expect_read, save_words=save_words)
         if print_all_logs:
             print('{cmd}\nrc:{rc}\n{logtext}\n'.format(**locals()))
         return rc, logtext

@@ -56,7 +56,7 @@ class CacheLookup(Lookup):
         self.store.cache[self.file_id] = self
 
     def content(self):
-        return Content(data=self.data)
+        return Content(data=self.data, lookup=self)
 
 
 class DbLookup(ContentAddressLookup):
@@ -93,7 +93,7 @@ class DbLookup(ContentAddressLookup):
             .where(blob.c.file_id == self.file_id)).fetchone()
         if self.size < self.store.cached_max_size:
             return CacheLookup(self, row.content).content()
-        return Content(row.content)
+        return Content(data=row.content, lookup=self)
 
 
 class FileLookup(ContentAddressLookup):
@@ -108,7 +108,7 @@ class FileLookup(ContentAddressLookup):
                  raise # pragma: no cover
 
     def content(self):
-        content = Content(file=self.file)
+        content = Content(file=self.file, lookup=self)
         if self.size < self.store.cached_max_size:
             return CacheLookup(self, content.stream().read()).content()
         return content
