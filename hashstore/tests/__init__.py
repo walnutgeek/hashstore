@@ -82,7 +82,7 @@ class TestSetup:
         self.log = logging.getLogger(name)
         test_out = os.path.abspath("test-out")
         self.dir = os.path.join(test_out, pyenv, name)
-        self.home = os.path.join(test_out, pyenv, 'home')
+        self.home = os.path.join(self.dir, 'home')
         if ensure_empty:
             ensure_no_dir(self.dir)
             ensure_dir(self.dir)

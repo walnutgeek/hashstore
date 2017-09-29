@@ -78,6 +78,21 @@ class ClientUserSession:
                 log.debug('text: {r.text}'.format(**locals()))
                 return ContentAddress.ensure_it(json_decode(r.text))
 
+            def get_content(_, cake_or_path, skinny=True):
+                if isinstance(cake_or_path, Cake):
+                    if cake_or_path.has_data():
+                        return Content(
+                            data=cake_or_path.data(),
+                            data_type=cake_or_path.data_type
+                        )
+                if skinny:
+                    info = {}
+                else:
+                    resp = self.get_response('.get/info', cake_or_path)
+                    info = json_decode(resp.text)
+                return Content(
+                    stream_fn=( lambda: self.get_stream(cake_or_path)),
+                    **info)
 
             def __getattr__(_, item):
                 def proxy_call(**kwargs):
@@ -110,15 +125,6 @@ class ClientUserSession:
     def get_stream(self, cake_or_path):
         return self.get_response('.get/data', cake_or_path,
                                  do_stream=True).raw
-
-    def get_content(self, cake_or_path, skinny= True):
-        if skinny:
-            info = {}
-        else:
-            resp = self.get_content('.get/info', cake_or_path)
-            info = json_decode(resp.text)
-        get_stream = lambda: self.get_stream(cake_or_path)
-        return Content(stream_fn=get_stream, **info)
 
     def login(self, email, passwd):
         result = self.proxy.login(email=email,

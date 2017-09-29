@@ -109,7 +109,7 @@ class Content(Jsonable):
                  mime='application/octet-stream', created_dt=None,
                  size=None, data_type=None, lookup=None):
         self.mime = mime
-        if data is None and file is None and stream_fn:
+        if data is None and file is None and stream_fn is None:
             raise AssertionError('define data or file or stream_fn')
         self.data = data
         self.file = file

@@ -253,35 +253,41 @@ def backup(path, access):
     return portal_id, latest_cake
 
 
-def pull(store, key, path):
-    def child(key, name, cake):
-        if isinstance(key,Cake):
-            return cake
+def pull(store, cake_or_path, path):
+    def child(cake_or_path, name, child_cake):
+        if isinstance(cake_or_path, Cake):
+            return child_cake
         else:
-            return key.child(name)
+            return cake_or_path.child(name)
 
     def restore_inner(cake, content, path):
-        if content.data_type == DataType.BUNDLE:
+        try:
             bundle = NamedCAKes(content.stream())
-            ensure_directory(path)
-            for name in bundle:
-                file_path = os.path.join(path, name)
-                file_cake = child(cake,name, bundle[name])
-                file_content = store.get_content(file_cake)
-                if file_content.data_type == DataType.BUNDLE:
-                    restore_inner(file_cake, file_content, file_path)
-                else:
-                    try:
-                        out_fp = open(file_path, "wb")
-                        in_fp = store.get_content(file_cake).stream()
-                        for chunk in read_in_chunks(in_fp):
-                            out_fp.write(chunk)
-                        in_fp.close()
-                        out_fp.close()
-                    except:
-                        reraise_with_msg(
-                            "%s -> %s" % (file_cake, file_path))
+        except:
+            data = content.get_data()
+            reraise_with_msg('Cake: {cake} {data}'.format(**locals()))
+        ensure_directory(path)
+        for child_name in bundle:
+            file_path = os.path.join(path, child_name)
+            child_cake = bundle[child_name]
+            file_cake = child(cake, child_name, child_cake)
+            file_content = store.get_content(cake_or_path=file_cake)
+            if child_cake.data_type == DataType.BUNDLE :
+                restore_inner(file_cake, file_content, file_path)
+            else:
+                try:
+                    out_fp = open(file_path, "wb")
+                    in_fp = store.get_content(file_cake).stream()
+                    for chunk in read_in_chunks(in_fp):
+                        out_fp.write(chunk)
+                    in_fp.close()
+                    out_fp.close()
+                except:
+                    reraise_with_msg(
+                        "%s -> %s" % (file_cake, file_path))
 
-    restore_inner(key, store.get_content(key), path)
+
+    content = store.get_content(cake_or_path)
+    restore_inner(cake_or_path, content, path)
 
 

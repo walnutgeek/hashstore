@@ -137,7 +137,7 @@ class PrivilegedAccess(_Access):
         raise NotAuthorizedError('%s does not have %r permissions' %
                                  (self.auth_user.email, required_acls))
 
-    def get_content(self, cake):
+    def get_content(self, cake_or_path):
         '''
         get_content(data_cake)   -> Content
 
@@ -155,19 +155,20 @@ class PrivilegedAccess(_Access):
             to be check on all portals in redirect chain. redirect chain
             cannot be longer then 10.
         '''
-        if isinstance(cake,CakePath):
-            return self.get_content_by_path(cake)
-        if cake.has_data():
-            return Content(data=cake.data()).set_data_type(cake)
-        elif cake.is_resolved():
-            self.authorize(cake, self.Permissions.read_data_cake)
-            return self.backend().get_content(cake)
-        elif cake.is_portal():
-            self.authorize(cake, self.Permissions.read_portal)
-            stack = dal.resolve_cake_stack(self.ctx.glue_session(), cake)
-            for a in stack[:-1]:
-                self.authorize(cake, self.Permissions.read_portal)
-            return self.backend().get_content(stack[-1])
+        if isinstance(cake_or_path, CakePath):
+            return self.get_content_by_path(cake_or_path)
+        if cake_or_path.has_data():
+            return Content(data=cake_or_path.data()).set_data_type(cake_or_path)
+        elif cake_or_path.is_resolved():
+            self.authorize(cake_or_path, self.Permissions.read_data_cake)
+            return self.backend().get_content(cake_or_path)
+        elif cake_or_path.is_portal():
+            self.authorize(cake_or_path, self.Permissions.read_portal)
+            resolution_stack = dal.resolve_cake_stack(
+                self.ctx.glue_session(), cake_or_path)
+            for resolved_portal in resolution_stack[:-1]:
+                self.authorize(cake_or_path, self.Permissions.read_portal)
+            return self.backend().get_content(resolution_stack[-1])
         else:
             raise AssertionError('should never get here')
 

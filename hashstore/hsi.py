@@ -3,6 +3,7 @@ import logging
 import os
 
 from hashstore.bakery.cake_client import ClientUserSession, CakeClient
+from hashstore.bakery.ids import cake_or_path
 from hashstore.utils.args import CommandArgs, Switch
 
 from hashstore.utils import print_pad
@@ -100,9 +101,15 @@ class ClientApp:
                 dir='directory where to restore. ',
                 cake='content address or portal to restore from')
     def pull(self, cake, dir='.'):
-        # m = dscan.Remote(dir)
-        # m.restore(cake, dir)
-        pass
+        client = CakeClient()
+        cu_session = client.check_mount_session(dir)
+        if cu_session is None:
+            log.warning('{dir} is not mounted, use login command to '
+                        'establish mount_session with server')
+        else:
+            cscan.pull(cu_session.proxy, cake_or_path(cake), dir)
+            print('done')
+
 
     @ca.command('backup and pull. Use dir_id as portal.')
     def sync(self, dir='.'):

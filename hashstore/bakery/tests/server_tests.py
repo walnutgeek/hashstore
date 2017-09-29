@@ -1,3 +1,5 @@
+from shutil import rmtree
+
 from hashstore.bakery.ids import SaltedSha
 from hashstore.tests import TestSetup, file_set1, file_set2, \
     prep_mount, update_mount, fileset1_cake, fileset2_cake
@@ -8,7 +10,10 @@ test = TestSetup(__name__,ensure_empty=True)
 log = test.log
 
 def test_server():
-    files = os.path.join(test.dir, 'files')
+    mount = os.path.join(test.dir, 'mount')
+    files = os.path.join(mount, 'files')
+    pull = os.path.join(mount, 'pull')
+    os.makedirs(mount,mode=0o755)
     store = os.path.join(test.dir, 'store')
     port=8765
     email = 'jon@doe.edu'
@@ -44,7 +49,7 @@ def test_server():
 
     test.run_script_and_wait(
         'hsi login --url http://localhost:{port} '
-        '--dir {files} --email {email} '
+        '--dir {mount} --email {email} '
         '--passwd {pwd}' .format(**locals()),
         expect_rc=0,
         expect_read="Mount: ... "
@@ -68,8 +73,21 @@ def test_server():
         DirId: %s
         Cake: %s''' % (dirId, fileset2_cake) )
 
-    test.run_script_and_wait('hsd --store_dir {store} stop'
-                          .format(**locals()), expect_rc=0)
+    test.run_script_and_wait(
+        'hsi pull --cake {dirId} --dir {pull}'
+        .format(**locals()), expect_rc=0,
+        expect_read='done' )
+
+    test.run_script_and_wait(
+        'hsi scan --dir {pull}'
+        .format(**locals()), expect_rc=0,
+        expect_read=fileset2_cake)
+
+
+    test.run_script_and_wait(
+        'hsd --store_dir {store} stop'
+        .format(**locals()), expect_rc=0)
+
 
     test.wait_process(server_id, expect_rc=0)
 
