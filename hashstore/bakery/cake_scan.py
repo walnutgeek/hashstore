@@ -285,9 +285,10 @@ def pull(store, cake_or_path, path):
                 except:
                     reraise_with_msg(
                         "%s -> %s" % (file_cake, file_path))
+        return bundle.cake()
 
 
     content = store.get_content(cake_or_path)
-    restore_inner(cake_or_path, content, path)
+    return restore_inner(cake_or_path, content, path)
 
 

@@ -47,6 +47,8 @@ def test_server():
 
     sleep(2)
 
+    cake1,cake2 = fileset1_cake,fileset2_cake
+
     test.run_script_and_wait(
         'hsi login --url http://localhost:{port} '
         '--dir {mount} --email {email} '
@@ -61,7 +63,7 @@ def test_server():
         .format(**locals()), expect_rc=0,
         expect_read='''....
         DirId: ...
-        Cake: %s''' % fileset1_cake, save_words=[])
+        Cake: {cake1}'''.format(**locals()), save_words=[])
     dirId = save_words[0]
 
     update_mount(files, file_set2)
@@ -70,13 +72,15 @@ def test_server():
         'hsi backup --dir {files}'
         .format(**locals()), expect_rc=0,
         expect_read='''....
-        DirId: %s
-        Cake: %s''' % (dirId, fileset2_cake) )
+        DirId: {dirId!s}
+        Cake: {cake2}'''.format(**locals()))
 
     test.run_script_and_wait(
         'hsi pull --cake {dirId} --dir {pull}'
         .format(**locals()), expect_rc=0,
-        expect_read='done' )
+        expect_read='From: {dirId!s}\n'
+                    'Cake: {cake2}\n'
+                    .format(**locals()))
 
     test.run_script_and_wait(
         'hsi scan --dir {pull}'

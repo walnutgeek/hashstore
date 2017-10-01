@@ -20,15 +20,12 @@ from hashstore.utils.api import ApiCallRegistry
 log = logging.getLogger(__name__)
 
 
-
-
 class StoreContext(MultiSessionContextManager):
     def __init__(self, store, remote_host=None):
         MultiSessionContextManager.__init__(self)
         self.store = store
         self.remote_host = remote_host
         self.params = {}
-
 
     def session_factory(self, name):
         return getattr(self.store, name +'_db').session()
@@ -81,10 +78,11 @@ class GuestAccess(_Access):
             client_ssha = None
             if client_id is not None:
                 client_ssha = SaltedSha.from_secret(client_id)
-            user_session = UserSession(user=user.id,
-                                       client=client_ssha,
-                                       active=True,
-                                       remote_host = self.ctx.remote_host)
+            user_session = UserSession(
+                user=user.id,
+                client=client_ssha,
+                active=True,
+                remote_host = self.ctx.remote_host)
             self.ctx.srvcfg_session().add(user_session)
             self.ctx.commit()
             return user_session.id
@@ -158,7 +156,8 @@ class PrivilegedAccess(_Access):
         if isinstance(cake_or_path, CakePath):
             return self.get_content_by_path(cake_or_path)
         if cake_or_path.has_data():
-            return Content(data=cake_or_path.data()).set_data_type(cake_or_path)
+            return Content(data=cake_or_path.data())\
+                .set_data_type(cake_or_path)
         elif cake_or_path.is_resolved():
             self.authorize(cake_or_path, self.Permissions.read_data_cake)
             return self.backend().get_content(cake_or_path)
@@ -261,7 +260,8 @@ class PrivilegedAccess(_Access):
                     if not lookup.found():
                         unseen_cakes.add(file_cake)
         if len(dirs_mismatch_input_cake) > 0: # pragma: no cover
-            raise AssertionError('could not store directories: %r' % dirs_mismatch_input_cake)
+            raise AssertionError('could not store directories: %r' %
+                                 dirs_mismatch_input_cake)
         return len(dirs_stored), list(unseen_cakes)
 
 
@@ -458,9 +458,3 @@ class CakeStore:
     def server_config(self):
         with self.srvcfg_db.session_scope() as session:
             return session.query(ServerKey).one()
-
-
-
-
-
-

@@ -107,8 +107,10 @@ class ClientApp:
             log.warning('{dir} is not mounted, use login command to '
                         'establish mount_session with server')
         else:
-            cscan.pull(cu_session.proxy, cake_or_path(cake), dir)
-            print('done')
+            src = cake_or_path(cake)
+            cake = cscan.pull(cu_session.proxy, src, dir)
+            print('From: {src!s} \nCake: {cake!s}\n'
+                  .format(**locals()))
 
 
     @ca.command('backup and pull. Use dir_id as portal.')
