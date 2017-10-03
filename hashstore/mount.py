@@ -1,19 +1,10 @@
-import json
-from hashstore.mymime import MIME_WDF, MIME_UDK_BUNDLE, guess_type
-from hashstore.db import DbFile
+from hashstore.utils.mymime import MIME_WDF, MIME_UDK_BUNDLE, guess_type
 from hashstore.session import _session, _session_dbf
 from hashstore.local_store import HashStore, AccessMode
 from hashstore.udk import process_stream, UDK, UDKBundle
-from hashstore.client import RemoteStorage
-from hashstore.utils import quict, path_split_all, reraise_with_msg, \
-    read_in_chunks, ensure_directory, FileNotFound, _cacheable, \
-    json_encoder, ensure_unicode
-from collections import defaultdict
+from hashstore.utils import quict, path_split_all, FileNotFound, \
+    _cacheable,  json_encoder, ensure_unicode
 import os
-import uuid
-
-from hashstore.dir_scan import parse_ignore_specs, ignore_files, \
-    check_if_path_should_be_ignored
 
 import logging
 

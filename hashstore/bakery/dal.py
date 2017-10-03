@@ -1,4 +1,4 @@
-from hashstore.bakery.ids import Cake, NamedCAKes, CakePath
+from hashstore.bakery import Cake, NamedCAKes, CakePath
 
 from hashstore.ndb.models.server_config import ServerKey, \
     ServerConfigBase
@@ -42,6 +42,7 @@ def resolve_cake_stack(glue_sess, cake):
             raise AssertionError('cake loop? %r' % cake_stack)
         cake = glue_sess.query(Portal).filter(Portal.id == cake)\
             .one().latest
+
 
 def edit_portal(glue_sess,portal):
     glue_sess.merge(portal)

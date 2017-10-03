@@ -1,5 +1,5 @@
 from nose.tools import eq_,ok_
-import hashstore.bakery.ids as ids
+import hashstore.bakery as ids
 from hashstore.tests import TestSetup, doctest_it
 
 from sqlalchemy import Table, Integer, MetaData, Column, types, select

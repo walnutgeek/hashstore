@@ -1,8 +1,7 @@
 import os
-from hashstore.bakery import NotAuthorizedError, CredentialsError
+from hashstore.bakery import NotAuthorizedError, CredentialsError, \
+    Content, Cake, NamedCAKes, CakePath, SaltedSha
 from hashstore.bakery.backend import LiteBackend
-from hashstore.bakery.content import Content
-from hashstore.bakery.ids import Cake, NamedCAKes, CakePath, SaltedSha
 from hashstore.ndb import Dbf, MultiSessionContextManager
 from hashstore.utils import ensure_dict,reraise_with_msg
 import hashstore.bakery.dal as dal

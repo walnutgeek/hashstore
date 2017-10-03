@@ -1,8 +1,8 @@
-import hashstore.base_x
+import hashstore.utils.base_x as bx
 from hashstore.tests import doctest_it
 from nose.tools import eq_,ok_
 
-b58 = hashstore.base_x.base_x(58)
+b58 = bx.base_x(58)
 
 
 def test_nulls():
@@ -21,7 +21,7 @@ def test_nulls():
 
 
 def test_randomized():
-    all_codecs = [hashstore.base_x.base_x(k) for k in hashstore.base_x.alphabets]
+    all_codecs = [bx.base_x(k) for k in bx.alphabets]
 
     import numpy.random as rand
     rand.seed(0)
@@ -36,5 +36,4 @@ def test_randomized():
 
 
 def test_docs():
-    import hashstore.base_x as test_module
-    doctest_it(test_module)
+    doctest_it(bx)

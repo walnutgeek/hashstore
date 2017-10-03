@@ -1,6 +1,4 @@
-from shutil import rmtree
-
-from hashstore.bakery.ids import SaltedSha
+from hashstore.bakery import SaltedSha
 from hashstore.tests import TestSetup, file_set1, file_set2, \
     prep_mount, update_mount, fileset1_cake, fileset2_cake
 import os

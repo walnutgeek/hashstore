@@ -5,7 +5,7 @@ from hashstore.ndb.models.glue import PermissionType, Acl
 from hashstore.utils import print_pad
 from hashstore.utils.args import Switch, CommandArgs
 from hashstore.bakery.cake_scan import pull,backup
-from hashstore.bakery.ids import SaltedSha, Cake, CakePath, cake_or_path
+from hashstore.bakery import SaltedSha, Cake, CakePath, cake_or_path
 import getpass
 
 import logging

@@ -9,8 +9,7 @@ import signal
 import sys
 
 from hashstore.bakery.cake_store import StoreContext, GuestAccess
-from hashstore.bakery.content import Content
-from hashstore.bakery.ids import cake_or_path, SaltedSha, Cake
+from hashstore.bakery import Content, cake_or_path, SaltedSha, Cake
 from hashstore.utils import json_encoder, FileNotFound, ensure_bytes, \
     exception_message
 import json

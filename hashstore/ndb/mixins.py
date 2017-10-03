@@ -1,5 +1,5 @@
 from hashstore.ndb import StringCast
-from hashstore.bakery.ids import Cake, SaltedSha, DataType
+from hashstore.bakery import Cake, SaltedSha, DataType
 import datetime
 from sqlalchemy import Column, DateTime, String, Integer
 from sqlalchemy.ext.declarative import declared_attr

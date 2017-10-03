@@ -1,6 +1,6 @@
 from hashstore.ndb.mixins import ReprIt, NameIt, Cdt, Udt, \
     GuidPk, Singleton
-from hashstore.bakery.ids import Cake, SaltedSha, InetAddress
+from hashstore.bakery import Cake, SaltedSha, InetAddress
 from hashstore.ndb import StringCast
 
 from sqlalchemy.ext.declarative import declarative_base

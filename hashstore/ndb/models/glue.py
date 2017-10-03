@@ -23,7 +23,7 @@ from sqlalchemy import and_,ForeignKey, Column, String, Boolean, desc
 from hashstore.ndb.mixins import ReprIt, GuidPk, Cdt, Udt, \
     NameIt, ServersMixin
 from hashstore.ndb import StringCast, IntCast
-from hashstore.bakery.ids import Cake, SaltedSha
+from hashstore.bakery import Cake, SaltedSha
 from hashstore.utils import Stringable, EnsureIt
 
 import enum
@@ -105,10 +105,6 @@ class PermissionType(enum.Enum):
         needs_cake = 'needs_cake' if self.needs_cake() else ''
         return "code:%d %s expands->%s" % (
             self.value, needs_cake, expands)
-
-    @staticmethod
-    def from_names(names):
-        return [PermissionType[n] for n in names.split()]
 
 
 PermissionType.Write_Any_Data.expand_to = (
@@ -203,7 +199,8 @@ class ServiceHome(NameIt, GlueBase):
 class Acl(Stringable,EnsureIt):
     '''
 
-    >>> Acl('Write_Any_Data')
+    >>> wad = Acl('Write_Any_Data')
+    >>> wad
     Acl('Write_Any_Data')
 
     >>> Acl('Read_')
@@ -211,8 +208,12 @@ class Acl(Stringable,EnsureIt):
     ...
     ValueError: cake field is required for permission: Read_
 
-    >>> Acl('Read_:1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV')
+    >>> r1 = Acl('Read_:1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV')
+    >>> r1
     Acl('Read_:1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV')
+
+    >>> wad != r1
+    True
 
     '''
     def __init__(self, s, _pt=None, _cake=None):

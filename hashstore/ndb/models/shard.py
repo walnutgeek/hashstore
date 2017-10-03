@@ -1,4 +1,4 @@
-from hashstore.bakery.content import ContentAddress
+from hashstore.bakery import ContentAddress
 from hashstore.ndb import StringCast
 from hashstore.ndb.mixins import ReprIt, NameIt, Cdt
 from sqlalchemy.ext.declarative import declarative_base

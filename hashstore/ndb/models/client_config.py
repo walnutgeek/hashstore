@@ -1,7 +1,5 @@
 from hashstore.ndb.mixins import Cdt, Udt, ServersMixin, Singleton, \
     GuidPk, NameIt
-from hashstore.bakery.ids import Cake
-from hashstore.ndb import StringCast
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, String, ForeignKey
 

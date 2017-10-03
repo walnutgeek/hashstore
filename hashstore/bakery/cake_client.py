@@ -2,9 +2,8 @@ import os
 import requests
 import json
 from sqlalchemy import desc
-from hashstore.bakery import RemoteError
-from hashstore.bakery.content import ContentAddress, Content
-from hashstore.bakery.ids import Cake, SaltedSha
+from hashstore.bakery import RemoteError, ContentAddress, \
+    Content, Cake, SaltedSha
 from hashstore.ndb import Dbf
 from hashstore.ndb.models.client_config import ClientConfigBase, \
     ClientKey, Server, MountSession

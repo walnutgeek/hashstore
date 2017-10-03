@@ -70,7 +70,7 @@ def exception_message(e = None):
 
 
 if six.PY2:
-    from hashstore.py2 import _raise_it
+    from hashstore.utils.py2 import _raise_it
 else:
     def _raise_it(etype, new_exception, traceback):
         raise new_exception.with_traceback(traceback)

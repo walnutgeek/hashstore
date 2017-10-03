@@ -3,8 +3,6 @@ import shutil
 import datetime
 import pylru
 
-from hashstore.bakery import NotFoundError
-from hashstore.bakery.ids import Cake
 from hashstore.ndb import Dbf
 from hashstore.utils import binary_type, ensure_bytes,ensure_directory
 
@@ -12,9 +10,9 @@ from sqlalchemy import func,select
 
 import hashlib
 
-from .content import ContentAddress, is_it_shard, Content
-from ..ndb.models.shard import shard_meta, blob
-from ..ndb.models.incoming import incoming_meta, incoming
+from hashstore.bakery import NotFoundError, Cake, ContentAddress, is_it_shard, Content
+from hashstore.ndb.models.shard import shard_meta, blob
+from hashstore.ndb.models.incoming import incoming_meta, incoming
 
 import logging
 

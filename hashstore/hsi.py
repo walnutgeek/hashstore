@@ -3,7 +3,7 @@ import logging
 import os
 
 from hashstore.bakery.cake_client import ClientUserSession, CakeClient
-from hashstore.bakery.ids import cake_or_path
+from hashstore.bakery import cake_or_path
 from hashstore.utils.args import CommandArgs, Switch
 
 from hashstore.utils import print_pad

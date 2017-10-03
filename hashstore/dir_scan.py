@@ -12,7 +12,7 @@ import uuid
 from hashstore.client import RemoteStorage
 import os
 import sys
-import hashstore.base_x as bx
+import hashstore.utils.base_x as bx
 
 import logging
 log = logging.getLogger(__name__)

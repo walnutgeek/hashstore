@@ -1,7 +1,7 @@
 from sqlalchemy import Enum, Integer, Column, String
 from sqlalchemy.ext.declarative import declarative_base
 from hashstore.ndb.mixins import ReprIt, NameIt, Singleton
-from hashstore.bakery.ids import Cake
+from hashstore.bakery import Cake
 from hashstore.ndb import StringCast
 import enum
 
