@@ -1,4 +1,4 @@
-from hashstore.utils.mymime import MIME_WDF, MIME_UDK_BUNDLE, guess_type
+from hashstore.utils.mymime import MIME_WDF, guess_type, MIME_HS_BUNDLE
 from hashstore.session import _session, _session_dbf
 from hashstore.local_store import HashStore, AccessMode
 from hashstore.udk import process_stream, UDK, UDKBundle
@@ -64,7 +64,7 @@ class StorePath:
     def render(self, auth_session=None):
         lookup = self.lookup(auth_session=auth_session)
         if self.is_directory:
-            mime = MIME_UDK_BUNDLE
+            mime = MIME_HS_BUNDLE
         else:
             mime = guess_type(self.path[-1])
         return Content.from_lookup(mime, lookup)

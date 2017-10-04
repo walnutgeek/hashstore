@@ -1,13 +1,11 @@
 import mimetypes
 
-MIME_UDK_BUNDLE = 'application/shash+udk_bundle'
-MIME_HTML_FRAGMENT = 'application/shash+html'
+MIME_HS_BUNDLE = 'application/hashstore+bundle'
 MIME_WDF = 'text/wdf'
 
 my_mimetypes = [
-        (['.udk_bundle'],    MIME_UDK_BUNDLE),
-        (['.html_fragment'], MIME_HTML_FRAGMENT),
-        (['.wdf'],           MIME_WDF),
+        (['.hs_bundle','.hsb'],    MIME_HS_BUNDLE),
+        (['.wdf'],                 MIME_WDF),
 ]
 
 my_mime_dict = {k: v[1] for v in my_mimetypes for k in v[0]}
@@ -20,10 +18,10 @@ def guess_type(filename):
     'text/plain'
     >>> guess_type('abc.wdf')
     'text/wdf'
-    >>> guess_type('abc.html_fragment')
-    'application/shash+html'
-    >>> guess_type('abc.udk_bundle')
-    'application/shash+udk_bundle'
+    >>> guess_type('abc.hs_bundle')
+    'application/hashstore+bundle'
+    >>> guess_type('abc.hsb')
+    'application/hashstore+bundle'
     >>> guess_type('.wdf')
     >>> guess_type('abc.html')
     'text/html'

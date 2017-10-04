@@ -286,7 +286,8 @@ def run_bg(module, args=[], home=None, outfile=None):
     command = ['coverage', 'run', '-p', '-m']
     command.append(module)
     for arg in args:
-        command.append(arg)
+        if arg is not None and arg.strip() != '':
+            command.append(arg)
     fp = open(outfile, 'w') if outfile is not None else None
     return subprocess.Popen(command, env=env, stdout=fp, stderr=STDOUT)
 

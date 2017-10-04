@@ -84,13 +84,14 @@ class CommandArgs:
         return decorate
 
     def get_parser(self, args=None, namespace=None):
-        parser = argparse.ArgumentParser(description=self.app_help)
+        self.parser = argparse.ArgumentParser(description=self.app_help)
         global_cmd = [c for c in self.commands if c.name == '__init__']
+        self.parser.set_defaults(command='')
         if len(global_cmd) == 1:
             self.global_opts = global_cmd[0].options
         for opt in self.global_opts:
-            opt.add_itself(parser)
-        subparsers = parser.add_subparsers()
+            opt.add_itself(self.parser)
+        subparsers = self.parser.add_subparsers()
         for c in self.commands:
             if c.name == '__init__':
                 continue
@@ -102,7 +103,7 @@ class CommandArgs:
             for opt in opts:
                 opt.add_itself(subparser)
 
-        return parser
+        return self.parser
 
     def parse_args(self, args=None, namespace=None):
         return self.get_parser().parse_args(args, namespace)
@@ -117,4 +118,8 @@ class CommandArgs:
             if args.command == c.name:
                 run_args = extract_values(c.options)
                 getattr(instance, c.name)(**run_args)
+                break
+        else:
+            self.parser.print_help()
+
 

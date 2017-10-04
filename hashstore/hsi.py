@@ -49,14 +49,15 @@ class ClientApp:
     def logout(self, dir='.'):
         pass
 
-    @ca.command('list directory as of last scan.')
-    def ls(self, dir='.'):
+    @ca.command('list directory as of last scan.',cake=('Display cakes', Switch))
+    def ls(self, dir='.', cake=False):
+        cake = 'cake' if cake else ''
         entries = cscan.CakeEntries(dir)
         usage = entries.directory_usage()
         print("DirId: %s" % entries.dir_key().id)
         print("Cake: %s" % entries.bundle().cake())
         print('')
-        print_pad(usage, 'file_type size name'.split(), getattr)
+        print_pad(usage, ('file_type size '+cake+' name').split(), getattr)
         print('total_size: %d' % sum( r.size for r in usage))
 
     @ca.command('find file with particular criteria.')

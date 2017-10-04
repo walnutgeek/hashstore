@@ -9,9 +9,10 @@ import signal
 import sys
 
 from hashstore.bakery.cake_store import StoreContext, GuestAccess
-from hashstore.bakery import Content, cake_or_path, SaltedSha, Cake
+from hashstore.bakery import Content, cake_or_path, SaltedSha
 from hashstore.utils import json_encoder, FileNotFound, ensure_bytes, \
     exception_message
+from hashstore.utils.mymime import guess_type
 import json
 import tornado.web
 import tornado.template
@@ -66,8 +67,12 @@ class _ContentHandler(tornado.web.RequestHandler):
         try:
             content=self.content(path)
             if content.mime is not None:
-                self.set_header('Content-Type', content.mime)
-
+                mime = content.mime
+            else:
+                mime = guess_type(path)
+                if mime is None:
+                    mime = 'application/octet-stream'
+            self.set_header('Content-Type', mime)
             if content.has_file():
                 self.stream = PipeIOStream(content.open_fd())
                 self.stream.read_until_close(
@@ -173,7 +178,7 @@ class CakeServer:
 
     def run_server(self):
 
-        app_dir = os.path.join(os.path.dirname(__file__), '../app')
+        app_dir = os.path.join(os.path.dirname(__file__), 'app')
 
         class AppContentHandler(_ContentHandler):
             def content(self, path):
