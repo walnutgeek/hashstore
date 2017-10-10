@@ -80,14 +80,32 @@ def test_scan_ls():
 
     test.run_script_and_wait('hsi ls --dir %s' % files,expect_rc=0,
                              expect_read='''
-          DirId: ...
-          Cake: %s
-          
-            FILE  105000  too.sol
-            DIR   10955   q
-            DIR   1885    x
-            DIR   1659    a
-          total_size: 119499''' % fileset1_cake)
+        DirId: ...
+        Cake: %s
+        
+          FILE  105000  too.sol
+          DIR   10955   q
+          DIR   1885    x
+          DIR   1659    a
+        total_size: 119499
+        ''' % fileset1_cake)
+
+    find_it = '1cymRJoPcW7Wuxt8TPCk4blijwO4Z76qoUEbaXk2jBZ8'
+    test.run_script_and_wait('hsi ls --cake --dir %s/x' % files,
+                             expect_rc=0,
+                             expect_read='''
+        DirId: ...
+        Cake: hjquPwZ3rqvLhtTNLOhDBQ0MkqX25ekUPazNzCPxbnLU
+        
+          DIR   1220  h1MYo2xgsn6fo3qV0AzjXtekxuj7EYEaLYszN9MXAODb  y
+          FILE  555   {find_it}  1
+        total_size: 1775
+        '''.format(**locals()))
+
+    test.run_script_and_wait('hsi find --cake {find_it} --dir {files}'
+                             .format(**locals()) ,
+                             expect_rc=0,
+                             expect_read='FILE  555 ...')
 
     update_mount(files, file_set2)
 
@@ -175,6 +193,7 @@ def test_scan_ls():
                                 Traceback (most recent call last):
                                 ....
                                 hashstore.bakery.NotFoundError''')
+
     test.run_script_and_wait('hsd --store_dir {store} pull '
                              '--cake {pull_cake2} --dir {pull_dir2}'.format(**locals()),
                              expect_rc=1,

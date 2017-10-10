@@ -14,3 +14,4 @@ node_modules/
 Notebooks/.ipynb_checkpoints/
 hashstore/bakery/app
 hashstore/webdata/app
+package-lock.json

@@ -3,10 +3,11 @@ import logging
 import os
 
 from hashstore.bakery.cake_client import ClientUserSession, CakeClient
-from hashstore.bakery import cake_or_path
+from hashstore.bakery import cake_or_path, Cake
+from hashstore.ndb.models.scan import FileType
 from hashstore.utils.args import CommandArgs, Switch
 
-from hashstore.utils import print_pad
+from hashstore.utils import print_pad, exception_message
 import hashstore.bakery.cake_scan as cscan
 
 
@@ -62,23 +63,21 @@ class ClientApp:
 
     @ca.command('find file with particular criteria.')
     def find(self, cake, dir='.'):
-        # results = []
-        #
-        # def find_recursively(directory, cake):
-        #     try:
-        #         files=dscan.Shamo(directory).directory_usage()
-        #         for f in files:
-        #             f['name'] = os.path.join(directory, f['name'])
-        #             if f['file_type'] == 'DIR':
-        #                 find_recursively(f['name'], cake)
-        #             f_cake = UDK.ensure_it(f['cake'])
-        #             if f_cake == cake:
-        #                 results.append(f)
-        #     except:
-        #         log.warning(utils.exception_message())
-        # find_recursively(dir, Cake.ensure_it(cake))
-        # print_pad(results, 'file_type size cake name'.split())
-        pass
+        results = []
+
+        def find_recursively(directory, cake):
+            files=cscan.CakeEntries(directory).directory_usage()
+            for f in files:
+                path = os.path.join(directory, f.name)
+                if f.cake == cake:
+                    e = {k: getattr(f, k) for k in
+                         'file_type size'.split()}
+                    e['path'] = path
+                    results.append(e)
+                elif f.file_type == FileType.DIR:
+                    find_recursively(path, cake)
+        find_recursively(dir, Cake.ensure_it(cake))
+        print_pad(results, 'file_type size path'.split())
 
     @ca.command('scan tree and recalculate hashes for all changed files')
     def scan(self, dir='.'):
