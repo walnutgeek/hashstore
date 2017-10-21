@@ -21,7 +21,7 @@ setup(name='hashstore',
       author_email='wg@walnutgeek.com',
       license='Apache 2.0',
       packages=['hashstore'],
-      package_data={'': ['app/*']},
+      package_data={'': ['components/*']},
       entry_points={
           'console_scripts': [
               '%s=hashstore.%s:main'%(n, n) for n in

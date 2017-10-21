@@ -5,7 +5,8 @@ const TransferWebpackPlugin = require('transfer-webpack-plugin');
 const config = {
   entry: {
     main: [
-      './src/app/app.js',
+      'whatwg-fetch',
+      './src/app.js',
     ],
   },
   // Render source-map file for final build

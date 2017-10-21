@@ -1,11 +1,15 @@
 import React from 'react';
 import {
   BrowserRouter as Router,
-  Route,
-  Link
+  Route, Link, Switch
 } from 'react-router-dom';
 
-import Button from './Button';
+import {Button,Popover,Classes,Position} from "@blueprintjs/core";
+import NavBarRight from './NavBarRight';
+
+
+const Public = () => <h3>Public</h3>
+const Protected = () => <h3>Protected</h3>
 
 const Main = () => (
   <Router>
@@ -16,27 +20,20 @@ const Main = () => (
                 <img src="/.app/hashstore.svg"
                      style={{width: 30, height: 30}} />
             </div>
-            <input className="pt-input pt-icon-search" placeholder="Search files..." type="text" />
           </div>
-          <div className="pt-navbar-group pt-align-right"
-               >
-              <Button to="/" icon="home" >Home</Button>
-              <Button to="/about" icon="comment" >About</Button>
-              <Button to="/topics" icon="list" >Topics</Button>
-            <span className="pt-navbar-divider"></span>
-              <Button icon="user" />
-              <Button icon="notifications" />
-              <Button icon="cog" />
-          </div>
+          <NavBarRight/>
         </nav>
       <div style={ {padding: "1em"}}>
-          <Route exact path="/" component={Home}/>
-          <Route path="/about" component={About}/>
-          <Route path="/topics" component={Topics}/>
+          <Switch>
+              <Route path="/portals/:portalId" component={Protected}/>
+              <Route path="/portals" component={Protected}/>
+              <Route path="/" component={Public} />
+          </Switch>
       </div>
     </div>
   </Router>
 )
+
 
 const Home = () => (
   <div>

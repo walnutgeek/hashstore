@@ -86,7 +86,8 @@ class GuestAccess(_Access):
             self.ctx.commit()
             return user_session.id
         else:
-            raise CredentialsError(email)
+            raise CredentialsError('Credentials does not match for: '
+                                   + email)
 
     def server_login(self, server_id, server_secret):
         pass # validate and create server session logic
@@ -96,6 +97,12 @@ user_api = ApiCallRegistry()
 
 class PrivilegedAccess(_Access):
     api = user_api
+
+    @user_api.call()
+    def logout(self, session):
+        user_session = self.ctx.srvcfg_session().query(UserSession)\
+            .filter(UserSession.id == session).one()
+        user_session.active = False
 
     class Permissions:
         read_data_cake = (PT.Read_, PT.Read_Any_Data)

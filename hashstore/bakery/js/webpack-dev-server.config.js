@@ -8,7 +8,7 @@ const config = {
     main: [
       // only- means to only hot reload for successful updates
       'webpack/hot/only-dev-server',
-      './src/app/app.js',
+      './src/components/components.js',
     ],
   },
   // Server Configuration options
@@ -32,7 +32,7 @@ const config = {
   devtool: 'eval',
   output: {
     path: path.resolve(__dirname, 'build'), // Path of output file
-    filename: '.app/app.js',
+    filename: '.components/components.js',
   },
   plugins: [
     // Enables Hot Modules Replacement
