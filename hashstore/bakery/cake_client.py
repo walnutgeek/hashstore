@@ -87,7 +87,7 @@ class ClientUserSession:
                 if skinny:
                     info = {}
                 else:
-                    resp = self.get_response('.get/serverInfo', cake_or_path)
+                    resp = self.get_response('.get/info', cake_or_path)
                     info = json_decode(resp.text)
                 return Content(
                     stream_fn=( lambda: self.get_stream(cake_or_path)),

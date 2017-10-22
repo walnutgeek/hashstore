@@ -154,8 +154,8 @@ class StoreServer(PathResover):
         self.store.initialize()
         resolver_ref = {'resolver': self}
 
-        app_dir = os.path.join(os.path.dirname(__file__), 'components')
-        app_mount = Mount('.components', app_dir)
+        app_dir = os.path.join(os.path.dirname(__file__), 'app')
+        app_mount = Mount('.app', app_dir)
 
         def app_content_fn(_,path):
             split, is_dir = split_path(path)
@@ -177,7 +177,7 @@ class StoreServer(PathResover):
             (r'/\.up/post/(.*)$', PostHandler, resolver_ref),
             (r'/\.raw/(.*)$', _raw_handler(hash_and_mount_content_fn) ),
             (r'/(\.pid)$', _dummy_handler(str(os.getpid()))),
-            (r'/\.components/(.*)$', _raw_handler(app_content_fn)),
+            (r'/\.app/(.*)$', _raw_handler(app_content_fn)),
             (r'(.*)$', _raw_handler(_load_index),)
         ]
         application = tornado.web.Application(handlers)

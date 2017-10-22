@@ -35,45 +35,45 @@ Base = GlueBase = declarative_base(name='GlueBase')
 
 class PermissionType(enum.Enum):
     '''
-    >>> PermissionType.Read_.serverInfo()
+    >>> PermissionType.Read_.info()
     'code:0 needs_cake expands->Read_'
 
          Read data identified by Cake which could be ether data or
          portal
 
-    >>> PermissionType.Read_Any_Data.serverInfo()
+    >>> PermissionType.Read_Any_Data.info()
     'code:1  expands->Read_Any_Data'
 
         Allows to read any data existing content based `Cake`.
 
-    >>> PermissionType.Write_Any_Data.serverInfo()
+    >>> PermissionType.Write_Any_Data.info()
     'code:2  expands->Read_Any_Data,Write_Any_Data'
 
         Allows to write any data and generate new content based `Cake`s.
 
-    >>> PermissionType.Edit_Portal_.serverInfo()
+    >>> PermissionType.Edit_Portal_.info()
     'code:3 needs_cake expands->Edit_Portal_,Read_,Read_Any_Data,Write_Any_Data'
 
         you can write any data, and edit portal to point to it.
 
-    >>> PermissionType.Create_Portals.serverInfo()
+    >>> PermissionType.Create_Portals.info()
     'code:4  expands->Create_Portals,Read_Any_Data,Write_Any_Data'
 
         Allows to create new portals. For all portals created
         `Own_Portal_` pemission will be assigned to the user.
     
-    >>> PermissionType.Own_Portal_.serverInfo()
+    >>> PermissionType.Own_Portal_.info()
     'code:5 needs_cake expands->Edit_Portal_,Own_Portal_,Read_,Read_Any_Data,Write_Any_Data'
 
         read, write and grant rights to that portal
 
-    >>> PermissionType.Read_Any_Portal.serverInfo()
+    >>> PermissionType.Read_Any_Portal.info()
     'code:6  expands->Read_Any_Portal'
 
         read any existing portal assuming that you know that
         portal's `Cake`
 
-    >>> PermissionType.Admin.serverInfo()
+    >>> PermissionType.Admin.info()
     'code:42  expands->Admin,Create_Portals,Read_Any_Data,Read_Any_Portal,Write_Any_Data'
 
         can read, write create portals and grant rights to anything
