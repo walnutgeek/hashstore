@@ -18,6 +18,7 @@ from hashstore.utils.api import ApiCallRegistry
 
 log = logging.getLogger(__name__)
 
+FROM_COOKIE='FROM_COOKIE'
 
 class StoreContext(MultiSessionContextManager):
     def __init__(self, store, remote_host=None):
@@ -71,6 +72,10 @@ class GuestAccess(_Access):
     api = guest_api
 
     @guest_api.call()
+    def info(self):
+        return {"isAuthenticated": False}
+
+    @guest_api.call()
     def login(self, email, passwd, client_id=None):
         user = dal.find_user(self.ctx.glue_session(), email)
         if user.passwd.check_secret(passwd):
@@ -99,9 +104,14 @@ class PrivilegedAccess(_Access):
     api = user_api
 
     @user_api.call()
-    def logout(self, session):
+    def info(self):
+        return {"isAuthenticated": True}
+
+    @user_api.call()
+    def logout(self):
+        session_id = self.ctx.params['session_id']
         user_session = self.ctx.srvcfg_session().query(UserSession)\
-            .filter(UserSession.id == session).one()
+            .filter(UserSession.id == session_id).one()
         user_session.active = False
 
     class Permissions:

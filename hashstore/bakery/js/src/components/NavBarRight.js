@@ -27,6 +27,10 @@ export default NavBarRight;
 class NavBar extends React.Component {
     state={email: "", passwd: ""}
 
+    componentDidMount(){
+        AuthActions.fetchServerInfo();
+    }
+
     render() {
         if (authStore.isAuthenticated()) {
             return (

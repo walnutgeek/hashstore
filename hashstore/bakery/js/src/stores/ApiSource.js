@@ -1,5 +1,9 @@
 import AuthActions from './AuthActions';
 
+export const FROM_COOKIE = 'from_cookie';
+export const USER_SESSION='UserSession';
+
+
 const checkStatus = (response) => {
     if (response.status >= 200 && response.status < 300) {
         return response;
@@ -25,16 +29,16 @@ const checkResult = (json) => {
 }
 
 const post = (state, call, msg) => {
-    console.log([call, msg]);
     let headers = {
         'Content-Type': 'application/json'
     };
-    if (state.session != null) {
-        headers['UserSession'] = state.session;
+    if (state.session != null && state.session !== FROM_COOKIE) {
+        headers[USER_SESSION] = state.session;
     }
     return fetch('/.api/post', {
         method: 'POST',
         headers,
+        credentials: 'same-origin',
         body: JSON.stringify({call, msg})
     }).then(
         checkStatus
@@ -46,22 +50,29 @@ const post = (state, call, msg) => {
 }
 
 
-var ApiSource = {
+export var ApiSource = {
     logIn() {
-        console.log('ApiSource.logIn', arguments);
         return {
             remote(state, login_msg) {
-                console.log('ApiSource.logIn.remote', arguments);
                 return post(state, 'login', login_msg);
             },
             success: AuthActions.setSession,
             error: AuthActions.failedLogin,
         };
     },
+    getInfo() {
+        return {
+            remote(state) {
+                return post(state, 'info', {});
+            },
+            success: AuthActions.setServerInfo,
+            error: AuthActions.failedLogin,
+        };
+    },
     logOut(){
         return {
             remote(store) {
-                return post(store, 'logout', {session: store.session});
+                return post(store, 'logout', {});
             },
             success: AuthActions.failedLogin,
             error: AuthActions.failedLogin,
@@ -72,14 +83,12 @@ var ApiSource = {
             remote(store, {open, timeout}) {
                 return new Promise((success,reject)=>{
                     setTimeout(()=>success(open),timeout);
-                })
+                });
             },
             success: AuthActions.setPopover,
             error: AuthActions.failedLogin,
         };
-    },
-
-
+    }
 };
 
 export default ApiSource;

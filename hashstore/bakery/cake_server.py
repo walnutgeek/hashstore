@@ -8,7 +8,8 @@ import signal
 
 import sys
 
-from hashstore.bakery.cake_store import StoreContext, GuestAccess
+from hashstore.bakery.cake_store import StoreContext, GuestAccess, \
+    FROM_COOKIE
 from hashstore.bakery import Content, cake_or_path, SaltedSha
 from hashstore.utils import json_encoder, FileNotFound, ensure_bytes, \
     exception_message
@@ -21,19 +22,25 @@ import tornado.httpserver
 import tornado.gen as gen
 from tornado.iostream import PipeIOStream
 import logging
+
 log = logging.getLogger(__name__)
 
 GIGABYTE = pow(1024, 3)
 
 
 class _StoreAccessMixin:
-
     def initialize(self, store):
         self.store = store
         self._ctx = None
+
         session_id = self.request.headers.get('UserSession')
+        no_session_in_headers = session_id is None or \
+                                session_id == FROM_COOKIE
+        if no_session_in_headers:
+            session_id = self.get_cookie("UserSession")
+
         client_id = self.request.headers.get('ClientID')
-        remote_ip = self.request.headers.get( 'X-Real-IP') or \
+        remote_ip = self.request.headers.get('X-Real-IP') or \
                     self.request.remote_ip
         self.ctx().params['remote_ip'] = remote_ip
         try:
@@ -51,7 +58,7 @@ class _StoreAccessMixin:
 
     def close_ctx(self):
         if self._ctx is not None:
-            self._ctx.__exit__(None,None,None)
+            self._ctx.__exit__(None, None, None)
             self._ctx = None
 
     def on_finish(self):
@@ -65,7 +72,7 @@ class _ContentHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def get(self, path):
         try:
-            content=self.content(path)
+            content = self.content(path)
             if content.mime is not None:
                 mime = content.mime
             else:
@@ -99,14 +106,13 @@ class _ContentHandler(tornado.web.RequestHandler):
 
 
 class GetCakeHandler(_StoreAccessMixin, _ContentHandler):
-
     def content(self, path):
         cake = cake_or_path(path[5:], relative_to_root=True)
         prefix = path[:5]
         content = self.access.get_content(cake)
         if 'data/' == prefix:
             return content
-        elif 'info/' == prefix:
+        elif 'serverInfo/' == prefix:
             return Content(data=json_encoder.encode(content),
                            mime='application/json')
         else:
@@ -136,6 +142,7 @@ class PostHandler(_StoreAccessMixin, tornado.web.RequestHandler):
     def post(self):
         req = json.loads(self.request.body)
         res = self.access.process_api_call(req['call'], req['msg'])
+
         self.write(json_encoder.encode(res))
         self.finish()
 
@@ -149,11 +156,12 @@ def _string_handler(s):
     class StringHandler(_ContentHandler):
         def content(self, _):
             return Content(data=ensure_bytes(s), mime='text/plain')
+
     return StringHandler
 
 
 class CakeServer:
-    def __init__(self, store, max_file_size = 20*GIGABYTE):
+    def __init__(self, store, max_file_size=20 * GIGABYTE):
         self.store = store
         self.config = self.store.server_config()
         self.max_file_size = max_file_size
@@ -166,7 +174,7 @@ class CakeServer:
                 pid = int(response.content)
                 if pid:
                     log.warning('Stopping %d' % pid)
-                    os.kill(pid,signal.SIGINT)
+                    os.kill(pid, signal.SIGINT)
                     if wait_until_down:
                         time.sleep(2)
                     else:
@@ -201,7 +209,7 @@ class CakeServer:
             (r'/\.api/up$', StreamHandler, store_ref),
             (r'/\.api/post$', PostHandler, store_ref),
             (r'/\.get/(.*)$', GetCakeHandler, store_ref),
-            (r'/\.app/(.*)$', AppContentHandler, ),
+            (r'/\.app/(.*)$', AppContentHandler,),
             (r'(.*)$', IndexHandler,)
         ]
         application = tornado.web.Application(handlers)
@@ -210,7 +218,5 @@ class CakeServer:
             application, max_body_size=self.max_file_size)
         http_server.listen(self.config.port)
         logging.info('CakeServer({0.store.store_dir}) '
-                     'listening=0.0.0.0:{0.config.port}'.format(self) )
+                     'listening=0.0.0.0:{0.config.port}'.format(self))
         tornado.ioloop.IOLoop.instance().start()
-
-
