@@ -3,6 +3,9 @@ node_js:
 - "5.3.0"
 install:
   - sudo apt-get update
+  - cd hashstore/bakery/js
+  - npm install
+  - cd ../../..
   - npm install
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
   - bash miniconda.sh -b -p $HOME/miniconda
@@ -21,6 +24,9 @@ install:
     done
 
 script:
+  - cd hashstore/bakery/js
+  - npm run build
+  - cd ../../..
   - npm run build
   - for e in py2 py3 ;
     do

@@ -16,9 +16,9 @@ function cfg(entry_point, out_file){
   var c = {
     entry: entry_point,
     output: {
-        path: abs_dir(name + '/components'),
+        path: abs_dir(name + '/app'),
         filename: out_file,
-        publicPath: "/.components/" ,
+        publicPath: "/.app/" ,
         library: name },
     devtool: "source-map",
     module: {
