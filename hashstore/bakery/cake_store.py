@@ -1,6 +1,6 @@
 import os
 from hashstore.bakery import NotAuthorizedError, CredentialsError, \
-    Content, Cake, NamedCAKes, CakePath, SaltedSha
+    Content, Cake, NamedCAKes, CakePath, SaltedSha, check_favorite_name
 from hashstore.bakery.backend import LiteBackend
 from hashstore.ndb import Dbf, MultiSessionContextManager
 from hashstore.utils import ensure_dict,reraise_with_msg
@@ -10,7 +10,7 @@ from hashstore.ndb.models.server_config import UserSession, ServerKey, \
     ServerConfigBase
 from hashstore.ndb.models.glue import PortalType, Portal, \
     GlueBase, User, UserState, Permission, \
-    PermissionType as PT, Acl
+    PermissionType as PT, Acl, Favorite
 
 import logging
 
@@ -321,6 +321,39 @@ class PrivilegedAccess(_Access):
         '''
         return [str(p.cake) for p in self.auth_user.permissions
             if p.permission_type.needs_cake()]
+
+    @user_api.query()
+    def favorites(self):
+        '''
+        loads user's favorites
+        '''
+        r = NamedCAKes()
+        for p in self.auth_user.favorites:
+            r[p.name] = p.cake
+        return r
+
+    @user_api.query()
+    def save_favorite(self, name, cake):
+        '''
+        add cake to favorites than will
+        '''
+        self.authorize(cake, self.Permissions.read_data_cake)
+        check_favorite_name(name)
+        self.ctx.glue_session().merge(
+            Favorite(name=name, cake=cake, user=self.auth_user))
+
+    @user_api.query()
+    def remove_favorite(self, name):
+        '''
+        remove favorite
+        '''
+        session = self.ctx.glue_session()
+        fav = session.query(Favorite).filter(
+            Favorite.name == name,
+            Favorite.user == self.auth_user).one_or_none()
+        if fav is None:
+            raise ValueError("favorite does not exist:" + name)
+        session.delete(fav)
 
     @user_api.call()
     def list_portals(self):

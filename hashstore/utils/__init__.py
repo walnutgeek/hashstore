@@ -235,6 +235,23 @@ class Jsonable(EnsureIt):
         return str(self) == str(other)
 
 
+class JsonWrap(Jsonable,Stringable):
+    '''
+    >>> jw = JsonWrap('{"b": 3, "a": 5}')
+    >>> jw.json["a"]
+    5
+    >>> jw.json["b"]
+    3
+    >>> str(jw)
+    '{"a": 5, "b": 3}'
+    '''
+    def __init__(self,s):
+        self.json = json_decode(s)
+
+    def to_json(self):
+        return self.json
+
+
 class StringableEncoder(json.JSONEncoder):
     def __init__(self):
         json.JSONEncoder.__init__(self, sort_keys=True)

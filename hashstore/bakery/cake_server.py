@@ -112,7 +112,7 @@ class GetCakeHandler(_StoreAccessMixin, _ContentHandler):
         content = self.access.get_content(cake)
         if 'data/' == prefix:
             return content
-        elif 'serverInfo/' == prefix:
+        elif 'info/' == prefix:
             return Content(data=json_encoder.encode(content),
                            mime='application/json')
         else:

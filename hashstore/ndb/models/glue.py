@@ -24,7 +24,7 @@ from hashstore.ndb.mixins import ReprIt, GuidPk, Cdt, Udt, \
     NameIt, ServersMixin
 from hashstore.ndb import StringCast, IntCast
 from hashstore.bakery import Cake, SaltedSha
-from hashstore.utils import Stringable, EnsureIt
+from hashstore.utils import Stringable, EnsureIt, JsonWrap
 
 import enum
 
@@ -148,6 +148,8 @@ class User(GuidPk, NameIt, Cdt, Udt, ReprIt, GlueBase):
         "Permission",
         order_by="Permission.id",
         back_populates = "user")
+    favorites = relationship( "Favorite", order_by="Favorite.name",
+                              back_populates = "user")
 
     def acls(self):
         if not hasattr(self, '_acls'):
@@ -172,6 +174,7 @@ class PortalHistory(GuidPk, NameIt, Cdt, GlueBase):
     portal_id = Column(None, ForeignKey('portal.id'))
     modified_by = Column(None, ForeignKey('user.id'))
     cake = Column(StringCast(Cake), nullable=False)
+    reference = Column(StringCast(JsonWrap), nullable=True)
     portal = relationship("Portal", back_populates="history")
 
 
@@ -184,6 +187,13 @@ class Permission(GuidPk, NameIt, Cdt, Udt, GlueBase):
     def expanded_acls(self):
         for pt in self.permission_type.expand():
             yield Acl(None, pt, self.cake)
+
+
+class Favorite(NameIt, Cdt, Udt, GlueBase):
+    user_id = Column(None, ForeignKey('user.id'), primary_key=True)
+    name = Column(String, primary_key=True)
+    cake = Column(StringCast(Cake), nullable=False)
+    user = relationship("User", back_populates="favorites")
 
 
 class Server(ServersMixin, GlueBase):

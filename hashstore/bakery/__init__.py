@@ -489,7 +489,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
 
 class NamedCAKes(utils.Jsonable):
     '''
-    sorted dictionary of names and corresponding UDKs
+    sorted dictionary of names and corresponding Cakes
 
     >>> short_k = Cake.from_bytes(b'The quick brown fox jumps over')
     >>> longer_k = Cake.from_bytes(b'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.')
@@ -746,3 +746,22 @@ class CredentialsError(ValueError): pass
 class NotAuthorizedError(ValueError): pass
 
 class NotFoundError(ValueError): pass
+
+RESERVED_NAMES = ('h', '.app', '.api', '.get', '.pid', '.server_id')
+
+def check_favorite_name(name):
+    '''
+    >>> check_favorite_name('a')
+    >>> check_favorite_name('h')
+    Traceback (most recent call last):
+    ...
+    ValueError: Reserved name: h
+    >>> check_favorite_name('a/h')
+    Traceback (most recent call last):
+    ...
+    ValueError: Cannot contain slash: a/h
+    '''
+    if '/' in name:
+        raise ValueError('Cannot contain slash: ' +name)
+    if name in RESERVED_NAMES:
+        raise ValueError('Reserved name: '+name)
