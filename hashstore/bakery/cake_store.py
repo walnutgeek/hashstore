@@ -73,7 +73,7 @@ class GuestAccess(_Access):
 
     @guest_api.call()
     def info(self):
-        return {"isAuthenticated": False}
+        return {"isAuthenticated": False, "anyCakeAccess": False}
 
     @guest_api.call()
     def login(self, email, passwd, client_id=None):
@@ -105,7 +105,9 @@ class PrivilegedAccess(_Access):
 
     @user_api.call()
     def info(self):
-        return {"isAuthenticated": True}
+        any_cake = Acl(None,PT.Read_Any_Data,None) \
+                   in self.auth_user.acls()
+        return {"isAuthenticated": True, "anyCakeAccess": any_cake}
 
     @user_api.call()
     def logout(self):

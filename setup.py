@@ -1,10 +1,21 @@
-from setuptools import setup
+from setuptools import setup,find_packages
+from setuptools.command.sdist import sdist
 
 # MANIFEST.in ensures that requirements are included in `sdist`
 install_requires = open('requirements.txt').read().split()
+version = open('version.txt').read().strip()
+
+
+class MySdistCommand(sdist):
+    def run(self):
+        import subprocess
+        for d in ('hashstore/bakery/js',): # '.',
+            for c in (['npm', 'install'], ['npm', 'run', 'build'] ):
+                subprocess.check_call(c, cwd=d)
+        sdist.run(self)
 
 setup(name='hashstore',
-      version='0.0.12',
+      version=version,
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Intended Audience :: Developers',
@@ -20,8 +31,9 @@ setup(name='hashstore',
       author='Walnut Geek',
       author_email='wg@walnutgeek.com',
       license='Apache 2.0',
-      packages=['hashstore'],
-      package_data={'': ['app/*', 'bakery/app/*']},
+      packages=find_packages(exclude=("tests",)),
+      package_data={'': ['utils/file_types.json','app/*', 'bakery/app/*', 'bakery/app/fonts/*']},
+      cmdclass={'sdist': MySdistCommand},
       entry_points={
           'console_scripts': [
               '%s=hashstore.%s:main'%(n, n) for n in

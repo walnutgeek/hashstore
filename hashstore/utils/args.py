@@ -4,30 +4,31 @@ import inspect
 
 getargspec = inspect.getargspec if bytes == str else inspect.getfullargspec
 
-_Opt = namedtuple("_Opt", 'name help default type choices'.split())
+_Opt = namedtuple("_Opt", 'name help has_default default type choices'.split())
 
 Cmd = namedtuple("Cmd", 'name help options'.split())
 
 
 class Opt(_Opt):
-    def __new__(cls, name, help='', default=None, type=None, choices=None):
-        if default is not None:
+    def __new__(cls, name, help='', has_default=False, default=None, type=None, choices=None):
+        if has_default:
             help += 'Default is: %r. ' % default
         if choices is not None:
             help += 'Choices are: %r. ' % (choices,)
-        return _Opt.__new__(cls, name, help, default, type, choices)
+        return _Opt.__new__(cls, name, help, has_default, default, type, choices)
 
     def add_itself(self, parser):
         parser.add_argument('--%s' % self.name,
                             metavar=self.name, help=self.help,
                             dest=self.name, type=self.type,
+                            required=not(self.has_default),
                             default=self.default,
                             choices=self.choices)
 
 
 class Switch(_Opt):
     def __new__(cls, name, help='', default=False):
-        return _Opt.__new__(cls, name, help, default, bool, None)
+        return _Opt.__new__(cls, name, help, True, default, bool, None)
 
     def add_itself(self, parser):
         parser.set_defaults(**{ self.name : self.default})
@@ -70,15 +71,18 @@ class CommandArgs:
                 if isinstance(opt_help,tuple):
                     opt_type = opt_help[1]
                     opt_help = opt_help[0]
+                has_default = True
                 if opt_type == Switch:
                     default = False
                     sw = True
                 if i >= def_offset:
                     default = opt_defaults[i - def_offset]
+                else:
+                    has_default = False
                 if sw:
                     options.append(Switch(n, opt_help, default))
                 else:
-                    options.append(Opt(n, opt_help, default, opt_type ))
+                    options.append(Opt(n, opt_help, has_default, default, opt_type ))
             self.commands.append(Cmd(fn.__name__, command_help, options))
             return fn
         return decorate

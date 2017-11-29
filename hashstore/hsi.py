@@ -85,7 +85,7 @@ class ClientApp:
         print(cake)
 
     @ca.command('save local files on remote server')
-    def backup(self, dir):
+    def backup(self, dir='.'):
         client = CakeClient()
         cu_session = client.check_mount_session(dir)
         if cu_session is None:

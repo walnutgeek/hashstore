@@ -105,7 +105,6 @@ def call_if_defined (o, k, *args):
     return getattr(o,k)(*args) if hasattr(o,k) else None
 
 
-
 if bytes == str:  # python2
     is_str = lambda s: isinstance(s, (str, unicode))
     binary_type = str

@@ -3,6 +3,8 @@ import enum
 from hashstore.utils import exception_message
 from hashstore.utils.args import getargspec
 
+import logging
+log = logging.getLogger(__name__)
 
 def _identity(x):
     return x
@@ -104,5 +106,6 @@ class ApiCallRegistry:
             r = getattr(obj, call_name)(**converted)
             return {'result': call_meta.coerce_return_fn(r)}
         except:
+            log.exception('exception on: {call_name}({params})'.format(**locals()))
             msg = exception_message()
             return {'error': call_meta.coerce_error_fn(msg)}

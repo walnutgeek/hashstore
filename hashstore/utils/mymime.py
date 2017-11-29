@@ -1,14 +1,23 @@
 import mimetypes
+import json
+from six import itervalues
+from os.path import join, dirname
 
-MIME_HS_BUNDLE = 'application/hashstore+bundle'
-MIME_WDF = 'text/wdf'
+from hashstore.utils import ensure_bytes, ensure_unicode
 
-my_mimetypes = [
-        (['.hs_bundle','.hsb'],    MIME_HS_BUNDLE),
-        (['.wdf'],                 MIME_WDF),
-]
+file_types = json.load(open(join(dirname(__file__), 'file_types.json')))
 
-my_mime_dict = {k: v[1] for v in my_mimetypes for k in v[0]}
+MIME_HS_BUNDLE = MIME_HSB = file_types['HSB']["mime"]
+MIME_WDF = file_types['WDF']["mime"]
+
+
+my_mime_dict = {
+    conversion(ext): conversion(v['mime'])
+        for v in itervalues(file_types) if 'ext' in v
+            for ext in v['ext']
+                for conversion in [ensure_unicode, ensure_bytes]
+}
+
 
 
 def guess_type(filename):
@@ -18,10 +27,8 @@ def guess_type(filename):
     'text/plain'
     >>> guess_type('abc.wdf')
     'text/wdf'
-    >>> guess_type('abc.hs_bundle')
-    'application/hashstore+bundle'
     >>> guess_type('abc.hsb')
-    'application/hashstore+bundle'
+    'text/hsb'
     >>> guess_type('.wdf')
     >>> guess_type('abc.html')
     'text/html'
@@ -44,9 +51,9 @@ def extract_extension(filename):
     >>> extract_extension('.txt')
     >>> extract_extension(None)
     >>> extract_extension('abc.txt')
-    '.txt'
+    'txt'
     >>> extract_extension('a.html')
-    '.html'
+    'html'
 
     :param filename: file path
     :return: extension
@@ -54,7 +61,7 @@ def extract_extension(filename):
     try:
         dot_p = filename.rindex('.')
         if dot_p > 0:
-            return filename[dot_p:]
+            return filename[dot_p+1:]
     except:
         pass
     return None
