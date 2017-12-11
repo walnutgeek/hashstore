@@ -7,15 +7,17 @@ import {
     Position,
     PopoverInteractionKind,
 } from "@blueprintjs/core";
-import ToButton from './ToButton'
-import authStore from '../stores/AuthStore';
+import ToButton from './common_componets'
+
+import SessionStore from '../stores/SessionStore';
+
 import AuthActions from '../stores/AuthActions';
 
-const Icon = ({iconName}) => (
+export const Icon = ({iconName}) => (
     <span className={`pt-icon pt-icon-${iconName}`}></span>);
 
 const NavBarRight = () => (
-    <AltContainer store={authStore}>
+    <AltContainer store={SessionStore}>
         <NavBar />
     </AltContainer>
 );
@@ -32,15 +34,15 @@ class NavBar extends React.Component {
     }
 
     render() {
-        if (authStore.isAuthenticated()) {
+        if (SessionStore.isAuthenticated()) {
             return (
                 <div className="pt-navbar-group pt-align-right">
                     <ToButton to="/" iconName="home">Home</ToButton>
-                    <ToButton to="/portals"
+                    <ToButton to="/h/"
                               iconName="list">Potals</ToButton>
                     <span className="pt-navbar-divider"></span>
                     <Button className={Classes.MINIMAL}
-                            onClick={() => AuthActions.logOut()}
+                            onClick={AuthActions.logOut}
                             iconName="log-out"/>
                 </div>
             );

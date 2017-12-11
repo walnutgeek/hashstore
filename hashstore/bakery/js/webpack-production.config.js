@@ -5,8 +5,9 @@ const TransferWebpackPlugin = require('transfer-webpack-plugin');
 const config = {
   entry: {
     main: [
-      'whatwg-fetch',
-      './src/app.js',
+        'whatwg-fetch',
+        'url-search-params-polyfill',
+        './src/app.js',
     ],
   },
   // Render source-map file for final build
@@ -52,6 +53,15 @@ const config = {
           {
             loader: 'css-loader',
           },
+        ],
+
+      },
+      {
+        test: /\.json$/,
+        use: [
+          {
+            loader: 'json-loader',
+          }
         ],
 
       },

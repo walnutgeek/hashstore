@@ -51,6 +51,7 @@ class StoreContext(MultiSessionContextManager):
                 self.params['user_id'] = user_session.user
                 self.params['session_id'] = user_session.id
                 return PrivilegedAccess(self, user_session.user)
+        log.warning('{session_id} {client_id}'.format(**locals()))
         raise CredentialsError('cannot validate session')
 
 
@@ -316,13 +317,11 @@ class PrivilegedAccess(_Access):
         return user, sorted(user.permissions, key=dal.PERM_SORT)
 
     @user_api.query()
-    def list_acl_cakes(self):
-        '''
-        inspects Read_ permissions for user and return any specific
-        cakes he allowed to see
-        '''
-        return [str(p.cake) for p in self.auth_user.permissions
-            if p.permission_type.needs_cake()]
+    def list_acls(self):
+        ''' show all acls for user'''
+        return [{"permission": p.permission_type.name ,
+                  "cake": p.cake }
+                 for p in self.auth_user.permissions]
 
     @user_api.query()
     def favorites(self):

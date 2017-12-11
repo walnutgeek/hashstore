@@ -91,8 +91,7 @@ class _ContentHandler(tornado.web.RequestHandler):
         except FileNotFound:
             self.send_error(404)
         except:
-            log.warning(sys.exc_info()[0])
-            log.warning(exception_message())
+            log.exception('error')
             self.send_error(500)
 
     def on_file_end(self, s):
