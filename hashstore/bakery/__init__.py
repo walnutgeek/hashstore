@@ -173,7 +173,7 @@ class Content(Jsonable):
         return os.open(self.file,os.O_RDONLY)
 
     def to_json(self):
-        return { k:getattr(self,'k') for k in self.JSONABLE_FIELDS}
+        return { k:getattr(self,k) for k in self.JSONABLE_FIELDS}
 
 
 class KeyStructure(enum.IntEnum):
