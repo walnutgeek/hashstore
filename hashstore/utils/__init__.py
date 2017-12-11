@@ -7,7 +7,7 @@ import sys
 import uuid
 import abc
 import enum
-
+from datetime import date, datetime
 
 def quict(**kwargs):
     r = {}
@@ -256,6 +256,8 @@ class StringableEncoder(json.JSONEncoder):
         json.JSONEncoder.__init__(self, sort_keys=True)
 
     def default(self, o):
+        if isinstance(o, (datetime, date)):
+            return o.isoformat()
         if isinstance(o, Stringable):
             return str(o)
         if isinstance(o, Jsonable):
