@@ -6,7 +6,7 @@ import {
 
 
 import PathBar from './PathBar';
-//import ContentView from './ContentView';
+import ContentView from './ContentView';
 import AliasSettings from './AliasSettings';
 import AclSettings from './AclSettings';
 
@@ -21,6 +21,7 @@ const Home = ()=>(
 const Stub = () => {
     return (<h1>Stub</h1>);
 };
+
 //ContentView
 const Main = ()=>(
     <Router>
@@ -33,7 +34,7 @@ const Main = ()=>(
                     <Route exact path="/" component={Home}/>
                     <Route path="/~/acl" component={AclSettings}/>
                     <Route path="/~/aliases" component={AliasSettings}/>
-                    <Route path="/:path*" component={Stub}/>
+                    <Route path="/:path*" component={ContentView}/>
                 </Switch>
             </div>
         </div>

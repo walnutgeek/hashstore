@@ -1,12 +1,16 @@
 import alt from '../alt';
+import LogActions from './LogActions'
 
 class AuthActions {
+  failedLogin(message) {
+    LogActions.logIt(message);
+    return message;
+  }
   fetchServerInfo() {return {};}
   setServerInfo(info) {return info;}
-  setPopover(open) {return open;}
-  failedLogin(message) {return message;}
   setSession(session) {return session;}
   logIn(email, passwd) { return {email, passwd};}
+  setPopover(open) {return open;}
   logOut() {return {};}
 }
 

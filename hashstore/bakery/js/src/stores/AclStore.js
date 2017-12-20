@@ -1,9 +1,9 @@
 
 import alt from '../alt';
 import AclActions from './AclActions';
-import AuthActions from './AuthActions';
 import {post} from './SessionStore';
 import Cake from '../utils/Cake';
+import LogActions from "./LogActions";
 
 
 
@@ -23,7 +23,7 @@ class AclStore {
                         return post('list_acls',{});
                     },
                     success: AclActions.setAcls,
-                    error: AuthActions.failedLogin,
+                    error: LogActions.logIt,
                 };
             },
         });

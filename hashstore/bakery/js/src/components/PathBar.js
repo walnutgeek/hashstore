@@ -10,9 +10,9 @@ import {
     Position, PopoverInteractionKind
 } from "@blueprintjs/core";
 import {ToButton,ToMenuItem} from './common_componets'
-import PathStore from '../stores/PathStore';
+import ContentStore from '../stores/ContentStore';
 import SessionStore from '../stores/SessionStore';
-import PathActions from '../stores/PathActions';
+import ContentActions from '../stores/ContentActions';
 import AuthActions from '../stores/AuthActions';
 import classNames from "classnames";
 
@@ -22,9 +22,9 @@ const Icon = ({iconName}) => (
 
 export const PathBar = ({match}) => {
     const {path} = match.params;
-    PathActions.setPath(path);
+    ContentActions.setPath(path);
     return (
-        <AltContainer store={PathStore}>
+        <AltContainer store={ContentStore}>
             <PathBarBody />
         </AltContainer>);
 };

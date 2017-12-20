@@ -1,5 +1,6 @@
 import alt from '../alt';
 import AuthActions from './AuthActions';
+import LogActions from './LogActions';
 import * as Cookies from "js-cookie";
 
 const FROM_COOKIE = 'from_cookie';
@@ -36,16 +37,15 @@ const checkResult = (json) => {
 class SessionStore {
     constructor(){
         this.session = null;
-        this.message = null;
         this.serverInfo = null;
         this.isPopoverOpen = false;
 
         this.bindListeners({
           handleFetchServerInfo: AuthActions.FETCH_SERVER_INFO,
           handleSetServerInfo: AuthActions.SET_SERVER_INFO,
-          handleSetPopover: AuthActions.SET_POPOVER,
           handleSetSession: AuthActions.SET_SESSION,
           handleFailedLogin: AuthActions.FAILED_LOGIN,
+          handleSetPopover: AuthActions.SET_POPOVER,
           handleLogIn: AuthActions.LOG_IN,
           handleLogOut: AuthActions.LOG_OUT,
         });
@@ -70,7 +70,7 @@ class SessionStore {
                         return post('info', {});
                     },
                     success: AuthActions.setServerInfo,
-                    error: AuthActions.failedLogin,
+                    error: LogActions.logIt,
                 };
             },
             logOut(){
@@ -82,30 +82,11 @@ class SessionStore {
                     error: AuthActions.failedLogin,
                 };
             },
-            setPopover(){
-                return {
-                    remote(store, {open, timeout}) {
-                        return new Promise((success,reject)=>{
-                            setTimeout(()=>success(open),timeout);
-                        });
-                    },
-                    success: AuthActions.setPopover,
-                    error: AuthActions.failedLogin,
-                };
-            }
-
         });
     }
 
     isAuthenticated(){
         return this.getState().session != null;
-    }
-
-    handleSetPopover(open){
-        this.isPopoverOpen = open;
-        if(!open){
-            this.message = null;
-        }
     }
 
     handleFetchServerInfo(info){
@@ -118,8 +99,9 @@ class SessionStore {
         const local_auth = this.session != null;
         if( remote_auth !== local_auth) {
             if( remote_auth ){
-                this.session=FROM_COOKIE;
+                this.session=Cookies.get(USER_SESSION);
             }else {
+                this.handleLogOut();
                 this.session = null;
                 Cookies.remove(USER_SESSION);
             }
@@ -132,20 +114,15 @@ class SessionStore {
         if(session && session !== FROM_COOKIE){
             Cookies.set(USER_SESSION, session)
         }
-        this.message = null;
         this.isPopoverOpen = false;
     }
 
     handleFailedLogin(err){
-        this.session = null;
-        // Cookies.remove(USER_SESSION);
-        if (err){
-            this.message = err.message || err ;
-            this.isPopoverOpen = true;
-            this.getInstance().setPopover( {open: false, timeout: 1000} );
-        }else {
-            this.message = null;
-        }
+        this.handleLogOut();
+    }
+
+    handleSetPopover(open){
+        this.isPopoverOpen = open;
     }
 
     handleLogIn(email_passwd){
@@ -157,9 +134,9 @@ class SessionStore {
     handleLogOut(){
         if(this.getInstance().isAuthenticated()){
             this.getInstance().logOut();
-        }else{
-            this.handleFailedLogin(null);
         }
+        this.session = null;
+        Cookies.remove(USER_SESSION);
     }
 }
 
@@ -192,7 +169,7 @@ let getHeaders = (initParams) => {
     return {};
 };
 
-export const get = (path) => {
+const get_response = (path) => {
     let headers = getHeaders();
     const url = '/.get/' + path;
     console.log('GET: '+url);
@@ -202,9 +179,12 @@ export const get = (path) => {
         credentials: 'same-origin',
     }).then(
         checkStatus
-    ).then(
-        getText
     );
-}
+};
+
+
+export const get = (path) => get_response(path).then(getText);
+
+export const get_json = (path) => get_response(path).then( parseJSON );
 
 export default sessionStore;

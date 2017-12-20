@@ -3,7 +3,10 @@ import {
   Route
 } from 'react-router-dom';
 
-import {Button,MenuItem} from "@blueprintjs/core";
+import {
+    Button,MenuItem,
+    Toaster,Position
+} from "@blueprintjs/core";
 
 const createOnClicker = (OnClicker) => (
     ({to, children, ...props}) => (
@@ -20,3 +23,8 @@ export const ToMenuItem = createOnClicker(MenuItem);
 
 export const Icon = ({iconName}) => (
     <span className={`pt-icon pt-icon-${iconName}`}></span>);
+
+export const MyToaster = Toaster.create({
+    className: "my-toaster",
+    position: Position.TOP_RIGHT,
+});
