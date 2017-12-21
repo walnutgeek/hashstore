@@ -2,7 +2,6 @@ from hashstore.utils import Stringable, EnsureIt, Jsonable
 from six import BytesIO, string_types, iteritems, binary_type
 import hashlib
 import os
-import sys
 import hashstore.utils as utils
 import base64
 from hashstore.utils.base_x import base_x,iseq
@@ -11,7 +10,7 @@ import enum
 
 import logging
 from hashstore.utils import path_split_all
-from hashstore.utils.mymime import guess_type, MIME_HS_BUNDLE
+from hashstore.utils.file_types import guess_name, file_types, HSB
 
 log = logging.getLogger(__name__)
 
@@ -122,15 +121,13 @@ class ContentAddress(Stringable, EnsureIt):
 
 
 class Content(Jsonable):
-    JSONABLE_FIELDS='size created_dt mime'.split()
+    JSONABLE_FIELDS='size created_dt file_type mime'.split()
 
     def __init__(self, data=None, file=None, stream_fn=None,
-                 mime=None, created_dt=None,
+                 mime=None, file_type=None, created_dt=None,
                  size=None, data_type=None, lookup=None):
-        if mime is None:
-            if file is not None:
-                mime = guess_type(file)
         self.mime = mime
+        self.file_type = file_type
         if data is None and file is None and stream_fn is None:
             raise AssertionError('define data or file or stream_fn')
         self.data = data
@@ -144,13 +141,21 @@ class Content(Jsonable):
             self.size = lookup.size
             self.created_dt = lookup.created_dt
 
+    def guess_file_type(self):
+        if self.file_type is None:
+            if self.file is not None:
+                self.file_type = guess_name(self.file)
+        if self.file_type is not None and self.mime is None:
+            self.mime = file_types[self.file_type]['mime']
+        return self
+
     def set_data_type(self, copy_from):
         if hasattr(copy_from, 'data_type'):
             self.data_type = copy_from.data_type
-            if self.mime is None:
+            if self.file_type is None:
                 if self.data_type == DataType.BUNDLE:
-                    self.mime = MIME_HS_BUNDLE
-        return self
+                    self.file_type = HSB
+        return self.guess_file_type()
 
     def has_data(self):
         return self.data is not None
@@ -637,10 +642,6 @@ class CakePath(utils.Stringable, utils.EnsureIt):
         path = list(self.path)
         path.append(name)
         return CakePath(None, _path=path, _root=self.root)
-
-    def guess_mime(self):
-        if len(self.path) > 0 :
-            return guess_type(self.path[-1])
 
     def relative(self):
         return self.root is None

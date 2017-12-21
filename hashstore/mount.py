@@ -1,4 +1,4 @@
-from hashstore.utils.mymime import MIME_WDF, guess_type, MIME_HS_BUNDLE
+from hashstore.utils.file_types import file_types, guess_type, WDF, HSB
 from hashstore.session import _session, _session_dbf
 from hashstore.local_store import HashStore, AccessMode
 from hashstore.udk import process_stream, UDK, UDKBundle
@@ -8,6 +8,8 @@ import os
 
 import logging
 
+MIME_WDF=file_types[WDF]['mime']
+MIME_HS_BUNDLE=file_types[HSB]['mime']
 
 log = logging.getLogger(__name__)
 

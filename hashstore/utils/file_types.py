@@ -5,10 +5,11 @@ from os.path import join, dirname
 
 from hashstore.utils import ensure_bytes, ensure_unicode
 
+
 file_types = json.load(open(join(dirname(__file__), 'file_types.json')))
 
-MIME_HS_BUNDLE = MIME_HSB = file_types['HSB']["mime"]
-MIME_WDF = file_types['WDF']["mime"]
+WDF = 'WDF'
+HSB = 'HSB'
 
 
 my_mime_dict = {

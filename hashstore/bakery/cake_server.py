@@ -13,7 +13,7 @@ from hashstore.bakery.cake_store import StoreContext, GuestAccess, \
 from hashstore.bakery import Content, cake_or_path, SaltedSha
 from hashstore.utils import json_encoder, FileNotFound, ensure_bytes, \
     exception_message
-from hashstore.utils.mymime import guess_type
+from hashstore.utils.file_types import guess_type
 import json
 import tornado.web
 import tornado.template
@@ -189,11 +189,13 @@ class CakeServer:
 
         class AppContentHandler(_ContentHandler):
             def content(self, path):
-                return Content(file=os.path.join(app_dir, path))
+                return Content(file=os.path.join(app_dir, path))\
+                    .guess_file_type()
 
         class IndexHandler(_ContentHandler):
             def content(self, _):
-                return Content(file=os.path.join(app_dir, 'index.html'))
+                return Content(file=os.path.join(app_dir, 'index.html'))\
+                    .guess_file_type()
 
         pid = str(os.getpid())
         server_id = json_encoder.encode(

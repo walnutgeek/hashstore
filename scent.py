@@ -30,7 +30,7 @@ def execute_one_test(*args):
     # case += ' hashstore.tests.ndb_models_tests'
     # case += ' hashstore.tests.ndb_tests'
     case += ' hashstore.tests.utils_tests'
-    case += ' hashstore.tests.mymime_tests'
+    case += ' hashstore.tests.utils_file_types_tests'
     # case += ' hashstore.tests.utils.base_x_tests'
     # case += ' hashstore.tests.doc_tests'
     return run(case, ['py2', 'py3'])
