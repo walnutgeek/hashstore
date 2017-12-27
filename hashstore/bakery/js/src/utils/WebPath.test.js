@@ -38,6 +38,29 @@ test('WebPath', () => {
         .toBe("_/1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV/a/");
     expect(ap.toString()).toBe("_/1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV/a/");
 
+    ap = ap.child("b.txt");
+    expect(ap.root).toBeFalsy();
+    expect(ap.settings).toBeFalsy();
+    expect(ap.aliasPath).toBeTruthy();
+
+    expect(ap.slash).toBe(false);
+    expect(ap.name).toBe("b.txt");
+    expect(ap.ext()).toBe("txt");
+    expect(ap.aliasPath.toString()).toBe("_/1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV/a/b.txt");
+    expect(ap.toString()).toBe("_/1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV/a/b.txt");
+
+    ap = new WebPath("_/1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV/a/");
+    ap = ap.child("b", true);
+    expect(ap.root).toBeFalsy();
+    expect(ap.settings).toBeFalsy();
+    expect(ap.aliasPath).toBeTruthy();
+
+    expect(ap.slash).toBe(true);
+    expect(ap.name).toBe("b");
+    expect(ap.ext()).toBe("/");
+    expect(ap.aliasPath.toString()).toBe("_/1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV/a/b/");
+    expect(ap.toString()).toBe("_/1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV/a/b/");
+
     ap = new WebPath("_/1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV/a");
     expect(ap.root).toBeFalsy();
     expect(ap.settings).toBeFalsy();

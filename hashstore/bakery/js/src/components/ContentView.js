@@ -8,10 +8,12 @@ import {
 
 import ContentActions from '../stores/ContentActions';
 import ContentStore from '../stores/ContentStore';
+import {View} from "./viewers";
 
 import {
-    Breadcrumb, CollapsibleList, Button,Popover,
-    Classes,Position, MenuItem
+    Breadcrumb, CollapsibleList,
+    Button, Popover,
+    Classes, Position, MenuItem
 } from "@blueprintjs/core";
 
 export const ContentView = ({match}) =>{
@@ -27,11 +29,22 @@ class ContentViewBody extends React.Component {
         const {path, info, content} = this.props;
         return (
             <div>
-                <h4>ContentView</h4>
-                <div id="2" > {info ? (<pre>
-{JSON.stringify(info, undefined, 2)}
-{JSON.stringify(JSON.parse(content),undefined, 2)}
-</pre>) : <span />} </div>
+                 {info ? (
+                     <div>
+                        <table className="pt-table pt-bordered">
+                            <thead>
+                                <tr>
+                                {Object.keys(info).map(t=><th>{t}</th>)}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                {Object.keys(info).map(t=><td>{info[t]}</td>)}
+                                </tr>
+                            </tbody>
+                        </table>
+                        <View path={path} info={info} content={content}/>
+                     </div>) : <div />}
             </div>);
     }
 }

@@ -6,6 +6,9 @@ export class AliasPath{
         this.path = path;
     }
 
+    child(name, slash){
+        return new AliasPath([...this.path, name], slash);
+    }
     isCakeBased(){
         return this.path[0] instanceof Cake;
     }
@@ -45,36 +48,36 @@ export default class WebPath{
         s = s || '';
         this.path = s.split(new RegExp('/+'));
         let length = this.path.length;
-        this.name = this.path[length-1];
+        this.name = this.path[length - 1];
         this.slash = this.name === '';
-        if( this.slash ){
+        if (this.slash) {
             length = length - 1;
-            this.path = this.path.slice(0,length);
-            this.name = this.path[length-1];
+            this.path = this.path.slice(0, length);
+            this.name = this.path[length - 1];
         }
-        if( length < 1 || this.name === '' ){
+        if (length < 1 || this.name === '') {
             this.root = true;
-        }else{
+        } else {
             const key = this.path[0];
-            if( key === '~'){
+            if (key === '~') {
                 this.settings = this.path.slice(1);
-            }else{
-                let alias, path_start ;
-                if( key === '_' ) {
+            } else {
+                let alias, path_start;
+                if (key === '_') {
                     alias = new Cake(this.path[1]);
                     path_start = 2;
-                }else{
+                } else {
                     alias = this.path[0];
-                    path_start = 1 ;
+                    path_start = 1;
                 }
                 let path = this.path.slice(path_start);
-                this.aliasPath = new AliasPath([alias,...path], this.slash);
+                this.aliasPath = new AliasPath([alias, ...path], this.slash);
             }
         }
     }
 
-    resolve_alias(cake){
-        this.resolve(cake, 1);
+    child(name, slash){
+        return new WebPath(this.aliasPath.child(name, slash).toString());
     }
 
     ext(){

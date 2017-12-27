@@ -3,6 +3,7 @@ import alt from '../alt';
 import ContentActions from './ContentActions';
 import LogActions from './LogActions';
 import {get_json, get} from './SessionStore'
+import {has_viewers} from '../components/viewers'
 
 
 class ContentStore {
@@ -61,12 +62,11 @@ class ContentStore {
         this.info = info;
         this.content = null ;
         if( this.info != null ){
-            if( this.info.size < 100000 ){
+            if( has_viewers(this.info.type) && this.info.size < 100000 ){
                 this.getInstance().requestContent();
             }
         }
     }
-
 
     handleSetContent(content){
         this.content = content;

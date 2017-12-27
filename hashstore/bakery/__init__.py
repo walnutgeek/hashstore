@@ -121,7 +121,13 @@ class ContentAddress(Stringable, EnsureIt):
 
 
 class Content(Jsonable):
-    JSONABLE_FIELDS='size created_dt file_type mime'.split()
+    '''
+    >>> c=Content(size=3,created_dt="some time ago", file_type="TXT", mime='text/plain', data='abc')
+    >>> json.dumps(c.to_json(),sort_keys=True)
+    '{"created_dt": "some time ago", "mime": "text/plain", "size": 3, "type": "TXT"}'
+    '''
+    JSONABLE_FIELDS = [(k+':'+k).split(':')[0:2] for k in
+                      'size created_dt file_type:type mime'.split()]
 
     def __init__(self, data=None, file=None, stream_fn=None,
                  mime=None, file_type=None, created_dt=None,
@@ -141,10 +147,12 @@ class Content(Jsonable):
             self.size = lookup.size
             self.created_dt = lookup.created_dt
 
-    def guess_file_type(self):
+    def guess_file_type(self, file=None):
+        if file is None:
+            file = self.file
         if self.file_type is None:
-            if self.file is not None:
-                self.file_type = guess_name(self.file)
+            if file is not None:
+                self.file_type = guess_name(file)
         if self.file_type is not None and self.mime is None:
             self.mime = file_types[self.file_type]['mime']
         return self
@@ -178,7 +186,7 @@ class Content(Jsonable):
         return os.open(self.file,os.O_RDONLY)
 
     def to_json(self):
-        return { k:getattr(self,k) for k in self.JSONABLE_FIELDS}
+        return { n:getattr(self,k) for k,n in self.JSONABLE_FIELDS}
 
 
 class KeyStructure(enum.IntEnum):
@@ -664,6 +672,11 @@ class CakePath(utils.Stringable, utils.EnsureIt):
 
     def path_join(self):
         return '/'.join(self.path)
+
+    def filename(self):
+        l = len(self.path)
+        if l > 0 and self.path[l-1]:
+            return self.path[l-1]
 
 
 def cake_or_path(s, relative_to_root=False):

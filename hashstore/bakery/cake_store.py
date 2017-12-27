@@ -234,7 +234,7 @@ class PrivilegedAccess(_Access):
                 content = self.backend().get_content(next_cake)
             else:
                 content = self.get_content(next_cake)
-        return content
+        return content.guess_file_type(cake_path.filename())
 
     #TODO query and
     # @user_api.call()

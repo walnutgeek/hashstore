@@ -9,12 +9,13 @@ import {
     CollapsibleList, CollapseFrom, MenuItem,
     Position, PopoverInteractionKind
 } from "@blueprintjs/core";
-import {ToButton,ToMenuItem} from './common_componets'
+
+import history from '../history';
+import {ToButton} from './common_componets';
 import ContentStore from '../stores/ContentStore';
 import SessionStore from '../stores/SessionStore';
 import ContentActions from '../stores/ContentActions';
 import AuthActions from '../stores/AuthActions';
-import classNames from "classnames";
 
 
 const Icon = ({iconName}) => (
@@ -28,9 +29,10 @@ export const PathBar = ({match}) => {
             <PathBarBody />
         </AltContainer>);
 };
+
 export default PathBar;
 
-const buildMenuItems = (history, path) => {
+const buildMenuItems = (path) => {
     let menuItems = [];
     if( path.settings ){
         menuItems.push(
@@ -47,13 +49,10 @@ const buildMenuItems = (history, path) => {
         }
     }else if( path.aliasPath ){
         path.aliasPath.allSubpaths().forEach(subpath=>{
-            console.log(subpath.name(), subpath.toString());
             menuItems.push(<MenuItem text={subpath.name()}
                                      onClick={ ()=>history.push(`/${subpath.toString()}`) }
                                       />  );
         });
-    }else{
-        console.log('empty');
     }
     return menuItems;
 };
@@ -65,36 +64,28 @@ class PathBarBody extends React.Component {
         return (
             <nav className="pt-navbar pt-">
                 <div className="pt-navbar-group pt-align-left">
-                    <Route render={({history}) => {
-                        const items = buildMenuItems(history, path);
-                        return (
-                            <div className="pt-navbar-heading">
-                                <img src="/.app/hashstore.svg"
-                                     style={{width: 30, height: 30,
-                                         marginRight: 10}}
-                                     onClick={()=>history.push('/')}/>
-                                <CollapsibleList
-                                    collapseFrom={CollapseFrom.START}
-                                    visibleItemCount={3}
-                                    className={Classes.BREADCRUMBS}
-                                    dropdownTarget={<span className={Classes.BREADCRUMBS_COLLAPSED} />}
-                                    renderVisibleItem={this.renderBreadcrumb}
-                                >
-                                    {items}
-                                </CollapsibleList>
-                            </div>);
-                        }}/>
+                    <div className="pt-navbar-heading">
+                        <img src="/.app/hashstore.svg"
+                             style={{width: 30, height: 30,
+                                 marginRight: 10}}
+                             onClick={()=>history.push('/')}/>
+                        <CollapsibleList
+                            collapseFrom={CollapseFrom.START}
+                            visibleItemCount={3}
+                            className={Classes.BREADCRUMBS}
+                            dropdownTarget={<span className={Classes.BREADCRUMBS_COLLAPSED} />}
+                            renderVisibleItem={this.renderBreadcrumb}
+                        >
+                            {buildMenuItems(path)}
+                        </CollapsibleList>
+                    </div>
                 </div>
                 <ToolBar/>
             </nav>);
     }
 
-    renderBreadcrumb(props) {
-        if (props.onClick != null) {
-            return <a className={Classes.BREADCRUMB} onClick={props.onClick}>{props.text}</a>;
-        } else {
-            return <span className={Classes.BREADCRUMB}>{props.text}</span>;
-        }
+    renderBreadcrumb({text,onClick}) {
+        return <a className={Classes.BREADCRUMB} onClick={onClick}>{text}</a>;
     }
 
 }
@@ -117,9 +108,12 @@ class ToolBarBody extends React.Component {
         if (SessionStore.isAuthenticated()) {
             return (
                 <div className="pt-navbar-group pt-align-right">
-                    <ToButton to="/" iconName="home">Home</ToButton>
-                    <ToButton to="/h/"
-                              iconName="list">Potals</ToButton>
+                    <ToButton to="/~/acl" >
+                        Acl
+                    </ToButton>
+                    <ToButton to="/~/aliases" iconName="list">
+                        Aliases
+                    </ToButton>
                     <span className="pt-navbar-divider"></span>
                     <Button className={Classes.MINIMAL}
                             onClick={() => AuthActions.logOut()}

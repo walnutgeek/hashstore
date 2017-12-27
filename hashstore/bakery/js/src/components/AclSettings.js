@@ -1,8 +1,6 @@
 import React from 'react';
 import AltContainer from 'alt-container';
-import {
-  Route, Link
-} from 'react-router-dom';
+import {ToLink} from './common_componets'
 import AclStore from '../stores/AclStore';
 import AclActions from '../stores/AclActions';
 
@@ -33,12 +31,19 @@ class AclSettingsBody extends React.Component {
                 </tr>
               </thead>
               <tbody>
-              { acls.map( acl =>(
+              { acls.map( (acl) =>(
                 <tr>
-                  <td>{acl.permission}</td>
-                    <td>{ acl.cake ? <Link to={`/_/${acl.cake}`}>{acl.cake.short()}</Link>: ""}</td>
+                    <td>
+                        {acl.permission}
+                    </td>
+                    <td>
+                        { !acl.cake ? "" :
+                        <ToLink to={acl.cake.link()}>
+                            {acl.cake.short()}
+                        </ToLink>}
+                    </td>
                 </tr>
-                    ))}
+              ))}
               </tbody>
             </table>
         </div>);

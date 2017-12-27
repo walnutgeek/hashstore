@@ -1,7 +1,6 @@
 import React from 'react';
 import {
-  BrowserRouter as Router,
-  Route, Link, Switch
+  Router, Route, Switch
 } from 'react-router-dom';
 
 
@@ -9,12 +8,14 @@ import PathBar from './PathBar';
 import ContentView from './ContentView';
 import AliasSettings from './AliasSettings';
 import AclSettings from './AclSettings';
+import history from '../history'
+import {ToLink} from "./common_componets";
 
 const Home = ()=>(
     <div>
         <h3>Home</h3>
-        <Link to="/~/aliases" >List of aliases</Link> <br />
-        <Link to="/~/acl" >List of cakes from ACLs</Link>
+        <ToLink to="/~/aliases" >List of aliases</ToLink> <br />
+        <ToLink to="/~/acl" >List of cakes from ACLs</ToLink>
     </div>
 );
 
@@ -24,7 +25,7 @@ const Stub = () => {
 
 //ContentView
 const Main = ()=>(
-    <Router>
+    <Router history={history}>
         <div>
             <Switch>
                 <Route path="/:path*" component={PathBar}/>

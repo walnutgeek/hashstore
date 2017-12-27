@@ -41,6 +41,9 @@ export default class Cake{
         return this.s.length > 8 ? '#'+ this.s.substring(this.s.length-8) : this.s ;
     }
 
+    link(){
+        return "/_/"+this.s ;
+    }
 
     has_data(){
         return this.keyStructure === KeyStructure.INLINE;

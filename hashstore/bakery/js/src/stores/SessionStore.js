@@ -145,7 +145,6 @@ const sessionStore = alt.createStore(SessionStore, 'SessionStore');
 export const post = (call, msg) => {
     let headers = getHeaders({'Content-Type': 'application/json'});
     let envelope = {call, msg};
-    console.log(envelope);
     return fetch('/.api/post', {
         method: 'POST',
         headers,
@@ -172,7 +171,6 @@ let getHeaders = (initParams) => {
 const get_response = (path) => {
     let headers = getHeaders();
     const url = '/.get/' + path;
-    console.log('GET: '+url);
     return fetch(url, {
         method: 'GET',
         headers,

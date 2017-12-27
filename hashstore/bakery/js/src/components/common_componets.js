@@ -1,25 +1,29 @@
 import React from 'react';
-import {
-  Route
-} from 'react-router-dom';
+import history from '../history'
 
 import {
-    Button,MenuItem,
-    Toaster,Position
+    Button, Toaster,Position
 } from "@blueprintjs/core";
 
 const createOnClicker = (OnClicker) => (
     ({to, children, ...props}) => (
-        <Route render={({history}) => (
-            <OnClicker onClick={ () => history.push(to) } {...props}>
-                {children}
-            </OnClicker>
-        )}/>
+        <OnClicker onClick={ () => history.push(to) } {...props}>
+            {children}
+        </OnClicker>
     )
 );
 
-export const ToButton = createOnClicker(Button);
-export const ToMenuItem = createOnClicker(MenuItem);
+export const ToButton = ({to, children, ...props}) => (
+        <Button onClick={ () => history.push(to) } {...props}>
+            {children}
+        </Button>
+    );
+
+export const ToLink = ({to, children, ...props}) => (
+    <a href="#" onClick={ () => history.push(to) } {...props}>
+        {children}
+    </a>
+);
 
 export const Icon = ({iconName}) => (
     <span className={`pt-icon pt-icon-${iconName}`}></span>);
