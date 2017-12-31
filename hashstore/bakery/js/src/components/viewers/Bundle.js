@@ -1,6 +1,6 @@
 import React from 'react';
 import Cake from "../../utils/Cake";
-import {ToLink} from "../common_componets";
+import {ToLink} from "../common_components";
 
 const Bundle = {
     accept_types: ["HSB"],

@@ -7,6 +7,7 @@ const prismStyles = {
      JAVA: "java", JSON: "json", CSS: "css",
     HTML: "markup", XML: "markup",
     SVG: "markup", HSB: "json", MD: "markdown",
+    SH: "bash", YAML: "yaml"
 };
 
 const Prism = require('prismjs/components/prism-core');

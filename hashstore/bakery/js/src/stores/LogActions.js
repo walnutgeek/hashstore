@@ -1,6 +1,6 @@
 import alt from '../alt';
 import {Intent} from "@blueprintjs/core";
-import {MyToaster} from '../components/common_componets';
+import {MyToaster} from '../components/common_components';
 import _ from 'lodash';
 
 export class Message {

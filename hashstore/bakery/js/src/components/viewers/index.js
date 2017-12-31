@@ -2,10 +2,11 @@ import React from 'react';
 
 import _ from 'lodash'
 import Bundle from './Bundle';
-import TextFile from './Text';
+import Tabular from './Tabular';
+import Text from './Text';
 import { Classes, Button, ButtonGroup} from "@blueprintjs/core";
 
-export const viewers = { Bundle, TextFile };
+export const viewers = { Bundle, Tabular, Text };
 
 export const find_viewers = ( type ) => {
     let accepted = [];

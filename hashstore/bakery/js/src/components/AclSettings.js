@@ -1,6 +1,6 @@
 import React from 'react';
 import AltContainer from 'alt-container';
-import {ToLink} from './common_componets'
+import {ToLink} from './common_components'
 import AclStore from '../stores/AclStore';
 import AclActions from '../stores/AclActions';
 

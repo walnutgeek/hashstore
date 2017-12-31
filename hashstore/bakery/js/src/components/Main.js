@@ -9,7 +9,7 @@ import ContentView from './ContentView';
 import AliasSettings from './AliasSettings';
 import AclSettings from './AclSettings';
 import history from '../history'
-import {ToLink} from "./common_componets";
+import {ToLink} from "./common_components";
 
 const Home = ()=>(
     <div>

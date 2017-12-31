@@ -11,7 +11,7 @@ import {
 } from "@blueprintjs/core";
 
 import history from '../history';
-import {ToButton} from './common_componets';
+import {ToButton} from './common_components';
 import ContentStore from '../stores/ContentStore';
 import SessionStore from '../stores/SessionStore';
 import ContentActions from '../stores/ContentActions';

@@ -26,6 +26,8 @@
 "JS":     {"ext": ["js", "jsx"],       "mime": "application/javascript"},
 "PY":     {"ext": ["py"],              "mime": "application/x-python"},
 "C":  {"ext": ["c", "h", "cpp","cxx"], "mime": "text/x-c"},
+"SH":  {"ext": ["sh", "bash", "csh"],  "mime": "text/x-shellscript"},
+"YAML":   {"ext": ["yml","yaml"],      "mime": "text/yaml"},
 "JAVA":   {"ext": ["java"],            "mime": "text/x-java-source"},
 "JSON":   {"ext": ["json"],            "mime": "application/json"},
 "CSV":    {"ext": ["csv"],             "mime": "text/csv"},
