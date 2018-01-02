@@ -2,8 +2,42 @@
 import alt from '../alt';
 import ContentActions from './ContentActions';
 import LogActions from './LogActions';
-import {get_json, get} from './SessionStore'
-import {has_viewers} from '../components/viewers'
+import {get, asText, parseJSON} from './SessionStore'
+import {detect_viewers} from '../components/viewers'
+
+
+export class ViewSet {
+    constructor(viewers, method){
+        this.viewers = viewers;
+        this.names = Object.keys(this.viewers);
+        this.selectedView = 0;
+        this.method = method;
+        this.content = null;
+    }
+
+    view(){
+        return this.viewers[this.names[this.selectedView]];
+    }
+
+    active(i){
+        return i == this.selectedView;
+    }
+
+    viewCount(){
+        return this.names.length;
+    }
+
+    selectViewer(viewer){
+        if( viewer < this.names.length){
+            this.selectedView = viewer;
+        }
+    }
+
+    needToLoadContent(){
+        return this.method != null ;
+    }
+
+}
 
 
 class ContentStore {
@@ -11,23 +45,21 @@ class ContentStore {
     constructor(){
         this.path = null;
         this.info = undefined;
-        this.content = undefined;
+        this.viewSet = undefined;
 
         this.bindListeners({
             handleSetPath: ContentActions.SET_PATH,
             handleSetPathInfo: ContentActions.SET_PATH_INFO,
             handleSetContent: ContentActions.SET_CONTENT,
+            handleSelectViewer: ContentActions.SELECT_VIEWER,
         });
 
         this.registerAsync({
             requestFileInfo() {
                 return {
                     remote(state) {
-                        let url = state.path.aliasPath.toString();
-                        if( state.path.aliasPath.isCakeBased() ){
-                            url = url.substring(2);
-                        }
-                        return get_json('info/'+ url);
+                        const url = state.path.aliasPath.toUrl();
+                        return get('info/'+ url).then(parseJSON);
                     },
                     success: ContentActions.setPathInfo,
                     error: LogActions.logIt,
@@ -35,12 +67,9 @@ class ContentStore {
             },
             requestContent() {
                 return {
-                    remote(state) {
-                        let url = state.path.aliasPath.toString();
-                        if( state.path.aliasPath.isCakeBased() ){
-                            url = url.substring(2);
-                        }
-                        return get('data/'+ url);
+                    remote(state, method) {
+                        let url = state.path.aliasPath.toUrl();
+                        return get('data/'+ url).then(method);
                     },
                     success: ContentActions.setContent,
                     error: LogActions.logIt,
@@ -62,14 +91,19 @@ class ContentStore {
         this.info = info;
         this.content = null ;
         if( this.info != null ){
-            if( has_viewers(this.info.type) && this.info.size < 100000 ){
-                this.getInstance().requestContent();
+            this.viewSet = detect_viewers(this.info);
+            if( this.viewSet.needToLoadContent() ){
+                this.getInstance().requestContent(this.viewSet.method);
             }
         }
     }
 
     handleSetContent(content){
-        this.content = content;
+        this.viewSet.content = content;
+    }
+
+    handleSelectViewer(viewer){
+        this.viewSet.selectViewer(viewer);
     }
 
 }

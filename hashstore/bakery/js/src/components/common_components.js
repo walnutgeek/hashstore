@@ -28,6 +28,22 @@ export const ToLink = ({to, children, ...props}) => (
 export const Icon = ({iconName}) => (
     <span className={`pt-icon pt-icon-${iconName}`}></span>);
 
+export const flatMapTable =  (obj, keys) => {
+    keys = keys || Object.keys(obj);
+    return <table className="pt-table pt-bordered">
+        <thead>
+        <tr>
+            {keys.map(t => <th>{t}</th>)}
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            {keys.map(t => <td>{obj[t]}</td>)}
+        </tr>
+        </tbody>
+    </table>;
+};
+
 export const MyToaster = Toaster.create({
     className: "my-toaster",
     position: Position.TOP_RIGHT,

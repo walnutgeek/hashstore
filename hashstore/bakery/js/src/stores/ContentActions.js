@@ -10,6 +10,7 @@ class ContentActions {
 
   setContent(content) {return content;}
 
+  selectViewer(viewer) {return viewer;}
 }
 
 const contentActions =  alt.createActions(ContentActions);

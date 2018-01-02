@@ -13,5 +13,5 @@ __pycache__
 node_modules/
 Notebooks/.ipynb_checkpoints/
 hashstore/bakery/app
-hashstore/webdata/app
+hashstore/app
 package-lock.json

@@ -45,13 +45,16 @@ const config = {
         },
       },
       {
-        test: /\.(css|less)$/,
+        test: /\.(scss|sass|css|less)$/,
         use: [
           {
             loader: 'style-loader',
           },
           {
             loader: 'css-loader',
+          },
+          {
+            loader: 'sass-loader',
           },
         ],
 

@@ -37,8 +37,11 @@ export class AliasPath{
     }
 
     toString(){
-        return (this.isCakeBased() ? '_/': '') +
-            this.path.map(p => p.toString()).join('/') +
+        return (this.isCakeBased() ? '_/' : '') + this.toUrl();
+    }
+
+    toUrl() {
+        return this.path.map(p => p.toString()).join('/') +
             (this.slash ? '/' : '');
     }
 }

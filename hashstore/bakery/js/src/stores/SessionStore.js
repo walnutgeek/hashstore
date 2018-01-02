@@ -16,9 +16,11 @@ const checkStatus = (response) => {
     }
 }
 
-const getText = (response) => response.text()
+export const asText = (response) => response.text()
 
-const parseJSON = (response) => response.json()
+export const asBinary = (response) => response.arrayBuffer()
+
+export const parseJSON = (response) => response.json()
 
 const checkResult = (json) => {
     if (json.hasOwnProperty("result")) {
@@ -166,9 +168,9 @@ let getHeaders = (initParams) => {
         headers[USER_SESSION] = sessionState.session;
     }
     return {};
-};
+}
 
-const get_response = (path) => {
+export const get = (path) => {
     let headers = getHeaders();
     const url = '/.get/' + path;
     return fetch(url, {
@@ -178,11 +180,7 @@ const get_response = (path) => {
     }).then(
         checkStatus
     );
-};
+}
 
 
-export const get = (path) => get_response(path).then(getText);
-
-export const get_json = (path) => get_response(path).then( parseJSON );
-
-export default sessionStore;
+export default sessionStore

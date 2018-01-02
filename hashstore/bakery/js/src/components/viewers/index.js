@@ -2,61 +2,67 @@ import React from 'react';
 
 import _ from 'lodash'
 import Bundle from './Bundle';
+import Markdown from './Markdown';
 import Tabular from './Tabular';
 import Text from './Text';
+import Raw from './Raw';
+import Download from './Download';
 import { Classes, Button, ButtonGroup} from "@blueprintjs/core";
+import {asBinary, asText} from '../../stores/SessionStore'
+import {ViewSet} from "../../stores/ContentStore";
+import ContentActions from "../../stores/ContentActions";
 
-export const viewers = { Bundle, Tabular, Text };
+const viewers = { Bundle, Tabular, Markdown, Text };
 
-export const find_viewers = ( type ) => {
-    let accepted = [];
-    _.forOwn(viewers, (v,k) =>{
-       if( v.accept_types.indexOf(type) >= 0 ){
-           accepted.push(k);
-       }
-    });
-    return accepted;
-}
-
-export const has_viewers = (type) => find_viewers(type).length > 0;
-
-
-export const get_renderers = ( view_names ) => {
+const get_renderers = ( view_names ) => {
     return view_names.reduce((obj, n) =>
         Object.assign(obj, {[n]: viewers[n]}), {});
 }
 
-export class View extends React.Component {
-    state = {viewer: 0}
+export const detect_viewers = ( info ) => {
+    if( info.size < 100000 ){
+        let accepted = [];
+        _.forOwn(viewers, (v,k) =>{
+           if( v.accept_types.indexOf(info.type) >= 0 ){
+               accepted.push(k);
+           }
+        });
+        if(accepted.length == 0){
+            return new ViewSet({Raw,Download},asBinary);
+        }else{
+            return new ViewSet(get_renderers(accepted),asText);
+        }
+    }else{
+        return new ViewSet({Download}, null);
+    }
+}
 
+
+export class View extends React.Component {
     render() {
-        const {path, info, content} = this.props;
-        let viewNames = find_viewers(info.type);
-        if (viewNames.length == 0) {
-            return <div>no viewers</div>
+        const {path, info, viewSet} = this.props;
+
+        const viewCount = viewSet.viewCount();
+        if ( !viewCount ) {
+            return <div>no views</div>;
         }
-        const renderers = get_renderers(viewNames);
-        let getV = function (viewer) {
-            const V = viewer.render;
-            return <V path={path} info={info} content={content}/>;
-        };
-        if (viewNames.length == 1) {
-            return getV(renderers[viewNames[0]]);
-        }
-        let viewer = this.state.viewer;
-        if(viewer >= viewNames.length){
-            viewer = 0;
+        const V = viewSet.view().render;
+        const viewer = <V path={path} info={info} content={viewSet.content}/>;
+        if (viewCount == 1) {
+            return viewer;
         }
         return (
             <div>
                 <ButtonGroup>
-                    {_.map(viewNames, (n, i) => (<Button
-                        className={ i === viewer ? Classes.INTENT_PRIMARY: ""}
-                        onClick={() => this.setState({viewer: i})}>{n}</Button>))}
+                    {_.map(viewSet.names, (n, i) => (
+                    <Button
+                    onClick={() => ContentActions.selectViewer(i)}
+                    className={ viewSet.active(i) ? Classes.INTENT_PRIMARY: ""}>
+                        {n}
+                    </Button>))}
                 </ButtonGroup>
-                {getV(renderers[viewNames[viewer]])}
+                {viewer}
             </div>);
     }
 };
 
-export default viewers;
