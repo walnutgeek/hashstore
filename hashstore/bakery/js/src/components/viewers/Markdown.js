@@ -1,7 +1,6 @@
 import React from 'react';
 import MarkdownIt from 'markdown-it';
 const md = new MarkdownIt();
-var result = md.render('# markdown-it rulezz!');
 
 const Markdown = {
     accept_types:  ["MD"],
