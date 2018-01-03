@@ -4,14 +4,13 @@ test-out/
 dist
 *.egg-info
 .idea/
+.DS_Store
 __pycache__
-*/__pycache__
 *.pyc
 *.log
-*/*.pyc
 .coverage.*
-node_modules/
-Notebooks/.ipynb_checkpoints/
 hashstore/bakery/app
 hashstore/app
+node_modules/
 package-lock.json
+Notebooks/.ipynb_checkpoints/
