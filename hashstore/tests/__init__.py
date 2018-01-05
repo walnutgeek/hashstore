@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import logging
+from logging import getLogger
 import os
 import shutil
 import subprocess
@@ -15,14 +15,14 @@ def assert_text(src, expect, save_words=None):
     '''
     matches texts ignoring spaces.
 
-    Some fragment of the `src` could be ignored if it is specified
-    in `expect` by certain placeholders:
+    Some fragment of the `src` could be ignored if it is maked
+    inside `expect` with placeholders:
 
     ... - ignore word
     .... - ignore any number of words until next word match
 
     TODO: it works but it is inconsistent with ellipsis syntax in
-    doctest. I guess you could se bit of irony bellow.
+    doctest. I guess you could see bit of irony bellow.
 
     >>> assert_text('abc   xyz', ' abc xyz ')
     >>> assert_text('abc asdf  xyz', ' abc ... xyz ')
@@ -78,10 +78,13 @@ def assert_text(src, expect, save_words=None):
 
 
 class TestSetup:
-    def __init__(self, name, ensure_empty = False):
-        self.log = logging.getLogger(name)
-        test_out = os.path.abspath("test-out")
-        self.dir = os.path.join(test_out, pyenv, name)
+    def __init__(self, name, log_name=None, root=None,
+                 ensure_empty=False, script_mode=False):
+        self.script_mode=script_mode
+        self.log = getLogger(name if log_name is None else log_name)
+        if root is None:
+            root = os.path.abspath("test-out")
+        self.dir = os.path.join(root, pyenv, name)
         self.home = os.path.join(self.dir, 'home')
         if ensure_empty:
             ensure_no_dir(self.dir)
@@ -89,6 +92,7 @@ class TestSetup:
             ensure_dir(self.home)
         self.processes = {}
         self.counter = 0
+
 
     def run_script_and_wait(self, cmd, log_file=None, expect_rc=None,
                             expect_read = None, save_words=None):
@@ -103,13 +107,20 @@ class TestSetup:
     def run_script_in_bg(self, cmd, log_file=None):
         p_id = self.counter
         self.counter += 1
-        executable = 'hashstore.shash'
+
         if cmd[:4] in ('hsi ','hsd '):
-            executable = 'hashstore.' +cmd[:3]
+            executable = cmd[:3]
+            if not(self.script_mode):
+                executable = 'hashstore.'+executable
             cmd = cmd[4:]
-        elif 'd ' == cmd[:2]:
-            cmd = cmd[2:]
-            executable = 'hashstore.shashd'
+        else:
+            if self.script_mode:
+                raise ValueError("Cannot run in script mode")
+            executable = 'hashstore.shash'
+            if 'd ' == cmd[:2]:
+                cmd = cmd[2:]
+                executable = 'hashstore.shashd'
+
         if log_file is None:
             cmd_name = next(n for n in (cmd+' log').split()
                             if not('-' in n or '/' in n or '.' in n))
@@ -118,7 +129,8 @@ class TestSetup:
             path = log_file
         else:
             path = self.file_path(log_file)
-        popen = run_bg(executable, cmd.split(), self.home, path)
+        popen = run_bg(executable, cmd.split(), self.home, path,
+                       script_mode=self.script_mode)
         self.processes[p_id] = (popen, cmd ,path)
         return p_id
 
@@ -277,13 +289,13 @@ def ensure_no_dir(dir):
                 break
 
 
-def run_bg(module, args=[], home=None, outfile=None):
+def run_bg(module, args=[], home=None, outfile=None, script_mode = False):
     from subprocess import STDOUT
     env = None
     if home is not None:
         env = os.environ
         env['HOME'] = home
-    command = ['coverage', 'run', '-p', '-m']
+    command = [] if script_mode else ['coverage', 'run', '-p', '-m']
     command.append(module)
     for arg in args:
         if arg is not None and arg.strip() != '':
