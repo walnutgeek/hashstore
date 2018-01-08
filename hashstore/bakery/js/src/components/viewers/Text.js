@@ -27,7 +27,7 @@ const Text = {
         try {
             let lang = prismStyles[info.type];
             if (lang && content) {
-``                const grammar = Prism.languages[lang];
+                const grammar = Prism.languages[lang];
                 const __html = Prism.highlight(content, grammar, lang);
                 return <pre dangerouslySetInnerHTML={{__html}} />;
             }
