@@ -13,3 +13,8 @@ do
     pip install -r requirements.txt
     pip install -r test-requirements.txt
 done
+if [ "$1" == "run_all_test" ] ; then
+    . deactivate
+    python scent.py
+fi
+
