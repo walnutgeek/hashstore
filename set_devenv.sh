@@ -4,6 +4,7 @@
 # dependencies in both of them
 #
 . deactivate
+pip install sniffer
 for e in 2 3
 do
     conda remove -y -n py${e} || echo py${e} not here, it's ok!
