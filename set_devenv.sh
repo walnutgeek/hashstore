@@ -7,7 +7,7 @@
 pip install sniffer
 for e in 2 3
 do
-    conda remove -y -n py${e} || echo py${e} not here, it's ok!
+    conda remove -y -n py${e} || echo py${e} not here, it is ok!
     conda create -y -n py${e} python=${e} python
     . activate py${e}
     pip install -r requirements.txt
