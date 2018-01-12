@@ -4,13 +4,11 @@
 # dependencies in both of them
 #
 . deactivate
-pip install sniffer
-conda create -y -n py3 python=3 python
-conda create -y -n py2 python=2 python
-. activate py2
-pip install -r requirements.txt
-pip install -r test-requirements.txt
-. activate py3
-pip install -r requirements.txt
-pip install -r test-requirements.txt
-. deactivate
+for e in 2 3
+do
+    conda remove -y -n py${e} || echo py${e} not here, it's ok!
+    conda create -y -n py${e} python=${e} python
+    . activate py${e}
+    pip install -r requirements.txt
+    pip install -r test-requirements.txt
+done
