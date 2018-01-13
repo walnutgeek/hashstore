@@ -12,6 +12,12 @@ do
     . activate py${e}
     pip install -r requirements.txt
     pip install -r test-requirements.txt
+    npm install
+    npm run build
+    cd hashstore/bakery/js
+    npm install
+    npm run build
+    cd -
     if [ "$1" == "run_all_tests" ] ; then
       coverage run -p -m nose
       echo $? > $e.status
