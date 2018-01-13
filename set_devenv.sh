@@ -20,7 +20,7 @@ do
     pip install -r test-requirements.txt
     if [ "$1" == "run_all_tests" ] ; then
       coverage run -p -m nose
-      echo $? > $e.status
+      echo $? > py${e}.status
     fi
 done
 if [ "$1" == "run_all_tests" ] ; then
@@ -28,6 +28,6 @@ if [ "$1" == "run_all_tests" ] ; then
   coverage combine
   coverage report -m
 fi
-test $(cat py2.status) == 0 && test $(cat py3.status) == 0
+test $(cat py2.status) == 0  && test $(cat py3.status) == 0
 
 
