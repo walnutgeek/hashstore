@@ -12,9 +12,16 @@ do
     . activate py${e}
     pip install -r requirements.txt
     pip install -r test-requirements.txt
+    if [ "$1" == "run_all_tests" ] ; then
+      coverage run -p -m nose
+      echo $? > $e.status
+    fi
 done
-if [ "$1" == "run_all_test" ] ; then
-    . deactivate
-    python scent.py
+if [ "$1" == "run_all_tests" ] ; then
+  source activate py2
+  coverage combine
+  coverage report -m
 fi
+test $(cat py2.status) == 0 && test $(cat py3.status) == 0
+
 
