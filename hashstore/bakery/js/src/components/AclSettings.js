@@ -39,7 +39,7 @@ class AclSettingsBody extends React.Component {
                     <td>
                         { !acl.cake ? "" :
                         <ToLink to={acl.cake.link()}>
-                            {acl.cake.short()}
+                            {acl.cake.displayName()}
                         </ToLink>}
                     </td>
                 </tr>

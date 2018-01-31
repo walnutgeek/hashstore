@@ -1,3 +1,7 @@
+import abc
+
+import six
+
 from hashstore.utils import Stringable, EnsureIt, Jsonable
 from six import BytesIO, string_types, iteritems, binary_type
 import hashlib
@@ -23,8 +27,6 @@ else:  # python3
 
 B62 = base_x(62)
 B36 = base_x(36)
-
-TINY_ALPHABET = B36.alphabet
 
 MAX_NUM_OF_SHARDS = 8192
 
@@ -192,20 +194,10 @@ class Content(Jsonable):
 class KeyStructure(enum.IntEnum):
     INLINE = 0
     SHA256 = 1
-    GUID256 = 2
-    TINYNAME = 3
-
-
-def cast_to_tiny_alphabet(text):
-    '''
-    >>> cast_to_tiny_alphabet('ABC-325')
-    'abc325'
-    >>> cast_to_tiny_alphabet('ABC-2+3/%5')
-    'abc235'
-    >>> cast_to_tiny_alphabet('abc325')
-    'abc325'
-    '''
-    return ''.join(filter(lambda c: c in TINY_ALPHABET, text.lower()))
+    PORTAL = 2
+    PORTAL_VTREE = 3
+    PORTAL_DMOUNT = 4
+    CAKEPATH = 5
 
 
 class DataType(enum.IntEnum):
@@ -229,23 +221,23 @@ def NOP_process_buffer(read_buffer):
 
 
 
-def _header(id_structure,data_type):
+def _header(key_structure,data_type):
     '''
     >>> _header(KeyStructure.INLINE,DataType.UNCATEGORIZED)
     0
     >>> _header(KeyStructure.SHA256,DataType.BUNDLE)
     17
     '''
-    return (data_type.value << 4) | id_structure.value
+    return (data_type.value << 4) | key_structure.value
 
-def pack_in_bytes(id_structure, data_type, data_bytes):
+def pack_in_bytes(key_structure, data_type, data_bytes):
     r'''
     >>> pack_in_bytes(KeyStructure.INLINE,DataType.UNCATEGORIZED, b'ABC')
     b'\x00ABC'
     >>> pack_in_bytes(KeyStructure.SHA256,DataType.BUNDLE, b'XYZ')
     b'\x11XYZ'
     '''
-    return to_byte(_header(id_structure, data_type)) + data_bytes
+    return to_byte(_header(key_structure, data_type)) + data_bytes
 
 def quick_hash(data):
     r'''
@@ -311,7 +303,8 @@ class Cake(utils.Stringable, utils.EnsureIt):
 
     >>> list(KeyStructure) #doctest: +NORMALIZE_WHITESPACE
     [<KeyStructure.INLINE: 0>, <KeyStructure.SHA256: 1>,
-    <KeyStructure.GUID256: 2>, <KeyStructure.TINYNAME: 3>]
+    <KeyStructure.PORTAL: 2>, <KeyStructure.PORTAL_VTREE: 3>,
+    <KeyStructure.PORTAL_DMOUNT: 4>, <KeyStructure.CAKEPATH: 5>]
 
     >>> short_content = b'The quick brown fox jumps over'
     >>> short_k = Cake.from_bytes(short_content)
@@ -348,58 +341,36 @@ class Cake(utils.Stringable, utils.EnsureIt):
     Global Unique ID can be generated, it is 32 byte
     random sequence packed in same way.
 
-    >>> guid = Cake.new_guid()
+    >>> guid = Cake.new_portal()
     >>> guid.key_structure
-    <KeyStructure.GUID256: 2>
+    <KeyStructure.PORTAL: 2>
     >>> len(str(guid))
     44
 
-    Also you can generate tinyname. It is shorter key, that easier
-    to remember. But key space is much smaller so you cannot  generate
-    them independently but rather validate them against tinyname to
-    full Cake mapping.
-
-    Generate tinyname at random:
-
-    >>> tiny = Cake.tiny()
-    >>> tiny.key_structure
-    <KeyStructure.TINYNAME: 3>
-    >>> len(str(tiny))
-    6
-
-    Or seed it from Cake:
-
-    >>> tiny = Cake.tiny(cake=longer_k)
-    >>> tiny.key_structure
-    <KeyStructure.TINYNAME: 3>
-    >>> str(tiny)
-    'gPF18s'
-    >>> tiny != guid
+    >>> cakepath_cake = Cake.encode_cakepath('a/b')
+    >>> cakepath_cake.key_structure
+    <KeyStructure.CAKEPATH: 5>
+    >>> str(cakepath_cake)
+    '66Hv4'
+    >>> cakepath_cake.is_cakepath()
     True
-
-    Or generate it from text:
-
-    >>> tiny = Cake.tiny(text='ABC')
-    >>> tiny.key_structure
-    <KeyStructure.TINYNAME: 3>
-    >>> str(tiny)
-    'SCI'
+    >>> cakepath_cake.cakepath()
+    CakePath('a/b')
 
     '''
-    def __init__(self, s, id_structure = None, data_type = None,
-                 codec = B62):
-        if id_structure is not None:
+    def __init__(self, s, key_structure=None, data_type=None):
+        if key_structure is not None:
             self._data = s
-            self.key_structure = id_structure
+            self.key_structure = key_structure
             self.data_type = data_type
         else:
-            decoded = codec.decode(utils.ensure_string(s))
+            decoded = B62.decode(utils.ensure_string(s))
             header = to_int(decoded[0])
             self._data = decoded[1:]
             self.key_structure = KeyStructure(header & 0x0F)
             self.data_type = DataType(header >> 4)
         if self.key_structure not in \
-                (KeyStructure.INLINE, KeyStructure.TINYNAME):
+                (KeyStructure.INLINE, KeyStructure.CAKEPATH):
             if len(self._data) != 32:
                 raise AssertionError('invalid CAKey: %r ' % s)
 
@@ -408,10 +379,10 @@ class Cake(utils.Stringable, utils.EnsureIt):
     def from_digest_and_inline_data(digest, buffer,
                                     data_type = DataType.UNCATEGORIZED):
         if buffer is not None and len(buffer) <= inline_max_bytes:
-            return Cake(buffer, id_structure=KeyStructure.INLINE,
+            return Cake(buffer, key_structure=KeyStructure.INLINE,
                         data_type=data_type)
         else:
-            return Cake(digest, id_structure=KeyStructure.SHA256,
+            return Cake(digest, key_structure=KeyStructure.SHA256,
                         data_type=data_type)
 
     @staticmethod
@@ -429,9 +400,17 @@ class Cake(utils.Stringable, utils.EnsureIt):
         return Cake.from_stream(open(file, 'rb'), data_type=data_type)
 
     @staticmethod
-    def new_guid(data_type=DataType.UNCATEGORIZED):
-        return Cake(os.urandom(32), id_structure=KeyStructure.GUID256,
+    def new_portal(data_type=DataType.UNCATEGORIZED):
+        return Cake(os.urandom(32), key_structure=KeyStructure.PORTAL,
                     data_type=data_type)
+
+    def transform_portal(self, key_structure):
+        self.assert_portal()
+        if key_structure == self.key_structure:
+            return self
+        return Cake(self._data, key_structure=self.key_structure,
+                    data_type=self.data_type)
+
 
     def has_data(self):
         return self.key_structure == KeyStructure.INLINE
@@ -448,22 +427,33 @@ class Cake(utils.Stringable, utils.EnsureIt):
         return self._digest
 
     @staticmethod
-    def tiny(text=None, cake=None, data_type=DataType.UNCATEGORIZED):
-        if text is not None:
-            t_bytes=B36.decode(cast_to_tiny_alphabet(text))
-        elif cake is not None:
-            t_bytes=cake.digest()[:4]
-        else:
-            t_bytes=os.urandom(4)
-        return Cake(t_bytes, id_structure=KeyStructure.TINYNAME,
+    def encode_cakepath(cake_path, data_type=DataType.UNCATEGORIZED):
+        cake_path = CakePath.ensure_it(cake_path)
+        t_bytes = utils.ensure_bytes(str(cake_path))
+        return Cake(t_bytes, key_structure=KeyStructure.CAKEPATH,
                     data_type = data_type)
 
     def is_resolved(self):
         return self.key_structure == KeyStructure.SHA256
 
     def is_portal(self):
-        return self.key_structure in (KeyStructure.TINYNAME,
-                                      KeyStructure.GUID256)
+        return self.key_structure in (
+            KeyStructure.PORTAL,
+            KeyStructure.PORTAL_DMOUNT,
+            KeyStructure.PORTAL_VTREE
+        )
+
+    def assert_portal(self):
+        if not self.is_portal():
+            raise AssertionError('has to be a portal: %r' % self)
+
+    def is_cakepath(self):
+        return self.key_structure == KeyStructure.CAKEPATH
+
+    def cakepath(self):
+        if self.is_cakepath():
+            return CakePath(utils.ensure_unicode(self._data))
+
 
     def hash_bytes(self):
         '''
@@ -499,29 +489,34 @@ class Cake(utils.Stringable, utils.EnsureIt):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+@six.add_metaclass(abc.ABCMeta)
+class HasHash(object):
+    @abc.abstractmethod
+    def cake(self):
+        raise NotImplementedError('subclasses must override')
 
-class NamedCAKes(utils.Jsonable):
+class NamedCAKes(utils.Jsonable, HasHash):
     '''
     sorted dictionary of names and corresponding Cakes
 
     >>> short_k = Cake.from_bytes(b'The quick brown fox jumps over')
     >>> longer_k = Cake.from_bytes(b'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.')
 
-    >>> udks = NamedCAKes()
-    >>> udks['short'] = short_k
-    >>> udks['longer'] = longer_k
-    >>> len(udks)
+    >>> cakes = NamedCAKes()
+    >>> cakes['short'] = short_k
+    >>> cakes['longer'] = longer_k
+    >>> len(cakes)
     2
 
-    >>> udks.keys()
+    >>> cakes.keys()
     ['longer', 'short']
-    >>> str(udks.cake())
+    >>> str(cakes.cake())
     'gSKHC1OkVsHmrx1APDA4sq3iAwqg6wIXHVDqM3pPtwXR'
-    >>> udks.size()
+    >>> cakes.size()
     117
-    >>> udks.content()
+    >>> cakes.content()
     '[["longer", "short"], ["1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV", "01aMUQDApalaaYbXFjBVMMvyCAMfSPcTojI0745igi"]]'
-    >>> udks.get_name_by_cake("1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV")
+    >>> cakes.get_name_by_cake("1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV")
     'longer'
     '''
     def __init__(self,o=None):
@@ -573,12 +568,12 @@ class NamedCAKes(utils.Jsonable):
     def parse(self, o):
         self._clear_cached()
         if isinstance(o, string_types):
-            names, udks = json.loads(o)
+            names, cakes = json.loads(o)
         elif type(o) in [list, tuple] and len(o) == 2:
-            names, udks = o
+            names, cakes = o
         else:
-            names, udks = json.load(o)
-        self.store.update(zip(names, map(Cake.ensure_it, udks)))
+            names, cakes = json.load(o)
+        self.store.update(zip(names, map(Cake.ensure_it, cakes)))
         return self
 
     def __iter__(self):
@@ -606,31 +601,36 @@ class NamedCAKes(utils.Jsonable):
         names.sort()
         return names
 
-    def get_udks(self, names=None):
+    def get_cakes(self, names=None):
         if names is None:
             names = self.keys()
         return [self.store[k] for k in names]
 
     def to_json(self):
         keys = self.keys()
-        return [keys, self.get_udks(keys)]
+        return [keys, self.get_cakes(keys)]
+
 
 
 class CakePath(utils.Stringable, utils.EnsureIt):
     '''
-    >>> root = CakePath('/SCI')
+    >>> root = CakePath('/2EibTlogc1l8Qo9JCJXHTW0hD0h7Se9')
     >>> root
-    CakePath('/SCI/')
-    >>> absolute = CakePath('/SCI/x/y')
+    CakePath('/2EibTlogc1l8Qo9JCJXHTW0hD0h7Se9/')
+    >>> absolute = CakePath('/2EibTlogc1l8Qo9JCJXHTW0hD0h7Se9/b.txt')
     >>> absolute
-    CakePath('/SCI/x/y')
+    CakePath('/2EibTlogc1l8Qo9JCJXHTW0hD0h7Se9/b.txt')
     >>> relative = CakePath('y/z')
     >>> relative
     CakePath('y/z')
     >>> relative.make_absolute(absolute)
-    CakePath('/SCI/x/y/y/z')
-    >>> CakePath('/10Bd/r/f').make_absolute(absolute)
-    CakePath('/10Bd/r/f')
+    CakePath('/2EibTlogc1l8Qo9JCJXHTW0hD0h7Se9/b.txt/y/z')
+
+    `make_absolute()` have no effect to path that already
+    absolute
+
+    >>> CakePath('/2EibTlogc1l8Qo9JCJXHTW0hD0h7Se9/r/f').make_absolute(absolute)
+    CakePath('/2EibTlogc1l8Qo9JCJXHTW0hD0h7Se9/r/f')
 
     '''
     def __init__(self, s, _root = None, _path = []):
@@ -639,7 +639,7 @@ class CakePath(utils.Stringable, utils.EnsureIt):
             self.path = _path
         else:
             split = path_split_all(s, ensure_trailing_slash=False)
-            if split[0] == '/' :
+            if len(split) > 0 and split[0] == '/' :
                 self.root = Cake(split[1])
                 self.path = split[2:]
             else:
@@ -650,6 +650,19 @@ class CakePath(utils.Stringable, utils.EnsureIt):
         path = list(self.path)
         path.append(name)
         return CakePath(None, _path=path, _root=self.root)
+
+    def next_in_relative_path(self):
+        if not self.relative():
+            raise AssertionError("only can be applied to relative")
+        l = len(self.path)
+        reminder = None
+        if l < 1:
+            next= None
+        else:
+            next=self.path[0]
+            if l > 1:
+                reminder = CakePath(None, _path=self.path[1:])
+        return next,reminder
 
     def relative(self):
         return self.root is None
@@ -761,16 +774,16 @@ class NotAuthorizedError(ValueError): pass
 
 class NotFoundError(ValueError): pass
 
-RESERVED_NAMES = ('h', '.app', '.api', '.get', '.pid', '.server_id')
+RESERVED_NAMES = ('_', '.app', '.api', '.get', '.pid', '.server_id')
 
-def check_favorite_name(name):
+def check_bookmark_name(name):
     '''
-    >>> check_favorite_name('a')
-    >>> check_favorite_name('h')
+    >>> check_bookmark_name('a')
+    >>> check_bookmark_name('_')
     Traceback (most recent call last):
     ...
-    ValueError: Reserved name: h
-    >>> check_favorite_name('a/h')
+    ValueError: Reserved name: _
+    >>> check_bookmark_name('a/h')
     Traceback (most recent call last):
     ...
     ValueError: Cannot contain slash: a/h

@@ -6,7 +6,7 @@ export class IntEnum {
         this.i2s = _.invert(s2i);
         _.forOwn(s2i, (v,k)=> this[k] = k);
         if(methods){
-            _.forOwn(methods,(fn,k)=> this[k] = fn);
+            _.forOwn(methods,(fn,fnName)=> this[fnName] = fn);
         }
 
     }

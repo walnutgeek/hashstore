@@ -54,7 +54,7 @@ def test_cake_type():
     tbl = Table("mytable", meta,
                 Column("guid", StringCast(ids.Cake),
                        primary_key=True,
-                       default=lambda: ids.Cake.new_guid()),
+                       default=lambda: ids.Cake.new_portal()),
                 Column('name', types.String()),
                 Column("attachment", StringCast(ids.Cake), nullable=True))
 

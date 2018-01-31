@@ -10,7 +10,7 @@ Base = ServerConfigBase = declarative_base(name='ServerConfigBase')
 
 
 class ServerKey(Singleton, ServerConfigBase):
-    secret = Column(StringCast(Cake), default=Cake.new_guid())
+    secret = Column(StringCast(Cake), default=Cake.new_portal())
     external_ip = Column(StringCast(InetAddress), nullable=True)
     port = Column(Integer, nullable=False)
 
@@ -21,3 +21,5 @@ class UserSession(GuidPk, NameIt, Cdt, Udt, ReprIt, ServerConfigBase):
     remote_host = Column(String, nullable=True)
     active = Column(Boolean, nullable=False)
 
+class DirMount(NameIt, GuidPk, Cdt, Udt, ReprIt, ServerConfigBase):
+    path = Column(String, index=True, nullable=False, unique=True)

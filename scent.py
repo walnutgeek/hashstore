@@ -6,12 +6,12 @@ from sniffer.api import *
 def py_files(filename):
     return filename.endswith('.py') or filename.endswith('.yaml') or filename.endswith('.rst')
 
-run_envs = [ 'py2', 'py3' ]
+run_envs = ['py2', 'py3']
 env_template = '. activate %s; coverage run -p -m nose %s'
 combine_cmd = '. activate py2; coverage combine; coverage report -m; rm .coverage'
 
 
-def run(case,envs=run_envs):
+def run(case, envs=run_envs):
     env_states = [0 == os.system(env_template % (e, case)) for e in envs]
     print(dict(zip(run_envs,env_states)))
     os.system(combine_cmd)
@@ -25,7 +25,8 @@ def execute_one_test(*args):
     # case += ' hashstore.tests.local_store_tests'
     # case += ' hashstore.bakery.tests.cli_tests'
     # case += ' hashstore.bakery.tests.init_tests'
-    case += ' hashstore.bakery.tests.server_tests'
+    case += ' hashstore.bakery.tests.cake_tree_tests'
+    # case += ' hashstore.bakery.tests.server_tests'
     # case += ' hashstore.bakery.tests.backend_tests'
     # case += ' hashstore.tests.ndb_models_tests'
     # case += ' hashstore.tests.ndb_tests'

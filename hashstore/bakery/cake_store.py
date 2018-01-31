@@ -1,6 +1,6 @@
 import os
 from hashstore.bakery import NotAuthorizedError, CredentialsError, \
-    Content, Cake, NamedCAKes, CakePath, SaltedSha, check_favorite_name
+    Content, Cake, NamedCAKes, CakePath, SaltedSha, check_bookmark_name
 from hashstore.bakery.backend import LiteBackend
 from hashstore.ndb import Dbf, MultiSessionContextManager
 from hashstore.utils import ensure_dict,reraise_with_msg
@@ -10,7 +10,7 @@ from hashstore.ndb.models.server_config import UserSession, ServerKey, \
     ServerConfigBase
 from hashstore.ndb.models.glue import PortalType, Portal, \
     GlueBase, User, UserState, Permission, \
-    PermissionType as PT, Acl, Favorite
+    PermissionType as PT, Acl, Bookmark
 
 import logging
 
@@ -324,37 +324,38 @@ class PrivilegedAccess(_Access):
                  for p in self.auth_user.permissions]
 
     @user_api.query()
-    def favorites(self):
+    def bookmarks(self):
         '''
-        loads user's favorites
+        loads user's bookmarks
         '''
         r = NamedCAKes()
-        for p in self.auth_user.favorites:
-            r[p.name] = p.cake
+        for p in self.auth_user.bookmarks:
+            r[p.name] = p.path
         return r
 
     @user_api.query()
-    def save_favorite(self, name, cake):
+    def save_bookmark(self, name, cake_path):
         '''
-        add cake to favorites than will
+        add cake to bookmarks than will
         '''
-        self.authorize(cake, self.Permissions.read_data_cake)
-        check_favorite_name(name)
+        cake_path = CakePath.ensure_it(cake_path)
+        self.authorize(cake_path.root, self.Permissions.read_data_cake)
+        check_bookmark_name(name)
         self.ctx.glue_session().merge(
-            Favorite(name=name, cake=cake, user=self.auth_user))
+            Bookmark(name=name, path=cake_path, user=self.auth_user))
 
     @user_api.query()
-    def remove_favorite(self, name):
+    def remove_bookmark(self, name):
         '''
-        remove favorite
+        remove bookmark
         '''
         session = self.ctx.glue_session()
-        fav = session.query(Favorite).filter(
-            Favorite.name == name,
-            Favorite.user == self.auth_user).one_or_none()
-        if fav is None:
-            raise ValueError("favorite does not exist:" + name)
-        session.delete(fav)
+        bookmark = session.query(Bookmark).filter(
+            Bookmark.name == name,
+            Bookmark.user == self.auth_user).one_or_none()
+        if bookmark is None:
+            raise ValueError("bookmark does not exist:" + name)
+        session.delete(bookmark)
 
     @user_api.call()
     def list_portals(self):
@@ -379,8 +380,7 @@ class PrivilegedAccess(_Access):
         '''
         self.authorize(None, (PT.Create_Portals,))
         portal_id, cake = map(Cake.ensure_it,(portal_id,cake))
-        if not portal_id.is_portal():
-            raise AssertionError('has to be a portal: %r' % portal_id)
+        portal_id.assert_portal()
         form_db = self.ctx.glue_session().query(Portal).\
             filter(Portal.id == portal_id).one_or_none()
         add_portal = form_db is None
@@ -412,8 +412,7 @@ class PrivilegedAccess(_Access):
         change cake that portal points too
         '''
         portal_id, cake = map(Cake.ensure_it,(portal_id,cake))
-        if not portal_id.is_portal():
-            raise AssertionError('has to be a portal: %r' % portal_id)
+        portal_id.assert_portal()
         self.authorize(portal_id, (PT.Edit_Portal_, PT.Admin))
         portal = self.ctx.glue_session().query(Portal).\
             filter(Portal.id == portal_id).one_or_none()
@@ -433,8 +432,7 @@ class PrivilegedAccess(_Access):
         this.
         '''
         portal_id = Cake.ensure_it(portal_id)
-        if not portal_id.is_portal():
-            raise AssertionError('has to be a portal: %r' % portal_id)
+        portal_id.assert_portal()
         self.authorize(portal_id, (PT.Own_Portal_, PT.Admin))
 
         portal = self.ctx.glue_session().query(Portal).\
@@ -462,8 +460,7 @@ class PrivilegedAccess(_Access):
         Portal table
         '''
         portal_id = Cake.ensure_it(portal_id)
-        if not portal_id.is_portal():
-            raise AssertionError('has to be a portal: %r' % portal_id)
+        portal_id.assert_portal()
         if self.is_authenticated():
             self.authorize(portal_id, (PT.Own_Portal_, PT.Admin))
             portal = self.ctx.glue_session().query(Portal).\

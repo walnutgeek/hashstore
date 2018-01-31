@@ -1,4 +1,4 @@
-import Cake from './Cake';
+import {Cake,CakePath} from './Cake';
 
 export class AliasPath{
     constructor(path, slash){
@@ -9,13 +9,20 @@ export class AliasPath{
     child(name, slash){
         return new AliasPath([...this.path, name], slash);
     }
+
     isCakeBased(){
         return this.path[0] instanceof Cake;
     }
 
+    cakepath(){
+        if( this.isCakeBased() ){
+            return new CakePath(this.path[0], this.path.slice(1));
+        }
+    }
+
     name(){
         if( this.path.length === 1 && this.isCakeBased() ){
-            return this.path[0].short();
+            return this.path[0].displayName();
         }
         return this.path[this.path.length-1];
     }

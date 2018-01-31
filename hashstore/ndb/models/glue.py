@@ -16,14 +16,15 @@ configuration.
 `Server` store server network address and identity.
 
 '''
-
+import datetime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from sqlalchemy import and_,ForeignKey, Column, String, Boolean, desc
+from sqlalchemy import and_, ForeignKey, Column, String, Boolean, \
+    DateTime, Index
 from hashstore.ndb.mixins import ReprIt, GuidPk, Cdt, Udt, \
     NameIt, ServersMixin
 from hashstore.ndb import StringCast, IntCast
-from hashstore.bakery import Cake, SaltedSha
+from hashstore.bakery import Cake, SaltedSha, CakePath
 from hashstore.utils import Stringable, EnsureIt, JsonWrap
 
 import enum
@@ -144,12 +145,10 @@ class User(GuidPk, NameIt, Cdt, Udt, ReprIt, GlueBase):
     user_state = Column(IntCast(UserState), nullable=False)
     passwd = Column(StringCast(SaltedSha), nullable=False)
     full_name = Column(String, nullable=True)
-    permissions = relationship(
-        "Permission",
-        order_by="Permission.id",
-        back_populates = "user")
-    favorites = relationship( "Favorite", order_by="Favorite.name",
-                              back_populates = "user")
+    permissions = relationship("Permission", order_by="Permission.id",
+                               back_populates = "user")
+    bookmarks = relationship("Bookmark", order_by="Bookmark.name",
+                             back_populates = "user")
 
     def acls(self):
         if not hasattr(self, '_acls'):
@@ -164,9 +163,6 @@ class Portal(GuidPk, NameIt, Cdt, Udt, GlueBase):
     portal_type = Column(IntCast(PortalType), nullable=False,
                          default=PortalType.content)
     active = Column(Boolean, default=True)
-    history = relationship("PortalHistory",
-                           order_by=desc("PortalHistory.created_dt"),
-                           back_populates = "portal")
     servers = relationship('Server', secondary="service_home")
 
 
@@ -175,7 +171,24 @@ class PortalHistory(GuidPk, NameIt, Cdt, GlueBase):
     modified_by = Column(None, ForeignKey('user.id'))
     cake = Column(StringCast(Cake), nullable=False)
     reference = Column(StringCast(JsonWrap), nullable=True)
-    portal = relationship("Portal", back_populates="history")
+
+
+class VolatileTree(GuidPk, NameIt, GlueBase):
+    portal_id = Column(None, ForeignKey('portal.id'))
+    path = Column(String, nullable=False)
+    cake = Column(StringCast(Cake), nullable=False)
+
+    start_by = Column(None, ForeignKey('user.id'), nullable=False)
+    end_by = Column(None, ForeignKey('user.id'), nullable=True)
+    start_dt = Column(DateTime, nullable=False,
+                      default=datetime.datetime.utcnow)
+    end_dt = Column(DateTime, nullable=True,
+                    onupdate=datetime.datetime.utcnow)
+
+Index('VolatileTree_ak',
+      VolatileTree.portal_id,
+      VolatileTree.path,
+      VolatileTree.start_dt)
 
 
 class Permission(GuidPk, NameIt, Cdt, Udt, GlueBase):
@@ -189,11 +202,12 @@ class Permission(GuidPk, NameIt, Cdt, Udt, GlueBase):
             yield Acl(None, pt, self.cake)
 
 
-class Favorite(NameIt, Cdt, Udt, GlueBase):
+class Bookmark(NameIt, Cdt, Udt, GlueBase):
     user_id = Column(None, ForeignKey('user.id'), primary_key=True)
     name = Column(String, primary_key=True)
-    cake = Column(StringCast(Cake), nullable=False)
-    user = relationship("User", back_populates="favorites")
+    path = Column(StringCast(CakePath), nullable=False)
+    user = relationship("User", back_populates="bookmarks")
+
 
 
 class Server(ServersMixin, GlueBase):

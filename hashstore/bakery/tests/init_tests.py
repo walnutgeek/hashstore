@@ -68,7 +68,7 @@ def test_Bundle():
     u2= b2.cake()
     eq_(u0,u2)
     eq_(b1['a'], bakery.Cake(inline_udk))
-    eq_(b1.get_udks(), [bakery.Cake(inline_udk)])
+    eq_(b1.get_cakes(), [bakery.Cake(inline_udk)])
     eq_([k for k in b1], ['a'])
     eq_([k for k in b2], [])
     eq_(b1.get_name_by_cake(inline_udk), 'a')

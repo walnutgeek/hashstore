@@ -27,8 +27,8 @@ const Bundle = {
                             </ToLink>
                         </td>
                         <td>
-                            <ToLink to={cake.link()}>
-                                {cake.short()}
+                            <ToLink to={cake.link(path.aliasPath.cakepath())}>
+                                {cake.displayName()}
                             </ToLink>
                         </td>
                     </tr>))}

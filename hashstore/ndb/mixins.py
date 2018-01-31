@@ -5,7 +5,7 @@ from sqlalchemy import Column, DateTime, String, Integer
 from sqlalchemy.ext.declarative import declared_attr
 from hashstore.utils import from_camel_case_to_underscores
 
-new_bundle_guid = lambda: Cake.new_guid(DataType.BUNDLE)
+new_bundle_guid = lambda: Cake.new_portal(DataType.BUNDLE)
 
 
 class ReprIt:
@@ -26,7 +26,7 @@ class NameIt(object):
 
 class GuidPk:
     id = Column(StringCast(Cake), primary_key=True,
-                default=Cake.new_guid)
+                default=Cake.new_portal)
 
 
 class Cdt:
