@@ -1,16 +1,21 @@
 import os
+
+import datetime
+
 from hashstore.bakery import NotAuthorizedError, CredentialsError, \
-    Content, Cake, NamedCAKes, CakePath, SaltedSha, check_bookmark_name
+    Content, Cake, NamedCAKes, CakePath, SaltedSha, check_bookmark_name, \
+    KeyStructure, assert_key_structure
 from hashstore.bakery.backend import LiteBackend
+from hashstore.bakery.cake_tree import CakeTree
 from hashstore.ndb import Dbf, MultiSessionContextManager
 from hashstore.utils import ensure_dict,reraise_with_msg
 import hashstore.bakery.dal as dal
-
+from sqlalchemy import and_, or_
 from hashstore.ndb.models.server_config import UserSession, ServerKey, \
     ServerConfigBase
 from hashstore.ndb.models.glue import PortalType, Portal, \
     GlueBase, User, UserState, Permission, \
-    PermissionType as PT, Acl, Bookmark
+    PermissionType as PT, Acl, Bookmark, VolatileTree
 
 import logging
 
@@ -371,19 +376,19 @@ class PrivilegedAccess(_Access):
                       portal_type = PortalType.content):
         '''
         create portal pointing to cake, if portal is already exist -
-        fail. Tiny portals validated against majority of  servers to
-        achieve consistency.
+        fail.
 
         This call could be used to edit portal if portal is owned
         by user.
 
         '''
+        portal_id = Cake.ensure_it(portal_id)
+        portal_id.assert_portal()
         self.authorize(None, (PT.Create_Portals,))
         portal_id, cake = map(Cake.ensure_it,(portal_id,cake))
-        portal_id.assert_portal()
-        form_db = self.ctx.glue_session().query(Portal).\
+        portal_in_db = self.ctx.glue_session().query(Portal).\
             filter(Portal.id == portal_id).one_or_none()
-        add_portal = form_db is None
+        add_portal = portal_in_db is None
         already_own = False
         if not add_portal:
             try:
@@ -424,6 +429,80 @@ class PrivilegedAccess(_Access):
             raise AssertionError('portal %r does not exists.' %
                                  portal_id)
 
+    @user_api.call()
+    def create_portal_tree(self, portal_id, seed_from = None):
+        '''
+        create portal tree
+        '''
+        portal_id = Cake.ensure_it(portal_id)\
+            .transform_portal(KeyStructure.PORTAL_VTREE)
+        glue_session = self.ctx.glue_session()
+        glue_session.add(Portal(id=portal_id))
+        pass
+
+    @user_api.call()
+    def edit_portal_tree(self, portal_id, path, cake, asof_dt=None):
+        '''
+        update path with cake in portal_tree
+        '''
+        portal_id = Cake.ensure_it(portal_id)
+        assert_key_structure(KeyStructure.PORTAL_VTREE,
+                             portal_id.key_structure)
+
+        cake = Cake.ensure_it(cake)
+
+        VT = VolatileTree
+        glue_session = self.ctx.glue_session()
+        entry = glue_session.query(VT)\
+            .filter(
+                VT.portal_id == portal_id,
+                VT.path == path,
+                VT.end_dt == None
+            ).one_or_none()
+        no_change = True
+        if asof_dt is None:
+            asof_dt = datetime.datatime.utcnow()
+        if entry is not None:
+            if entry.start_dt > asof_dt:
+                raise ValueError(
+                    "cannot endate entry:%r for asof_dt:%r " %
+                    (entry,asof_dt))
+            if entry.cake != cake:
+                entry.end_dt = asof_dt
+                glue_session.add(entry)
+            else:
+                change = False
+        if change:
+            glue_session.add(VT(
+                portal_id=portal_id, path=path, cake=cake,
+                start_dt=asof_dt, ))
+
+
+
+
+
+
+    @user_api.call()
+    def get_portal_tree(self, portal_id, asof_dt=None):
+        '''
+        read whole tree into `CakeTree`
+        '''
+        portal_id = Cake.ensure_it(portal_id)
+        if portal_id.key_structure != KeyStructure.PORTAL_VTREE:
+            raise AssertionError("%s is not a TREE:%s " % (
+                portal_id, portal_id.key_structure, ))
+        VT = VolatileTree
+        if asof_dt is None:
+            condition = and_(VT.portal_id == portal_id, VT.start_dt <= asof_dt,
+                             or_(VT.end_dt == None, VT.end_dt > asof_dt))
+        else:
+            condition = and_(VT.portal_id == portal_id, VT.end_dt == None)
+        tree_paths = self.ctx.glue_session().query(VT).filter(
+            condition).all()
+        tree = CakeTree()
+        for r in tree_paths:
+            tree[r.path] = r.cake
+        return tree
     @user_api.call()
     def grant_portal(self, portal_id, grantee, permission_type):
         '''

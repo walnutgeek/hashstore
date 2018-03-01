@@ -221,6 +221,29 @@ class Stringable(object):
 
 Stringable.register(uuid.UUID)
 
+class StrKeyMixin:
+    '''
+    mixin for immutable objects to implement
+    `__hash__()`, `__eq__()`, `__ne__()`
+    '''
+    def __cached_str(self):
+        if not(hasattr(self, '_str')):
+            self._str = self.str()
+        return self._str
+
+    def __hash__(self):
+        if not(hasattr(self, '_hash')):
+            self._hash = hash(self.__cached_str())
+        return self._hash
+
+    def __eq__(self, other):
+        if type(self) != type(other):
+            return False
+        return self.__cached_str() == other.__cached_str()
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
 
 class Jsonable(EnsureIt):
     '''
@@ -270,6 +293,9 @@ class StringableEncoder(json.JSONEncoder):
 
 
 json_encoder = StringableEncoder()
+
+json_encode = json_encoder.encode
+
 
 def json_decode(text):
     try:

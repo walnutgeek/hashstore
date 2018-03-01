@@ -173,14 +173,14 @@ class PortalHistory(GuidPk, NameIt, Cdt, GlueBase):
     reference = Column(StringCast(JsonWrap), nullable=True)
 
 
-class VolatileTree(GuidPk, NameIt, GlueBase):
-    portal_id = Column(None, ForeignKey('portal.id'))
-    path = Column(String, nullable=False)
+class VolatileTree(NameIt, ReprIt, GlueBase):
+    portal_id = Column(None, ForeignKey('portal.id'), primary_key=True)
+    path = Column(String, nullable=False, primary_key=True)
     cake = Column(StringCast(Cake), nullable=False)
 
     start_by = Column(None, ForeignKey('user.id'), nullable=False)
     end_by = Column(None, ForeignKey('user.id'), nullable=True)
-    start_dt = Column(DateTime, nullable=False,
+    start_dt = Column(DateTime, nullable=False, primary_key=True,
                       default=datetime.datetime.utcnow)
     end_dt = Column(DateTime, nullable=True,
                     onupdate=datetime.datetime.utcnow)
@@ -256,7 +256,7 @@ class Acl(Stringable,EnsureIt):
                 % self.permission_type.name)
 
     @staticmethod
-    def cake_acls( cake, permission_types):
+    def cake_acls(cake, permission_types):
         return [Acl(None, pt, cake) for pt in permission_types]
 
     def __str__(self):
@@ -266,10 +266,10 @@ class Acl(Stringable,EnsureIt):
     def __hash__(self):
         return hash(str(self))
 
-    def __eq__(self,other):
+    def __eq__(self, other):
         return str(self) == str(other)
 
-    def __ne__(self,other):
+    def __ne__(self, other):
         return str(self) != str(other)
 
     def condition(self):

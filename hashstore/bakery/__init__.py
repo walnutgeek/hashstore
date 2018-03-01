@@ -199,6 +199,16 @@ class KeyStructure(enum.IntEnum):
     PORTAL_DMOUNT = 4
     CAKEPATH = 5
 
+def is_key_structure_a_portal(key_structure):
+    return key_structure in (
+        KeyStructure.PORTAL,
+        KeyStructure.PORTAL_DMOUNT,
+        KeyStructure.PORTAL_VTREE
+    )
+
+def assert_key_structure(expected, key_structure):
+    if key_structure != expected:
+        raise AssertionError("has to be %r" % expected)
 
 class DataType(enum.IntEnum):
     UNCATEGORIZED = 0
@@ -406,6 +416,8 @@ class Cake(utils.Stringable, utils.EnsureIt):
 
     def transform_portal(self, key_structure):
         self.assert_portal()
+        if not is_key_structure_a_portal(self):
+            raise AssertionError("not portal")
         if key_structure == self.key_structure:
             return self
         return Cake(self._data, key_structure=self.key_structure,
@@ -437,11 +449,9 @@ class Cake(utils.Stringable, utils.EnsureIt):
         return self.key_structure == KeyStructure.SHA256
 
     def is_portal(self):
-        return self.key_structure in (
-            KeyStructure.PORTAL,
-            KeyStructure.PORTAL_DMOUNT,
-            KeyStructure.PORTAL_VTREE
-        )
+        key_structure = self.key_structure
+        return is_key_structure_a_portal(key_structure)
+
 
     def assert_portal(self):
         if not self.is_portal():

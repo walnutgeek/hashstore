@@ -46,7 +46,8 @@ def resolve_cake_stack(glue_sess, cake):
 
 def edit_portal(glue_sess,portal):
     glue_sess.merge(portal)
-    glue_sess.add(PortalHistory(portal_id=portal.id,
-                                cake=portal.latest))
+    if portal.latest is not None:
+        glue_sess.add(PortalHistory(portal_id=portal.id,
+                                    cake=portal.latest))
 
 PERM_SORT = lambda r: (r.permission_type.name, str(r.cake))

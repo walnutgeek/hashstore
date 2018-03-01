@@ -1,5 +1,7 @@
 six
 pylru
+attrs
+croniter
 pytz
 pyyaml
 requests

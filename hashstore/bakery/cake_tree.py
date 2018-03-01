@@ -112,6 +112,29 @@ class CakeTree(HasHash):
         else:
             return reminder in self.store[nxt_path]
 
+    def iterate_path_tree_pairs(self, path = None):
+        '''
+        >>> x = CakeTree()
+        >>> x['a/b'] = '0'
+        >>> x['a/c/x'] = '0'
+        >>> list(x.iterate_path_tree_pairs())
+        [(CakePath('a/c'), '[["x"], ["0"]]'), (CakePath('a'), '[["b", "c"], ["0", "7tsiYeMdmvaOtxUKnrgF"]]'), (CakePath(''), '[["a"], ["gEBNEOpb09s1nmqg50yJ88AXTfn3BLUApxnXN0YUpvR5"]]')]
+        >>> x['a/q/z'] = '0'
+        >>> list(x.iterate_path_tree_pairs())
+        [(CakePath('a/c'), '[["x"], ["0"]]'), (CakePath('a/q'), '[["z"], ["0"]]'), (CakePath('a'), '[["b", "c", "q"], ["0", "7tsiYeMdmvaOtxUKnrgF", "7tsiYeYiMYOZHmdLwF1H"]]'), (CakePath(''), '[["a"], ["h7D3zNCn0P9hhKW7bQXeOOMVsPZJOkJxd84dN4XV5RyN"]]')]
+        '''
+        if path is None:
+            path = CakePath("")
+        for name in sorted(self.store):
+            v = self.store[name]
+            if isinstance(v, CakeTree):
+                child_path = path.child(name)
+                for pair in v.iterate_path_tree_pairs(child_path):
+                    yield pair
+        yield (path, self)
+
+    def __repr__(self):
+        return repr(self.bundle().content())
 
     def bundle(self):
         if self._bundle is None:
