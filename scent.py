@@ -25,7 +25,6 @@ def execute_one_test(*args):
     # case += ' hashstore.tests.local_store_tests'
     # case += ' hashstore.bakery.tests.cli_tests'
     # case += ' hashstore.bakery.tests.init_tests'
-    # case += ' hashstore.tests.utils_jsonattr_tests'
     case += ' hashstore.bakery.tests.logic_tests'
     # case += ' hashstore.bakery.tests.cake_tree_tests'
     # case += ' hashstore.bakery.tests.server_tests'

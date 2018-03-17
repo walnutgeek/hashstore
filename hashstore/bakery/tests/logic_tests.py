@@ -1,7 +1,16 @@
+import attr
 from nose.tools import eq_,ok_,with_setup
-from hashstore.utils.jsonattr import to_json, from_json
+from six import text_type
+
+from hashstore.utils import to_json, from_json
 from hashstore.tests import TestSetup
 import hashstore.bakery.logic as logic
+from hashstore.utils import (
+    EnsureIt, Stringable, StrKeyMixin,
+    type_optional as optional,
+    type_required as required,
+    type_list_of as list_of,
+    type_dict_of as dict_of)
 
 
 test = TestSetup(__name__,ensure_empty=True)
@@ -16,14 +25,27 @@ def test_docs():
 
 def test_json():
     hl = logic.HashLogic("bakery")
-    m1 = logic.Method('test', test_json)
+    m1 = logic.Method('test')
     hl.methods.append(m1)
     json = to_json(hl)
     match = \
-        '{"dags": [], "methods": [{"applies_on": null, "in_vars":' \
-        ' [], "name": "test", "out_vars": [], "ref": ' \
-        '"hashstore.bakery.tests.logic_tests/test_json"}], ' \
+        '{"dags": [], "files": {}, ' \
+        '"methods": [{"applies_on": null, "in_vars": [], ' \
+        '"name": "test", "out_vars": []}], ' \
         '"name": "bakery", "types": []}'
     eq_(json, match)
     hl2 = from_json(logic.HashLogic, json)
     eq_(to_json(hl2), match)
+
+@attr.s
+class Abc(object):
+    name = attr.ib(**required(text_type))
+    val = attr.ib(**required(int))
+
+def test_implementation():
+    impl = logic.Implementation(logic.GlobalRef(Abc),{'name':'n', 'val': 555})
+    eq_(impl.create(), Abc('n',555))
+    eq_(to_json(impl),
+        '{"classRef": "hashstore.bakery.tests.logic_tests:Abc", '
+        '"config": {"name": "n", "val": 555}}')
+    eq_(from_json(logic.Implementation, to_json(impl)).create(), Abc('n',555))

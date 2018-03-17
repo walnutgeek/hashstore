@@ -1,30 +1,40 @@
 import mimetypes
-import json
-from six import itervalues,iteritems
+import attr
+from six import itervalues, text_type
 from os.path import join, dirname
+from hashstore.utils import (
+    ensure_bytes, ensure_unicode,
+    DictKey, load_json_file,
+    type_required as required,
+    type_list_of as list_of,
+    create_dict_converter )
 
-from hashstore.utils import ensure_bytes, ensure_unicode
+@attr.s
+class FileType(DictKey):
+    mime=attr.ib(**required(text_type))
+    ext=attr.ib(**list_of(text_type))
+
+def read_file_types(json_file):
+    local = load_json_file(json_file)
+    return create_dict_converter(FileType)(local)
 
 
-file_types = json.load(open(join(dirname(__file__), 'file_types.json')))
+file_types = read_file_types(join(dirname(__file__), 'file_types.json'))
+
+my_mime_dict = dict(
+    (cvt(ext),cvt(ft.mime))
+    for ft in itervalues(file_types)
+        for ext in ft.ext
+            for cvt in [ensure_unicode, ensure_bytes])
+
+my_name_dict = dict(
+    (cvt(ext),ft._key_)
+    for ft in itervalues(file_types)
+        for ext in ft.ext
+            for cvt in [ensure_unicode, ensure_bytes])
 
 WDF = 'WDF'
 HSB = 'HSB'
-
-
-my_mime_dict = {
-    conversion(ext): conversion(v['mime'])
-        for v in itervalues(file_types) if 'ext' in v
-            for ext in v['ext']
-                for conversion in [ensure_unicode, ensure_bytes]
-}
-
-my_name_dict = {
-    conversion(ext): k
-        for k,v in iteritems(file_types) if 'ext' in v
-            for ext in v['ext']
-                for conversion in [ensure_unicode, ensure_bytes]
-}
 
 def guess_name(filename):
     '''
@@ -102,3 +112,4 @@ def extract_extension(filename):
     except:
         pass
     return None
+

@@ -5,11 +5,13 @@ import inspect
 import abc
 from six import text_type, add_metaclass
 import attr
-from hashstore.utils import EnsureIt, Stringable, StrKeyMixin
-from hashstore.utils.jsonattr import \
-    type_optional as optional, \
-    type_required as required, \
-    type_list_of as list_of
+from hashstore.utils import (
+    EnsureIt, Stringable, StrKeyMixin,
+    type_optional as optional,
+    type_required as required,
+    type_list_of as list_of,
+    type_dict_of as dict_of)
+from hashstore.utils.file_types import FileType
 
 
 @add_metaclass(abc.ABCMeta)
@@ -39,22 +41,22 @@ class HashMethod(object):
 
 class GlobalRef(Stringable,EnsureIt,StrKeyMixin):
     '''
-    >>> ref = GlobalRef('hashstore.bakery.logic/GlobalRef')
+    >>> ref = GlobalRef('hashstore.bakery.logic:GlobalRef')
     >>> ref
-    GlobalRef('hashstore.bakery.logic/GlobalRef')
+    GlobalRef('hashstore.bakery.logic:GlobalRef')
     >>> ref.get_instance().__name__
     'GlobalRef'
     >>> GlobalRef(GlobalRef)
-    GlobalRef('hashstore.bakery.logic/GlobalRef')
+    GlobalRef('hashstore.bakery.logic:GlobalRef')
     '''
     def __init__(self, s):
         if inspect.isclass(s) or inspect.isfunction(s):
             self.module, self.name = s.__module__, s.__name__
         else:
-            self.module, self.name = s.split('/')
+            self.module, self.name = s.split(':')
 
     def __str__(self):
-        return '%s/%s' %(self.module, self.name)
+        return '%s:%s' %(self.module, self.name)
 
     def get_instance(self):
         mod = __import__(self.module, fromlist=('',))
@@ -102,10 +104,14 @@ class TimeZone(Stringable,EnsureIt,StrKeyMixin):
     def __str__(self):
         return self.tzName
 
+
+
 @attr.s
 class Type(object):
     name=attr.ib(**required(text_type))
+    file_type=attr.ib(**optional(FileType))
     ref=attr.ib(**optional(GlobalRef))
+
 
 @attr.s
 class ValueDescriptor(object):
@@ -114,15 +120,20 @@ class ValueDescriptor(object):
     #format = attr.ib(**type_optional())
 
 
-
-
 @attr.s
 class Method(object):
     name = attr.ib(**required(text_type))
-    ref = attr.ib(**required(GlobalRef))
     applies_on = attr.ib(**optional(Type))
     in_vars=attr.ib(**list_of(ValueDescriptor))
     out_vars=attr.ib(**list_of(ValueDescriptor))
+
+@attr.s
+class Implementation(object):
+    classRef = attr.ib(**required(GlobalRef))
+    config = attr.ib(**optional())
+
+    def create(self):
+        return self.classRef.get_instance()(**self.config)
 
 
 @attr.s
@@ -132,7 +143,6 @@ class Task(object):
     depend_on_tasks = attr.ib(**list_of(text_type))
     dag_vars = attr.ib(**list_of(ValueDescriptor))
     in_vars = attr.ib(**list_of(ValueDescriptor))
-
 
 
 @attr.s
@@ -153,9 +163,9 @@ class Dag(object):
 class HashLogic(object):
     name = attr.ib(**required(text_type))
     types = attr.ib(**list_of(Type))
+    files=attr.ib(**dict_of(FileType))
     dags = attr.ib(**list_of(Dag))
     methods = attr.ib(**list_of(Method))
-
 
 
 '''

@@ -8,8 +8,8 @@ import os
 
 import logging
 
-MIME_WDF=file_types[WDF]['mime']
-MIME_HS_BUNDLE=file_types[HSB]['mime']
+MIME_WDF=file_types[WDF].mime
+MIME_HS_BUNDLE=file_types[HSB].mime
 
 log = logging.getLogger(__name__)
 

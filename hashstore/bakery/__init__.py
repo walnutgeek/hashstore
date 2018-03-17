@@ -156,7 +156,7 @@ class Content(Jsonable):
             if file is not None:
                 self.file_type = guess_name(file)
         if self.file_type is not None and self.mime is None:
-            self.mime = file_types[self.file_type]['mime']
+            self.mime = file_types[self.file_type].mime
         return self
 
     def set_data_type(self, copy_from):
