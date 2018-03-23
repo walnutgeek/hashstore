@@ -37,15 +37,3 @@ def test_json():
     hl2 = from_json(logic.HashLogic, json)
     eq_(to_json(hl2), match)
 
-@attr.s
-class Abc(object):
-    name = attr.ib(**required(text_type))
-    val = attr.ib(**required(int))
-
-def test_implementation():
-    impl = logic.Implementation(logic.GlobalRef(Abc),{'name':'n', 'val': 555})
-    eq_(impl.create(), Abc('n',555))
-    eq_(to_json(impl),
-        '{"classRef": "hashstore.bakery.tests.logic_tests:Abc", '
-        '"config": {"name": "n", "val": 555}}')
-    eq_(from_json(logic.Implementation, to_json(impl)).create(), Abc('n',555))

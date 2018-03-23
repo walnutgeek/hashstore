@@ -3,9 +3,13 @@ import sys
 from hashstore.tests import TestSetup
 import hashstore.utils as u
 from os import environ
+from hashstore.utils import type_required as required
+import attr
+from six import text_type
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log
+
 
 substitutions = {'{test_dir}': test.dir, '{q}': 'q'}
 
@@ -155,3 +159,16 @@ def test_api():
     eq_({'error': '4'}, methods.run(a, 'error', {'x': 2}))
     eq_({'result': None}, methods.run(a, 'none', {}))
 
+@attr.s
+class Abc(object):
+    name = attr.ib(**required(text_type))
+    val = attr.ib(**required(int))
+
+
+def test_implementation():
+    impl = u.Implementation(u.GlobalRef(Abc),{'name':'n', 'val': 555})
+    eq_(impl.create(), Abc('n',555))
+    eq_(u.to_json(impl),
+        '{"classRef": "hashstore.tests.utils_tests:Abc", '
+        '"config": {"name": "n", "val": 555}}')
+    eq_(u.from_json(u.Implementation, u.to_json(impl)).create(), Abc('n',555))

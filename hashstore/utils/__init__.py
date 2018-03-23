@@ -1,4 +1,6 @@
 import functools
+import inspect
+
 import six
 import os
 import json
@@ -321,6 +323,8 @@ def json_decode(text):
                          ''.format(**locals()))
 
 
+
+
 def read_in_chunks(fp, chunk_size=65535):
     while True:
         data = fp.read(chunk_size)
@@ -585,9 +589,44 @@ def type_optional(cls=None, default=None):
         converter=attr.converters.optional(create_converter(cls))
     )
 
+
 def to_json(o):
     return json_encode(attr.asdict(o))
 
+
 def from_json(cls, s):
     return create_converter(cls)(json_decode(s))
+
+
+class GlobalRef(Stringable,EnsureIt,StrKeyMixin):
+    '''
+    >>> ref = GlobalRef('hashstore.utils:GlobalRef')
+    >>> ref
+    GlobalRef('hashstore.utils:GlobalRef')
+    >>> ref.get_instance().__name__
+    'GlobalRef'
+    >>> GlobalRef(GlobalRef)
+    GlobalRef('hashstore.utils:GlobalRef')
+    '''
+    def __init__(self, s):
+        if inspect.isclass(s) or inspect.isfunction(s):
+            self.module, self.name = s.__module__, s.__name__
+        else:
+            self.module, self.name = s.split(':')
+
+    def __str__(self):
+        return '%s:%s' %(self.module, self.name)
+
+    def get_instance(self):
+        mod = __import__(self.module, fromlist=('',))
+        return getattr(mod, self.name)
+
+
+@attr.s
+class Implementation(object):
+    classRef = attr.ib(**type_required(GlobalRef))
+    config = attr.ib(**type_optional())
+
+    def create(self):
+        return self.classRef.get_instance()(**self.config)
 

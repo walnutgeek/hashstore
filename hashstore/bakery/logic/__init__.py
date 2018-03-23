@@ -10,8 +10,9 @@ from hashstore.utils import (
     type_optional as optional,
     type_required as required,
     type_list_of as list_of,
-    type_dict_of as dict_of)
+    type_dict_of as dict_of, GlobalRef)
 from hashstore.utils.file_types import FileType
+from hashstore.utils.time import CronExp, TimeZone
 
 
 @add_metaclass(abc.ABCMeta)
@@ -39,70 +40,7 @@ class HashMethod(object):
     def invoke(self, store, values):
         raise NotImplementedError('subclasses must override')
 
-class GlobalRef(Stringable,EnsureIt,StrKeyMixin):
-    '''
-    >>> ref = GlobalRef('hashstore.bakery.logic:GlobalRef')
-    >>> ref
-    GlobalRef('hashstore.bakery.logic:GlobalRef')
-    >>> ref.get_instance().__name__
-    'GlobalRef'
-    >>> GlobalRef(GlobalRef)
-    GlobalRef('hashstore.bakery.logic:GlobalRef')
-    '''
-    def __init__(self, s):
-        if inspect.isclass(s) or inspect.isfunction(s):
-            self.module, self.name = s.__module__, s.__name__
-        else:
-            self.module, self.name = s.split(':')
 
-    def __str__(self):
-        return '%s:%s' %(self.module, self.name)
-
-    def get_instance(self):
-        mod = __import__(self.module, fromlist=('',))
-        return getattr(mod, self.name)
-
-
-class CronExp(Stringable,EnsureIt,StrKeyMixin):
-    '''
-    >>> c = CronExp('* * 9 * *')
-    >>> c
-    CronExp('* * 9 * *')
-    >>> str(c)
-    '* * 9 * *'
-    '''
-    def __init__(self, s):
-        self.exp = s
-        self.croniter()
-
-    def croniter(self, dt=None):
-        return croniter(self.exp,dt)
-
-    def __str__(self):
-        return self.exp
-
-
-class TimeZone(Stringable,EnsureIt,StrKeyMixin):
-    '''
-    >>> c = TimeZone('Asia/Tokyo')
-    >>> c
-    TimeZone('Asia/Tokyo')
-    >>> str(c)
-    'Asia/Tokyo'
-    >>> TimeZone('Asia/Toky') # doctest: +IGNORE_EXCEPTION_DETAIL
-    Traceback (most recent call last):
-    ...
-    UnknownTimeZoneError: 'Asia/Toky'
-    '''
-    def __init__(self, s):
-        self.tzName = s
-        self.tz()
-
-    def tz(self):
-        return pytz.timezone(self.tzName)
-
-    def __str__(self):
-        return self.tzName
 
 
 
@@ -127,13 +65,6 @@ class Method(object):
     in_vars=attr.ib(**list_of(ValueDescriptor))
     out_vars=attr.ib(**list_of(ValueDescriptor))
 
-@attr.s
-class Implementation(object):
-    classRef = attr.ib(**required(GlobalRef))
-    config = attr.ib(**optional())
-
-    def create(self):
-        return self.classRef.get_instance()(**self.config)
 
 
 @attr.s
@@ -166,6 +97,7 @@ class HashLogic(object):
     files=attr.ib(**dict_of(FileType))
     dags = attr.ib(**list_of(Dag))
     methods = attr.ib(**list_of(Method))
+
 
 
 '''
