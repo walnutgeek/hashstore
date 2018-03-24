@@ -3,7 +3,7 @@ from hashstore.utils import ensure_unicode, failback, read_in_chunks, \
     reraise_with_msg, ensure_directory
 from hashstore.utils.ignore_file import ignore_files, \
     parse_ignore_specs, check_if_path_should_be_ignored
-from hashstore.bakery import Cake, process_stream, NamedCAKes, DataType
+from hashstore.bakery import Cake, process_stream, NamedCAKes, Role
 from hashstore.ndb.models.scan import ScanBase, DirEntry, DirKey, \
     FileType
 from sqlalchemy import desc
@@ -272,7 +272,7 @@ def pull(store, cake_or_path, path):
             child_cake = bundle[child_name]
             file_cake = child(cake, child_name, child_cake)
             file_content = store.get_content(cake_or_path=file_cake)
-            if child_cake.data_type == DataType.BUNDLE :
+            if child_cake.data_type == Role.NEURON :
                 restore_inner(file_cake, file_content, file_path)
             else:
                 try:

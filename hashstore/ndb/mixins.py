@@ -1,11 +1,11 @@
 from hashstore.ndb import StringCast
-from hashstore.bakery import Cake, SaltedSha, DataType
+from hashstore.bakery import Cake, SaltedSha, Role
 import datetime
 from sqlalchemy import Column, DateTime, String, Integer
 from sqlalchemy.ext.declarative import declared_attr
 from hashstore.utils import from_camel_case_to_underscores
 
-new_bundle_guid = lambda: Cake.new_portal(DataType.BUNDLE)
+new_bundle_guid = lambda: Cake.new_portal(Role.NEURON)
 
 
 class ReprIt:

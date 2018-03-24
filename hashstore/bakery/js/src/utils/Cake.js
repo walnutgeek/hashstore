@@ -28,9 +28,9 @@ export const KeyStructure = new IntEnum({
 const trimForDisplay = (s)=> s.length > 8 ? s.substring(s.length-8) : s;
 
 
-export const DataType = new IntEnum({
-    UNCATEGORIZED: 0,
-    BUNDLE: 1,
+export const Role = new IntEnum({
+    SYNAPSE: 0,
+    NEURON: 1,
 });
 
 export class CakePath {
@@ -83,7 +83,7 @@ export class Cake{
         const buf = base62.decode(s);
         const header = buf[0];
         this.keyStructure = KeyStructure.i2s[header & 0x0F];
-        this.dataType = DataType.i2s[header>>4];
+        this.dataType = Role.i2s[header>>4];
         this.data = buf.slice(1);
     }
 

@@ -145,6 +145,7 @@ class TestSetup:
                      expect_rc=None, expect_read=None,
                      save_words=None):
         p, cmd, logpath = self.processes[p_id]
+        # print('waiting on :{cmd}\npid={p_id}\nlog={logpath}\n'.format(**locals()))
         rc = p.wait()
         logtext = open(logpath).read()
         if expect_rc is not None:

@@ -8,7 +8,7 @@ test('Cake', () => {
   expect(inline_cake.data.toString('utf-8')).toBe("The quick brown fox jumps over");
   let longer_cake = new Cake('1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV');
   expect(longer_cake.keyStructure).toBe("SHA256");
-  expect(longer_cake.dataType).toBe("UNCATEGORIZED");
+  expect(longer_cake.dataType).toBe("SYNAPSE");
   expect(longer_cake.data.length).toBe(32);
 });
 

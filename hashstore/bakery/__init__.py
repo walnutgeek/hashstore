@@ -163,7 +163,7 @@ class Content(Jsonable):
         if hasattr(copy_from, 'data_type'):
             self.data_type = copy_from.data_type
             if self.file_type is None:
-                if self.data_type == DataType.BUNDLE:
+                if self.data_type == Role.NEURON:
                     self.file_type = HSB
         return self.guess_file_type()
 
@@ -210,9 +210,9 @@ def assert_key_structure(expected, key_structure):
     if key_structure != expected:
         raise AssertionError("has to be %r" % expected)
 
-class DataType(enum.IntEnum):
-    UNCATEGORIZED = 0
-    BUNDLE = 1
+class Role(enum.IntEnum):
+    SYNAPSE = 0
+    NEURON = 1
 
 
 inline_max_bytes=32
@@ -233,18 +233,18 @@ def NOP_process_buffer(read_buffer):
 
 def _header(key_structure,data_type):
     '''
-    >>> _header(KeyStructure.INLINE,DataType.UNCATEGORIZED)
+    >>> _header(KeyStructure.INLINE,Role.SYNAPSE)
     0
-    >>> _header(KeyStructure.SHA256,DataType.BUNDLE)
+    >>> _header(KeyStructure.SHA256,Role.NEURON)
     17
     '''
     return (data_type.value << 4) | key_structure.value
 
 def pack_in_bytes(key_structure, data_type, data_bytes):
     r'''
-    >>> pack_in_bytes(KeyStructure.INLINE,DataType.UNCATEGORIZED, b'ABC')
+    >>> pack_in_bytes(KeyStructure.INLINE,Role.SYNAPSE, b'ABC')
     b'\x00ABC'
-    >>> pack_in_bytes(KeyStructure.SHA256,DataType.BUNDLE, b'XYZ')
+    >>> pack_in_bytes(KeyStructure.SHA256,Role.NEURON, b'XYZ')
     b'\x11XYZ'
     '''
     return to_byte(_header(key_structure, data_type)) + data_bytes
@@ -304,7 +304,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
     Content addressing scheme using SHA256. For small
     content ( <=32 bytes) data is embeded  in key.  Header byte is
     followed by hash digest or inlined data. header byte split in two
-    halves: `KeyStructure` and `DataType`. Base62 encoding is
+    halves: `KeyStructure` and `Role`. Base62 encoding is
     used to encode bytes.
 
     We allow future extension and use different type of hash algos.
@@ -378,7 +378,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
             header = to_int(decoded[0])
             self._data = decoded[1:]
             self.key_structure = KeyStructure(header & 0x0F)
-            self.data_type = DataType(header >> 4)
+            self.data_type = Role(header >> 4)
         if self.key_structure not in \
                 (KeyStructure.INLINE, KeyStructure.CAKEPATH):
             if len(self._data) != 32:
@@ -387,7 +387,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
 
     @staticmethod
     def from_digest_and_inline_data(digest, buffer,
-                                    data_type = DataType.UNCATEGORIZED):
+                                    data_type = Role.SYNAPSE):
         if buffer is not None and len(buffer) <= inline_max_bytes:
             return Cake(buffer, key_structure=KeyStructure.INLINE,
                         data_type=data_type)
@@ -396,21 +396,21 @@ class Cake(utils.Stringable, utils.EnsureIt):
                         data_type=data_type)
 
     @staticmethod
-    def from_stream(fd, data_type=DataType.UNCATEGORIZED):
+    def from_stream(fd, data_type=Role.SYNAPSE):
         digest, _, inline_data = process_stream(fd)
         return Cake.from_digest_and_inline_data(digest, inline_data,
                                                 data_type=data_type)
 
     @staticmethod
-    def from_bytes(s, data_type=DataType.UNCATEGORIZED):
+    def from_bytes(s, data_type=Role.SYNAPSE):
         return Cake.from_stream(BytesIO(s),
                                 data_type=data_type)
     @staticmethod
-    def from_file(file, data_type=DataType.UNCATEGORIZED):
+    def from_file(file, data_type=Role.SYNAPSE):
         return Cake.from_stream(open(file, 'rb'), data_type=data_type)
 
     @staticmethod
-    def new_portal(data_type=DataType.UNCATEGORIZED):
+    def new_portal(data_type=Role.SYNAPSE):
         return Cake(os.urandom(32), key_structure=KeyStructure.PORTAL,
                     data_type=data_type)
 
@@ -439,7 +439,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
         return self._digest
 
     @staticmethod
-    def encode_cakepath(cake_path, data_type=DataType.UNCATEGORIZED):
+    def encode_cakepath(cake_path, data_type=Role.SYNAPSE):
         cake_path = CakePath.ensure_it(cake_path)
         t_bytes = utils.ensure_bytes(str(cake_path))
         return Cake(t_bytes, key_structure=KeyStructure.CAKEPATH,
@@ -447,6 +447,9 @@ class Cake(utils.Stringable, utils.EnsureIt):
 
     def is_resolved(self):
         return self.key_structure == KeyStructure.SHA256
+
+    def is_immutable(self):
+        return self.has_data() or self.is_resolved()
 
     def is_portal(self):
         key_structure = self.key_structure
@@ -573,7 +576,7 @@ class NamedCAKes(utils.Jsonable, HasHash):
         self._size = len(self._in_bytes)
         self._cake = Cake.from_digest_and_inline_data(
             quick_hash(self._in_bytes),self._in_bytes,
-            data_type=DataType.BUNDLE)
+            data_type=Role.NEURON)
 
     def parse(self, o):
         self._clear_cached()

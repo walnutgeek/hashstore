@@ -49,7 +49,7 @@ def test_Bundle():
     with open(file_path, 'w') as w:
         w.write(b1.content())
     b2 = bakery.NamedCAKes().parse(b1.content())
-    u_f = bakery.Cake.from_file(file_path, bakery.DataType.BUNDLE)
+    u_f = bakery.Cake.from_file(file_path, bakery.Role.NEURON)
     u2 = b2.cake()
     eq_(u_f, u2)
     eq_(u1,u2)

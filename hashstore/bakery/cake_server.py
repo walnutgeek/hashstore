@@ -147,7 +147,9 @@ class PostHandler(_StoreAccessMixin, tornado.web.RequestHandler):
 
 
 def stop_server(signum, frame):
-    tornado.ioloop.IOLoop.instance().stop()
+    ioloop = tornado.ioloop.IOLoop.instance()
+    # ioloop.stop()
+    ioloop.add_callback(ioloop.stop)
     logging.info('Stopped!')
 
 
@@ -221,3 +223,4 @@ class CakeServer:
         logging.info('CakeServer({0.store.store_dir}) '
                      'listening=0.0.0.0:{0.config.port}'.format(self))
         tornado.ioloop.IOLoop.instance().start()
+        logging.info('Finished')
