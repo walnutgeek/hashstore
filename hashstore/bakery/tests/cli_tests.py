@@ -86,18 +86,18 @@ def test_scan_ls():
           FILE  105000  too.sol
           DIR   10955   q
           DIR   1885    x
-          DIR   1659    a
-        total_size: 119499
+          DIR   1658    a
+        total_size: 119498
         ''' % fileset1_cake)
 
-    find_it = '1cymRJoPcW7Wuxt8TPCk4blijwO4Z76qoUEbaXk2jBZ8'
+    find_it = '2bg6Kulsn2wvvHOasBTQDI7qES4cgQUkB4GUgOIYs9Oa'
     test.run_script_and_wait('hsi ls --cake --dir %s/x' % files,
                              expect_rc=0,
                              expect_read='''
         DirId: ...
-        Cake: hjquPwZ3rqvLhtTNLOhDBQ0MkqX25ekUPazNzCPxbnLU
+        Cake: 34XHLt5jTMO6ALkRX1fvVE7CU0wAUu2nRbe3BasjZXHz
         
-          DIR   1220  h1MYo2xgsn6fo3qV0AzjXtekxuj7EYEaLYszN9MXAODb  y
+          DIR   1220  3kBWUQBPWaAakYFtDxdYBvLWkX3TWSguqVaY3OMyDz1Q  y
           FILE  555   {find_it}  1
         total_size: 1775
         '''.format(**locals()))
@@ -121,8 +121,8 @@ def test_scan_ls():
             DIR   107941  x
             FILE  105000  too.sol
             DIR   10955   q
-            DIR   1743    a
-          total_size: 225639''' % fileset2_cake)
+            DIR   1742    a
+          total_size: 225638''' % fileset2_cake)
 
     store = os.path.join(test.dir, 'store')
     email = 'jon@doe.edu'

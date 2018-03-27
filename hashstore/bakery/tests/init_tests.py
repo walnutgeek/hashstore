@@ -35,8 +35,8 @@ def test_CAKe():
     do_test(b'a' * 3, '0qMed', True)
     do_test(b'a' * 32, '0n5He1k77fjNxZNzBxGpha2giODrkmwQfOg6WorIJ4m5',
             True)
-    do_test(b'a' * 33, '1uhocJXiWEa4cLBvQRvkSQGzaiAvRB1jznYWq4xCOckO')
-    do_test(b'a' * 46, '1mXcPcYpN8zZYdpM04hafWih3o1NQbr4q5bJtPYPq7Ev')
+    do_test(b'a' * 33, '2sZ85uTW6KyDdVWxpDMRsnsHvDQD9kPdLy1FvVWyWK9Q')
+    do_test(b'a' * 46, '2lEWHXV2XeYyZnKNyQyGPt4poJhV7VeYCfeszHnLyFtx')
 
 
 def test_Bundle():

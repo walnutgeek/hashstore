@@ -82,8 +82,8 @@ export class Cake{
         this.s = s;
         const buf = base62.decode(s);
         const header = buf[0];
-        this.keyStructure = KeyStructure.i2s[header & 0x0F];
-        this.dataType = Role.i2s[header>>4];
+        this.keyStructure = KeyStructure.i2s[header >> 1];
+        this.role = Role.i2s[header & 1];
         this.data = buf.slice(1);
     }
 

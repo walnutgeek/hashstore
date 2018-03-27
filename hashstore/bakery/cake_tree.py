@@ -14,15 +14,15 @@ class CakeTree(HasHash):
     >>> x = CakeTree()
     >>> x['a/b'] = '0'
     >>> x.cake()
-    Cake('hww4yNLgCV0X0wlE63EUVfWjrzbZUcbyj3Lqbcf8DDDK')
+    Cake('1kmRGqqGH36SWaMEp1EsTSLWbFKGN8VvMyd7M7uyzJQ9')
     >>> x.bundle().content()
-    '[["a"], ["7tsiYcDfFf2P1CxxJZVj"]]'
+    '[["a"], ["CrBXOJUepyW6bMd2Wgl"]]'
     >>> x["a"].bundle().content()
     '[["b"], ["0"]]'
     >>> "a" in x
     True
     >>> x["a"].cake()
-    Cake('7tsiYcDfFf2P1CxxJZVj')
+    Cake('CrBXOJUepyW6bMd2Wgl')
     >>> x["a/b"].cake()
     Cake('0')
     >>> "a/b" in x
@@ -31,7 +31,7 @@ class CakeTree(HasHash):
     False
     >>> x['a/c'] = '0'
     >>> x.cake()
-    Cake('hqLSDd9uCEVSRSSvoXCLbuwzOd7VpWUZc6LYGAJTzNST')
+    Cake('3IRoNogXy7sW3pKtB66DCwNbqEvDgYZ7iDGLzimya2MV')
     >>> x["a"].bundle().content()
     '[["b", "c"], ["0", "0"]]'
     >>> len(x["a"])
@@ -40,9 +40,9 @@ class CakeTree(HasHash):
     >>> x["a"].bundle().content()
     '[["b"], ["0"]]'
     >>> x["a"].cake()
-    Cake('7tsiYcDfFf2P1CxxJZVj')
+    Cake('CrBXOJUepyW6bMd2Wgl')
     >>> x[""].cake()
-    Cake('hww4yNLgCV0X0wlE63EUVfWjrzbZUcbyj3Lqbcf8DDDK')
+    Cake('1kmRGqqGH36SWaMEp1EsTSLWbFKGN8VvMyd7M7uyzJQ9')
     >>> len(x)
     1
     >>> x[""]="0"
@@ -54,7 +54,7 @@ class CakeTree(HasHash):
     ...
     AssertionError: Cannot delete itself
     >>> x.bundle().content()
-    '[["a"], ["7tsiYcDfFf2P1CxxJZVj"]]'
+    '[["a"], ["CrBXOJUepyW6bMd2Wgl"]]'
     '''
 
     def __init__(self):
@@ -118,10 +118,9 @@ class CakeTree(HasHash):
         >>> x['a/b'] = '0'
         >>> x['a/c/x'] = '0'
         >>> list(x.iterate_path_tree_pairs())
-        [(CakePath('a/c'), '[["x"], ["0"]]'), (CakePath('a'), '[["b", "c"], ["0", "7tsiYeMdmvaOtxUKnrgF"]]'), (CakePath(''), '[["a"], ["gEBNEOpb09s1nmqg50yJ88AXTfn3BLUApxnXN0YUpvR5"]]')]
-        >>> x['a/q/z'] = '0'
+        [(CakePath('a/c'), '[["x"], ["0"]]'), (CakePath('a'), '[["b", "c"], ["0", "CrBXQSRVFGVy79pGnBH"]]'), (CakePath(''), '[["a"], ["3yhpQdubJ2Iq3AU0TQmDUArYt9RqJzXjoVaJs7agXJVs"]]')]
         >>> list(x.iterate_path_tree_pairs())
-        [(CakePath('a/c'), '[["x"], ["0"]]'), (CakePath('a/q'), '[["z"], ["0"]]'), (CakePath('a'), '[["b", "c", "q"], ["0", "7tsiYeMdmvaOtxUKnrgF", "7tsiYeYiMYOZHmdLwF1H"]]'), (CakePath(''), '[["a"], ["h7D3zNCn0P9hhKW7bQXeOOMVsPZJOkJxd84dN4XV5RyN"]]')]
+        [(CakePath('a/c'), '[["x"], ["0"]]'), (CakePath('a'), '[["b", "c"], ["0", "CrBXQSRVFGVy79pGnBH"]]'), (CakePath(''), '[["a"], ["3yhpQdubJ2Iq3AU0TQmDUArYt9RqJzXjoVaJs7agXJVs"]]')]
         '''
         if path is None:
             path = CakePath("")

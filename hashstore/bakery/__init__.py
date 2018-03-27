@@ -69,7 +69,7 @@ class ContentAddress(Stringable, EnsureIt):
 
     >>> a46 = Cake.from_bytes(b'a' * 46)
     >>> str(a46)
-    '1mXcPcYpN8zZYdpM04hafWih3o1NQbr4q5bJtPYPq7Ev'
+    '2lEWHXV2XeYyZnKNyQyGPt4poJhV7VeYCfeszHnLyFtx'
     >>> from_c = ContentAddress(a46)
     >>> str(from_c)
     '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
@@ -84,7 +84,7 @@ class ContentAddress(Stringable, EnsureIt):
     True
     >>> a47 = Cake.from_bytes(b'a' * 47)
     >>> str(a47)
-    '12XapfdmlTbFk68YtOwlzH6hoO8IaV3KOkPG9Ng33FXv'
+    '21EUi09ZvZAelgu02ANS9dSpK9oPsERF0uSpfEEZcdMx'
     >>> from_id.match(a47)
     False
     '''
@@ -190,6 +190,10 @@ class Content(Jsonable):
     def to_json(self):
         return { n:getattr(self,k) for k,n in self.JSONABLE_FIELDS}
 
+class Role(enum.IntEnum):
+    SYNAPSE = 0
+    NEURON = 1
+
 
 class KeyStructure(enum.IntEnum):
     INLINE = 0
@@ -199,6 +203,7 @@ class KeyStructure(enum.IntEnum):
     PORTAL_DMOUNT = 4
     CAKEPATH = 5
 
+
 def is_key_structure_a_portal(key_structure):
     return key_structure in (
         KeyStructure.PORTAL,
@@ -206,14 +211,10 @@ def is_key_structure_a_portal(key_structure):
         KeyStructure.PORTAL_VTREE
     )
 
+
 def assert_key_structure(expected, key_structure):
     if key_structure != expected:
         raise AssertionError("has to be %r" % expected)
-
-class Role(enum.IntEnum):
-    SYNAPSE = 0
-    NEURON = 1
-
 
 inline_max_bytes=32
 
@@ -231,21 +232,21 @@ def NOP_process_buffer(read_buffer):
 
 
 
-def _header(key_structure,data_type):
+def _header(key_structure, role):
     '''
     >>> _header(KeyStructure.INLINE,Role.SYNAPSE)
     0
     >>> _header(KeyStructure.SHA256,Role.NEURON)
-    17
+    3
     '''
-    return (data_type.value << 4) | key_structure.value
+    return (key_structure.value << 1)|role.value
 
 def pack_in_bytes(key_structure, data_type, data_bytes):
     r'''
     >>> pack_in_bytes(KeyStructure.INLINE,Role.SYNAPSE, b'ABC')
     b'\x00ABC'
     >>> pack_in_bytes(KeyStructure.SHA256,Role.NEURON, b'XYZ')
-    b'\x11XYZ'
+    b'\x03XYZ'
     '''
     return to_byte(_header(key_structure, data_type)) + data_bytes
 
@@ -340,7 +341,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
     >>> longer_k.data() is None
     True
     >>> str(longer_k)
-    '1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV'
+    '2xgkyws1ZbSlXUvZRCSIrjne73Pv1kmYArYvhOrTtqkX'
     >>> len(longer_k.hash_bytes())
     32
     >>> len(longer_k.digest())
@@ -361,24 +362,24 @@ class Cake(utils.Stringable, utils.EnsureIt):
     >>> cakepath_cake.key_structure
     <KeyStructure.CAKEPATH: 5>
     >>> str(cakepath_cake)
-    '66Hv4'
+    'bMG6m'
     >>> cakepath_cake.is_cakepath()
     True
     >>> cakepath_cake.cakepath()
     CakePath('a/b')
 
     '''
-    def __init__(self, s, key_structure=None, data_type=None):
+    def __init__(self, s, key_structure=None, role=None):
         if key_structure is not None:
             self._data = s
             self.key_structure = key_structure
-            self.data_type = data_type
+            self.role = role
         else:
             decoded = B62.decode(utils.ensure_string(s))
             header = to_int(decoded[0])
             self._data = decoded[1:]
-            self.key_structure = KeyStructure(header & 0x0F)
-            self.data_type = Role(header >> 4)
+            self.key_structure = KeyStructure(header >> 1)
+            self.role = Role(header & 1)
         if self.key_structure not in \
                 (KeyStructure.INLINE, KeyStructure.CAKEPATH):
             if len(self._data) != 32:
@@ -387,32 +388,32 @@ class Cake(utils.Stringable, utils.EnsureIt):
 
     @staticmethod
     def from_digest_and_inline_data(digest, buffer,
-                                    data_type = Role.SYNAPSE):
+                                    role = Role.SYNAPSE):
         if buffer is not None and len(buffer) <= inline_max_bytes:
             return Cake(buffer, key_structure=KeyStructure.INLINE,
-                        data_type=data_type)
+                        role=role)
         else:
             return Cake(digest, key_structure=KeyStructure.SHA256,
-                        data_type=data_type)
+                        role=role)
 
     @staticmethod
-    def from_stream(fd, data_type=Role.SYNAPSE):
+    def from_stream(fd, role=Role.SYNAPSE):
         digest, _, inline_data = process_stream(fd)
         return Cake.from_digest_and_inline_data(digest, inline_data,
-                                                data_type=data_type)
+                                                role=role)
 
     @staticmethod
-    def from_bytes(s, data_type=Role.SYNAPSE):
+    def from_bytes(s, role=Role.SYNAPSE):
         return Cake.from_stream(BytesIO(s),
-                                data_type=data_type)
+                                role=role)
     @staticmethod
-    def from_file(file, data_type=Role.SYNAPSE):
-        return Cake.from_stream(open(file, 'rb'), data_type=data_type)
+    def from_file(file, role=Role.SYNAPSE):
+        return Cake.from_stream(open(file, 'rb'), role=role)
 
     @staticmethod
-    def new_portal(data_type=Role.SYNAPSE):
+    def new_portal(role=Role.SYNAPSE):
         return Cake(os.urandom(32), key_structure=KeyStructure.PORTAL,
-                    data_type=data_type)
+                    role=role)
 
     def transform_portal(self, key_structure):
         self.assert_portal()
@@ -421,7 +422,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
         if key_structure == self.key_structure:
             return self
         return Cake(self._data, key_structure=self.key_structure,
-                    data_type=self.data_type)
+                    role=self.role)
 
 
     def has_data(self):
@@ -439,11 +440,11 @@ class Cake(utils.Stringable, utils.EnsureIt):
         return self._digest
 
     @staticmethod
-    def encode_cakepath(cake_path, data_type=Role.SYNAPSE):
+    def encode_cakepath(cake_path, role=Role.SYNAPSE):
         cake_path = CakePath.ensure_it(cake_path)
         t_bytes = utils.ensure_bytes(str(cake_path))
         return Cake(t_bytes, key_structure=KeyStructure.CAKEPATH,
-                    data_type = data_type)
+                    role= role)
 
     def is_resolved(self):
         return self.key_structure == KeyStructure.SHA256
@@ -480,7 +481,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
         return self._data
 
     def __str__(self):
-        in_bytes = pack_in_bytes(self.key_structure, self.data_type,
+        in_bytes = pack_in_bytes(self.key_structure, self.role,
                                  self._data)
         return B62.encode(in_bytes)
 
@@ -497,7 +498,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
             return False
         return self._data == other._data and \
                self.key_structure == other.key_structure and \
-               self.data_type == other.data_type
+               self.role == other.role
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -524,12 +525,12 @@ class NamedCAKes(utils.Jsonable, HasHash):
     >>> cakes.keys()
     ['longer', 'short']
     >>> str(cakes.cake())
-    'gSKHC1OkVsHmrx1APDA4sq3iAwqg6wIXHVDqM3pPtwXR'
+    '3fqJUOtUYjGCs3cWuPum5CwXtyyeJPRRp3gJ3A9wg3uS'
     >>> cakes.size()
     117
     >>> cakes.content()
-    '[["longer", "short"], ["1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV", "01aMUQDApalaaYbXFjBVMMvyCAMfSPcTojI0745igi"]]'
-    >>> cakes.get_name_by_cake("1yyAFLvoP5tMWKaYiQBbRMB5LIznJAz4ohVMbX2XkSvV")
+    '[["longer", "short"], ["2xgkyws1ZbSlXUvZRCSIrjne73Pv1kmYArYvhOrTtqkX", "01aMUQDApalaaYbXFjBVMMvyCAMfSPcTojI0745igi"]]'
+    >>> cakes.get_name_by_cake("2xgkyws1ZbSlXUvZRCSIrjne73Pv1kmYArYvhOrTtqkX")
     'longer'
     '''
     def __init__(self,o=None):
@@ -576,7 +577,7 @@ class NamedCAKes(utils.Jsonable, HasHash):
         self._size = len(self._in_bytes)
         self._cake = Cake.from_digest_and_inline_data(
             quick_hash(self._in_bytes),self._in_bytes,
-            data_type=Role.NEURON)
+            role=Role.NEURON)
 
     def parse(self, o):
         self._clear_cached()
@@ -627,23 +628,31 @@ class NamedCAKes(utils.Jsonable, HasHash):
 
 class CakePath(utils.Stringable, utils.EnsureIt):
     '''
-    >>> root = CakePath('/2EibTlogc1l8Qo9JCJXHTW0hD0h7Se9')
+    >>> root = CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF')
     >>> root
-    CakePath('/2EibTlogc1l8Qo9JCJXHTW0hD0h7Se9/')
-    >>> absolute = CakePath('/2EibTlogc1l8Qo9JCJXHTW0hD0h7Se9/b.txt')
+    CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF/')
+    >>> root.root
+    Cake('dCYNBHoPFLCwpVdQU5LhiF0i6U60KF')
+    >>> root.root.role
+    <Role.NEURON: 1>
+    >>> root.root.key_structure
+    <KeyStructure.INLINE: 0>
+    >>> root.root.data()
+    b'[["b.text"], ["06wO"]]'
+    >>> absolute = CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF/b.txt')
     >>> absolute
-    CakePath('/2EibTlogc1l8Qo9JCJXHTW0hD0h7Se9/b.txt')
+    CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF/b.txt')
     >>> relative = CakePath('y/z')
     >>> relative
     CakePath('y/z')
     >>> relative.make_absolute(absolute)
-    CakePath('/2EibTlogc1l8Qo9JCJXHTW0hD0h7Se9/b.txt/y/z')
+    CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF/b.txt/y/z')
 
     `make_absolute()` have no effect to path that already
     absolute
 
-    >>> CakePath('/2EibTlogc1l8Qo9JCJXHTW0hD0h7Se9/r/f').make_absolute(absolute)
-    CakePath('/2EibTlogc1l8Qo9JCJXHTW0hD0h7Se9/r/f')
+    >>> CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF/r/f').make_absolute(absolute)
+    CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF/r/f')
 
     '''
     def __init__(self, s, _root = None, _path = []):

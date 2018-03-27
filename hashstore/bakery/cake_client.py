@@ -82,7 +82,7 @@ class ClientUserSession:
                     if cake_or_path.has_data():
                         return Content(
                             data=cake_or_path.data(),
-                            data_type=cake_or_path.data_type
+                            data_type=cake_or_path.role
                         )
                 if skinny:
                     info = {}

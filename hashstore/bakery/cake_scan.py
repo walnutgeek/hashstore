@@ -272,7 +272,7 @@ def pull(store, cake_or_path, path):
             child_cake = bundle[child_name]
             file_cake = child(cake, child_name, child_cake)
             file_content = store.get_content(cake_or_path=file_cake)
-            if child_cake.data_type == Role.NEURON :
+            if child_cake.role == Role.NEURON :
                 restore_inner(file_cake, file_content, file_path)
             else:
                 try:
