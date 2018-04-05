@@ -97,6 +97,7 @@ class ClientApp:
                   'Cake: {latest_cake!s}\n'
                   ''.format(**locals()))
 
+
     @ca.command('download remote changes for a dir',
                 dir='directory where to restore. ',
                 cake='content address or portal to restore from')

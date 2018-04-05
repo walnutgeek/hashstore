@@ -32,7 +32,7 @@ MAX_NUM_OF_SHARDS = 8192
 
 
 def is_it_shard(shard_name):
-    '''
+    """
     Test if directory name can represent shard
 
     >>> is_it_shard('668')
@@ -53,7 +53,7 @@ def is_it_shard(shard_name):
     False
     >>> is_it_shard('abcd')
     False
-    '''
+    """
     shard_num = -1
     if len(shard_name) < 4:
         try:
@@ -64,7 +64,7 @@ def is_it_shard(shard_name):
 
 
 class ContentAddress(Stringable, EnsureIt):
-    '''
+    """
     Content Address
 
     >>> a46 = Cake.from_bytes(b'a' * 46)
@@ -87,7 +87,8 @@ class ContentAddress(Stringable, EnsureIt):
     '21EUi09ZvZAelgu02ANS9dSpK9oPsERF0uSpfEEZcdMx'
     >>> from_id.match(a47)
     False
-    '''
+    """
+
     def __init__(self, hash_or_cake_or_str):
         if hasattr(hash_or_cake_or_str, 'digest'):
             self.hash_bytes = hash_or_cake_or_str.digest()
@@ -123,11 +124,11 @@ class ContentAddress(Stringable, EnsureIt):
 
 
 class Content(Jsonable):
-    '''
-    >>> c=Content(size=3,created_dt="some time ago", file_type="TXT", mime='text/plain', data='abc')
+    """
+    >>> c=Content(size=3, created_dt="some time ago", file_type="TXT", mime='text/plain', data='abc')
     >>> json.dumps(c.to_json(),sort_keys=True)
     '{"created_dt": "some time ago", "mime": "text/plain", "size": 3, "type": "TXT"}'
-    '''
+    """
     JSONABLE_FIELDS = [(k+':'+k).split(':')[0:2] for k in
                       'size created_dt file_type:type mime'.split()]
 
@@ -190,6 +191,7 @@ class Content(Jsonable):
     def to_json(self):
         return { n:getattr(self,k) for k,n in self.JSONABLE_FIELDS}
 
+
 class Role(enum.IntEnum):
     SYNAPSE = 0
     NEURON = 1
@@ -214,44 +216,47 @@ def is_key_structure_a_portal(key_structure):
 
 def assert_key_structure(expected, key_structure):
     if key_structure != expected:
-        raise AssertionError("has to be %r" % expected)
+        raise AssertionError("has to be %r and not %r"
+                             % (expected, key_structure))
+
 
 inline_max_bytes=32
 
 
 def NOP_process_buffer(read_buffer):
-    '''
+    """
     Does noting
 
     >>> NOP_process_buffer(b'')
 
     :param read_buffer: take bytes
     :return: nothing
-    '''
+    """
     pass
 
 
-
 def _header(key_structure, role):
-    '''
+    """
     >>> _header(KeyStructure.INLINE,Role.SYNAPSE)
     0
     >>> _header(KeyStructure.SHA256,Role.NEURON)
     3
-    '''
+    """
     return (key_structure.value << 1)|role.value
 
+
 def pack_in_bytes(key_structure, data_type, data_bytes):
-    r'''
+    r"""
     >>> pack_in_bytes(KeyStructure.INLINE,Role.SYNAPSE, b'ABC')
     b'\x00ABC'
     >>> pack_in_bytes(KeyStructure.SHA256,Role.NEURON, b'XYZ')
     b'\x03XYZ'
-    '''
+    """
     return to_byte(_header(key_structure, data_type)) + data_bytes
 
+
 def quick_hash(data):
-    r'''
+    r"""
     Calculate hash on data buffer passed
 
     >>> quick_hash(b'abc')
@@ -266,12 +271,12 @@ def quick_hash(data):
     :param data: in bytes, or if not it will be converted to string first
                  and then to byte
     :return: digest
-    '''
+    """
     return hashlib.sha256(utils.ensure_bytes(data)).digest()
 
 
 def process_stream(fd,  process_buffer=NOP_process_buffer, chunk_size=65355):
-    '''
+    """
     process stream to calculate hash, length of data,
     and if it is smaller then hash size, holds on to stream
     content to use it instead of hash.
@@ -279,7 +284,7 @@ def process_stream(fd,  process_buffer=NOP_process_buffer, chunk_size=65355):
     :param fd: stream
     :param process_buffer: function  called on every chan
     :return:
-    '''
+    """
     inline_data = binary_type()
     digest = hashlib.sha256()
     length = 0
@@ -299,7 +304,7 @@ def process_stream(fd,  process_buffer=NOP_process_buffer, chunk_size=65355):
 
 
 class Cake(utils.Stringable, utils.EnsureIt):
-    '''
+    """
     Stands for Content Address Key.
 
     Content addressing scheme using SHA256. For small
@@ -368,7 +373,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
     >>> cakepath_cake.cakepath()
     CakePath('a/b')
 
-    '''
+    """
     def __init__(self, s, key_structure=None, role=None):
         if key_structure is not None:
             self._data = s
@@ -406,6 +411,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
     def from_bytes(s, role=Role.SYNAPSE):
         return Cake.from_stream(BytesIO(s),
                                 role=role)
+
     @staticmethod
     def from_file(file, role=Role.SYNAPSE):
         return Cake.from_stream(open(file, 'rb'), role=role)
@@ -423,7 +429,6 @@ class Cake(utils.Stringable, utils.EnsureIt):
             return self
         return Cake(self._data, key_structure=self.key_structure,
                     role=self.role)
-
 
     def has_data(self):
         return self.key_structure == KeyStructure.INLINE
@@ -456,7 +461,6 @@ class Cake(utils.Stringable, utils.EnsureIt):
         key_structure = self.key_structure
         return is_key_structure_a_portal(key_structure)
 
-
     def assert_portal(self):
         if not self.is_portal():
             raise AssertionError('has to be a portal: %r' % self)
@@ -468,16 +472,14 @@ class Cake(utils.Stringable, utils.EnsureIt):
         if self.is_cakepath():
             return CakePath(utils.ensure_unicode(self._data))
 
-
     def hash_bytes(self):
-        '''
+        """
         :raise AssertionError when Cake is not hash based
         :return: hash in bytes
-        '''
+        """
         if not self.is_resolved():
             raise AssertionError("Not-hash %r %r" %
                                  (self.key_structure, self))
-
         return self._data
 
     def __str__(self):
@@ -503,14 +505,16 @@ class Cake(utils.Stringable, utils.EnsureIt):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+
 @six.add_metaclass(abc.ABCMeta)
 class HasHash(object):
     @abc.abstractmethod
     def cake(self):
         raise NotImplementedError('subclasses must override')
 
+
 class NamedCAKes(utils.Jsonable, HasHash):
-    '''
+    """
     sorted dictionary of names and corresponding Cakes
 
     >>> short_k = Cake.from_bytes(b'The quick brown fox jumps over')
@@ -532,7 +536,7 @@ class NamedCAKes(utils.Jsonable, HasHash):
     '[["longer", "short"], ["2xgkyws1ZbSlXUvZRCSIrjne73Pv1kmYArYvhOrTtqkX", "01aMUQDApalaaYbXFjBVMMvyCAMfSPcTojI0745igi"]]'
     >>> cakes.get_name_by_cake("2xgkyws1ZbSlXUvZRCSIrjne73Pv1kmYArYvhOrTtqkX")
     'longer'
-    '''
+    """
     def __init__(self,o=None):
         self.store = {}
         self._clear_cached()
@@ -625,9 +629,8 @@ class NamedCAKes(utils.Jsonable, HasHash):
         return [keys, self.get_cakes(keys)]
 
 
-
 class CakePath(utils.Stringable, utils.EnsureIt):
-    '''
+    """
     >>> root = CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF')
     >>> root
     CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF/')
@@ -651,10 +654,23 @@ class CakePath(utils.Stringable, utils.EnsureIt):
     `make_absolute()` have no effect to path that already
     absolute
 
-    >>> CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF/r/f').make_absolute(absolute)
+    >>> p0 = CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF/r/f')
+    >>> p0.make_absolute(absolute)
     CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF/r/f')
-
-    '''
+    >>> p1 = p0.parent()
+    >>> p2 = p1.parent()
+    >>> p1
+    CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF/r')
+    >>> p2
+    CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF/')
+    >>> p2.parent()
+    >>> p0.path_join()
+    'r/f'
+    >>> p1.path_join()
+    'r'
+    >>> p2.path_join()
+    ''
+    """
     def __init__(self, s, _root = None, _path = []):
         if s is  None:
             self.root = _root
@@ -672,6 +688,11 @@ class CakePath(utils.Stringable, utils.EnsureIt):
         path = list(self.path)
         path.append(name)
         return CakePath(None, _path=path, _root=self.root)
+
+    def parent(self):
+        if self.relative() or len(self.path) == 0 :
+            return None
+        return CakePath(None, _path=self.path[:-1], _root=self.root)
 
     def next_in_relative_path(self):
         if not self.relative():
@@ -728,7 +749,7 @@ SSHA_MARK='{SSHA}'
 
 
 class SaltedSha(utils.Stringable, utils.EnsureIt):
-    '''
+    """
     >>> ssha = SaltedSha.from_secret('abc')
     >>> ssha.check_secret('abc')
     True
@@ -746,7 +767,7 @@ class SaltedSha(utils.Stringable, utils.EnsureIt):
     >>> ssha
     SaltedSha('{SSHA}5wRHUQxypw7C4AVd4yZRW/8pXy2Gwvh/')
 
-    '''
+    """
     def __init__(self, s, _digest=None, _salt=None):
         if s is None:
             self.digest = _digest
@@ -790,16 +811,21 @@ class InetAddress(utils.Stringable, utils.EnsureIt):
 
 class RemoteError(ValueError): pass
 
+
 class CredentialsError(ValueError): pass
+
 
 class NotAuthorizedError(ValueError): pass
 
+
 class NotFoundError(ValueError): pass
+
 
 RESERVED_NAMES = ('_', '.app', '.api', '.get', '.pid', '.server_id')
 
+
 def check_bookmark_name(name):
-    '''
+    """
     >>> check_bookmark_name('a')
     >>> check_bookmark_name('_')
     Traceback (most recent call last):
@@ -809,7 +835,7 @@ def check_bookmark_name(name):
     Traceback (most recent call last):
     ...
     ValueError: Cannot contain slash: a/h
-    '''
+    """
     if '/' in name:
         raise ValueError('Cannot contain slash: ' +name)
     if name in RESERVED_NAMES:

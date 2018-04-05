@@ -1,10 +1,10 @@
-from hashstore.bakery import Cake, NamedCAKes, CakePath
+from hashstore.bakery import Cake, NamedCAKes, CakePath, Role
 
 from hashstore.ndb.models.server_config import ServerKey, \
     ServerConfigBase
-from hashstore.ndb.models.glue import PortalType, Portal, \
+from hashstore.ndb.models.glue import Portal, \
     PortalHistory, GlueBase, User, UserState, Permission, \
-    PermissionType, Acl
+    PermissionType, Acl, VolatileTree
 
 from sqlalchemy import or_, and_
 
@@ -35,14 +35,48 @@ def find_permissions(glue_sess, user, *acls):
 def resolve_cake_stack(glue_sess, cake):
     cake_stack = []
     while True:
+        cake_loop = cake in cake_stack
         cake_stack.append(cake)
-        if cake.is_resolved() or cake.has_data():
+        if cake.is_immutable():
             return cake_stack
-        if len(cake_stack) > 10:
+        if cake_loop or len(cake_stack) > 10:
             raise AssertionError('cake loop? %r' % cake_stack)
         cake = glue_sess.query(Portal).filter(Portal.id == cake)\
             .one().latest
 
+
+def ensure_vtree_path(glue_sess, cake_path, asof_dt, user):
+    if cake_path is None:
+        return
+    parent = cake_path.parent()
+    ensure_vtree_path(glue_sess, parent, asof_dt, user)
+    VT = VolatileTree
+    parent_path = '' if parent is None else parent.path_join()
+    path = cake_path.path_join()
+    entry = glue_sess.query(VT) \
+        .filter(
+            VT.portal_id == cake_path.root,
+            VT.path == path,
+            VT.end_dt == None
+        ).one_or_none()
+    add = False
+    if entry is None:
+        add = True
+    else:
+        if entry.cake is not None:
+            raise AssertionError(
+                'cannot overwrite %s with %s' %
+                (Role.SYNAPSE, Role.NEURON))
+    if add:
+        glue_sess.add(VT(
+            portal_id=cake_path.root,
+            path=path,
+            parent_path=parent_path,
+            start_by=user,
+            cake=None,
+            start_dt=asof_dt,
+            end_dt=None
+        ))
 
 def edit_portal(glue_sess,portal):
     glue_sess.merge(portal)

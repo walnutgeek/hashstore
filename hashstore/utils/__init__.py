@@ -212,6 +212,12 @@ class EnsureIt:
             return o
         return cls(o)
 
+    @classmethod
+    def ensure_it_or_none(cls, o):
+        if o is None:
+            return o
+        return cls.ensure_it(o)
+
 
 @six.add_metaclass(abc.ABCMeta)
 class Stringable(object):

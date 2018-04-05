@@ -21,5 +21,6 @@ class UserSession(GuidPk, NameIt, Cdt, Udt, ReprIt, ServerConfigBase):
     remote_host = Column(String, nullable=True)
     active = Column(Boolean, nullable=False)
 
+
 class DirMount(NameIt, GuidPk, Cdt, Udt, ReprIt, ServerConfigBase):
     path = Column(String, index=True, nullable=False, unique=True)

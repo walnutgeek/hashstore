@@ -10,6 +10,9 @@ def test_docs():
     doctest_it(cake_tree)
 
 
+def test_tree():
+    pass
+
 
 
 

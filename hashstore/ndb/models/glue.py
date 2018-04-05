@@ -5,7 +5,8 @@ Glues all pieces of system together.
 
 `User` linked thru `Permission`s  to `Portal`s.
 `Portal` points to  hash-based content address that changes when
-underlying data is changes. `PortalHistory` tracks changes.
+underlying data is changes. `PortalHistory` or `VolatileTree`
+tracks changes.
 
 Underlaying data is served as `content` or used as `service`
 configuration.
@@ -20,7 +21,7 @@ import datetime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy import and_, ForeignKey, Column, String, Boolean, \
-    DateTime, Index
+    DateTime, Index, Integer
 from hashstore.ndb.mixins import ReprIt, GuidPk, Cdt, Udt, \
     NameIt, ServersMixin
 from hashstore.ndb import StringCast, IntCast
@@ -135,11 +136,6 @@ class UserState(enum.Enum):
     invitation = 2
 
 
-class PortalType(enum.IntEnum):
-    content = 0
-    service = 1
-
-
 class User(GuidPk, NameIt, Cdt, Udt, ReprIt, GlueBase):
     email= Column(String, nullable=False)
     user_state = Column(IntCast(UserState), nullable=False)
@@ -160,8 +156,6 @@ class User(GuidPk, NameIt, Cdt, Udt, ReprIt, GlueBase):
 
 class Portal(GuidPk, NameIt, Cdt, Udt, GlueBase):
     latest = Column(StringCast(Cake), nullable=True)
-    portal_type = Column(IntCast(PortalType), nullable=False,
-                         default=PortalType.content)
     active = Column(Boolean, default=True)
     servers = relationship('Server', secondary="service_home")
 
@@ -176,7 +170,8 @@ class PortalHistory(GuidPk, NameIt, Cdt, GlueBase):
 class VolatileTree(NameIt, ReprIt, GlueBase):
     portal_id = Column(None, ForeignKey('portal.id'), primary_key=True)
     path = Column(String, nullable=False, primary_key=True)
-    cake = Column(StringCast(Cake), nullable=False)
+    parent_path = Column(String, nullable=False)
+    cake = Column(StringCast(Cake), nullable=True)
 
     start_by = Column(None, ForeignKey('user.id'), nullable=False)
     end_by = Column(None, ForeignKey('user.id'), nullable=True)
@@ -185,10 +180,12 @@ class VolatileTree(NameIt, ReprIt, GlueBase):
     end_dt = Column(DateTime, nullable=True,
                     onupdate=datetime.datetime.utcnow)
 
-Index('VolatileTree_ak',
+
+Index('VolatileTree_search',
       VolatileTree.portal_id,
-      VolatileTree.path,
-      VolatileTree.start_dt)
+      VolatileTree.parent_path,
+      VolatileTree.end_dt,
+      VolatileTree.path)
 
 
 class Permission(GuidPk, NameIt, Cdt, Udt, GlueBase):

@@ -14,3 +14,4 @@ hashstore/app
 node_modules/
 package-lock.json
 Notebooks/.ipynb_checkpoints/
+coverage_html_report/

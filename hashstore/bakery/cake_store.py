@@ -4,7 +4,7 @@ import datetime
 
 from hashstore.bakery import NotAuthorizedError, CredentialsError, \
     Content, Cake, NamedCAKes, CakePath, SaltedSha, check_bookmark_name, \
-    KeyStructure, assert_key_structure
+    KeyStructure, assert_key_structure, Role
 from hashstore.bakery.backend import LiteBackend
 from hashstore.bakery.cake_tree import CakeTree
 from hashstore.ndb import Dbf, MultiSessionContextManager
@@ -13,7 +13,7 @@ import hashstore.bakery.dal as dal
 from sqlalchemy import and_, or_
 from hashstore.ndb.models.server_config import UserSession, ServerKey, \
     ServerConfigBase
-from hashstore.ndb.models.glue import PortalType, Portal, \
+from hashstore.ndb.models.glue import Portal, \
     GlueBase, User, UserState, Permission, \
     PermissionType as PT, Acl, Bookmark, VolatileTree
 
@@ -179,22 +179,26 @@ class PrivilegedAccess(_Access):
         '''
         if isinstance(cake_or_path, CakePath):
             return self.get_content_by_path(cake_or_path)
-        if cake_or_path.has_data():
+        cake = cake_or_path
+        if cake.has_data():
             return Content(data=cake_or_path.data())\
                 .set_data_type(cake_or_path)
-        elif cake_or_path.is_resolved():
+        elif cake.is_resolved():
             self.authorize(cake_or_path, self.Permissions.read_data_cake)
             return self.backend().get_content(cake_or_path)
-        elif cake_or_path.is_portal():
+        elif cake.is_portal():
             self.authorize(cake_or_path, self.Permissions.read_portal)
-            resolution_stack = dal.resolve_cake_stack(
-                self.ctx.glue_session(), cake_or_path)
-            for resolved_portal in resolution_stack[:-1]:
-                self.authorize(cake_or_path, self.Permissions.read_portal)
-            return self.backend().get_content(resolution_stack[-1])
+            if cake.key_structure == KeyStructure.PORTAL :
+                resolution_stack = dal.resolve_cake_stack(
+                    self.ctx.glue_session(), cake_or_path)
+                for resolved_portal in resolution_stack[:-1]:
+                    self.authorize(cake_or_path, self.Permissions.read_portal)
+                return self.backend().get_content(resolution_stack[-1])
+            elif cake.key_structure in [KeyStructure.PORTAL_DMOUNT,
+                                        KeyStructure.PORTAL_VTREE] :
+                return self.get_content_by_path(CakePath(None, _root=cake, _path=[]))
         else:
             raise AssertionError('should never get here')
-
 
 
     def writer(self):
@@ -227,7 +231,12 @@ class PrivilegedAccess(_Access):
         '''
         if cake_path.relative():
             raise AssertionError('path has to be absolute: %s '%cake_path)
-        content=self.get_content(cake_path.root)
+        root = cake_path.root
+        if root.key_structure == KeyStructure.PORTAL_VTREE:
+            return self._read_vtree(cake_path)
+        elif root.key_structure == KeyStructure.PORTAL_DMOUNT:
+            return self._read_dmount(cake_path)
+        content=self.get_content(root)
         for next_name in cake_path.path:
             bundle = NamedCAKes(content.stream())
             try:
@@ -372,8 +381,7 @@ class PrivilegedAccess(_Access):
             .filter(Portal.active == True).all()
 
     @user_api.call()
-    def create_portal(self, portal_id, cake,
-                      portal_type = PortalType.content):
+    def create_portal(self, portal_id, cake):
         '''
         create portal pointing to cake, if portal is already exist -
         fail.
@@ -385,7 +393,7 @@ class PrivilegedAccess(_Access):
         portal_id = Cake.ensure_it(portal_id)
         portal_id.assert_portal()
         self.authorize(None, (PT.Create_Portals,))
-        portal_id, cake = map(Cake.ensure_it,(portal_id,cake))
+        cake = Cake.ensure_it_or_none(cake)
         portal_in_db = self.ctx.glue_session().query(Portal).\
             filter(Portal.id == portal_id).one_or_none()
         add_portal = portal_in_db is None
@@ -399,8 +407,7 @@ class PrivilegedAccess(_Access):
 
         if add_portal or already_own:
             dal.edit_portal(self.ctx.glue_session(),
-                            Portal(id=portal_id, latest=cake,
-                                   portal_type=portal_type))
+                            Portal(id=portal_id, latest=cake))
             if self.is_authenticated():
                 if not already_own:
                     self.ctx.glue_session().add(Permission(
@@ -429,58 +436,106 @@ class PrivilegedAccess(_Access):
             raise AssertionError('portal %r does not exists.' %
                                  portal_id)
 
-    @user_api.call()
-    def create_portal_tree(self, portal_id, seed_from = None):
-        '''
-        create portal tree
-        '''
-        portal_id = Cake.ensure_it(portal_id)\
-            .transform_portal(KeyStructure.PORTAL_VTREE)
-        glue_session = self.ctx.glue_session()
-        glue_session.add(Portal(id=portal_id))
-        pass
+
+    def _assert_vtree_(self, cake_path):
+        cake_path = CakePath.ensure_it(cake_path)
+        if cake_path.relative():
+            raise ValueError('cake_path has to be absolute: %r'
+                             % cake_path)
+        assert_key_structure(KeyStructure.PORTAL_VTREE,
+                             cake_path.root.key_structure)
+        return cake_path
+
+    def _read_vtree(self, cake_path, asof_dt=None):
+        cake_path = self._assert_vtree_(cake_path)
+        portal_id = cake_path.root
+        path = cake_path.path_join()
+        VT = VolatileTree
+        def query(path_condition):
+            VT = VolatileTree
+            if asof_dt is not None:
+                condition=and_(
+                    VT.portal_id == portal_id,
+                    path_condition,
+                    VT.start_dt <= asof_dt,
+                    or_(VT.end_dt == None, VT.end_dt > asof_dt))
+            else:
+                condition = and_(
+                    VT.portal_id == portal_id,
+                    path_condition,
+                    VT.end_dt == None)
+            return self.ctx.glue_session().query(VT).filter(condition)
+        neuron_maybe = query(VT.path == path).one_or_none()
+        if neuron_maybe.cake is None: # yes it is
+            children = query(VT.parent_path == path).all()
+            namedCakes = NamedCAKes()
+            for child in children:
+                _,file = os.path.split(child.path)
+                namedCakes[file] = child.cake
+
+            return Content(data=namedCakes.in_bytes(),
+                           data_type=Role.NEURON)
+        else:
+            return self.get_content(neuron_maybe.cake)
+
+
+    def _read_dmount(self, cake_path, asof_dt=None):
+        raise AssertionError('not impl')
+
+
 
     @user_api.call()
-    def edit_portal_tree(self, portal_id, path, cake, asof_dt=None):
+    def edit_portal_tree(self, cake_path, cake, asof_dt=None):
         '''
         update path with cake in portal_tree
         '''
-        portal_id = Cake.ensure_it(portal_id)
-        assert_key_structure(KeyStructure.PORTAL_VTREE,
-                             portal_id.key_structure)
-
-        cake = Cake.ensure_it(cake)
-
+        cake_path = self._assert_vtree_(cake_path)
+        portal_id = cake_path.root
+        path = cake_path.path_join()
+        parent = cake_path.parent()
         VT = VolatileTree
         glue_session = self.ctx.glue_session()
-        entry = glue_session.query(VT)\
+        under_edit = glue_session.query(VT)\
             .filter(
                 VT.portal_id == portal_id,
-                VT.path == path,
+                VT.path == cake_path.path_join(),
                 VT.end_dt == None
             ).one_or_none()
         no_change = True
         if asof_dt is None:
             asof_dt = datetime.datatime.utcnow()
-        if entry is not None:
-            if entry.start_dt > asof_dt:
+        if under_edit is not None:
+            if under_edit.cake is None:
+                raise AssertionError(
+                    'cannot overwrite %s with %s' %
+                    (Role.NEURON, Role.SYNAPSE))
+            if under_edit.start_dt > asof_dt:
                 raise ValueError(
-                    "cannot endate entry:%r for asof_dt:%r " %
-                    (entry,asof_dt))
-            if entry.cake != cake:
-                entry.end_dt = asof_dt
-                glue_session.add(entry)
+                    "cannot endate under_edit:%r for asof_dt:%r " %
+                    (under_edit,asof_dt))
+            dal.ensure_vtree_path(glue_session, parent, asof_dt,
+                                  self.auth_user)
+            if under_edit.cake != cake:
+                under_edit.end_dt = asof_dt
+                under_edit.end_by = self.auth_user
+                glue_session.add(under_edit)
             else:
                 change = False
         if change:
+            parent_path = parent.path_join()
             glue_session.add(VT(
-                portal_id=portal_id, path=path, cake=cake,
-                start_dt=asof_dt, ))
+                portal_id=portal_id,
+                path=path,
+                parent_path=parent_path,
+                start_by = self.auth_user,
+                cake=cake,
+                start_dt=asof_dt))
 
 
-
-
-
+    @user_api.call()
+    def delete_in_portal_tree(self, cake_path, asof_dt = None):
+        # cake_path = self._assert_vtree_(cake_path)
+        pass
 
     @user_api.call()
     def get_portal_tree(self, portal_id, asof_dt=None):
@@ -492,7 +547,7 @@ class PrivilegedAccess(_Access):
             raise AssertionError("%s is not a TREE:%s " % (
                 portal_id, portal_id.key_structure, ))
         VT = VolatileTree
-        if asof_dt is None:
+        if asof_dt is not None:
             condition = and_(VT.portal_id == portal_id, VT.start_dt <= asof_dt,
                              or_(VT.end_dt == None, VT.end_dt > asof_dt))
         else:
@@ -503,6 +558,7 @@ class PrivilegedAccess(_Access):
         for r in tree_paths:
             tree[r.path] = r.cake
         return tree
+
     @user_api.call()
     def grant_portal(self, portal_id, grantee, permission_type):
         '''

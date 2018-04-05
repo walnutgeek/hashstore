@@ -10,7 +10,7 @@ class CakeWrapper(HasHash, EnsureIt):
         return self._cake
 
 class CakeTree(HasHash):
-    '''
+    """
     >>> x = CakeTree()
     >>> x['a/b'] = '0'
     >>> x.cake()
@@ -55,7 +55,7 @@ class CakeTree(HasHash):
     AssertionError: Cannot delete itself
     >>> x.bundle().content()
     '[["a"], ["CrBXOJUepyW6bMd2Wgl"]]'
-    '''
+    """
 
     def __init__(self):
         self.store = {}
@@ -113,7 +113,7 @@ class CakeTree(HasHash):
             return reminder in self.store[nxt_path]
 
     def iterate_path_tree_pairs(self, path = None):
-        '''
+        """
         >>> x = CakeTree()
         >>> x['a/b'] = '0'
         >>> x['a/c/x'] = '0'
@@ -121,7 +121,7 @@ class CakeTree(HasHash):
         [(CakePath('a/c'), '[["x"], ["0"]]'), (CakePath('a'), '[["b", "c"], ["0", "CrBXQSRVFGVy79pGnBH"]]'), (CakePath(''), '[["a"], ["3yhpQdubJ2Iq3AU0TQmDUArYt9RqJzXjoVaJs7agXJVs"]]')]
         >>> list(x.iterate_path_tree_pairs())
         [(CakePath('a/c'), '[["x"], ["0"]]'), (CakePath('a'), '[["b", "c"], ["0", "CrBXQSRVFGVy79pGnBH"]]'), (CakePath(''), '[["a"], ["3yhpQdubJ2Iq3AU0TQmDUArYt9RqJzXjoVaJs7agXJVs"]]')]
-        '''
+        """
         if path is None:
             path = CakePath("")
         for name in sorted(self.store):
