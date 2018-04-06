@@ -63,7 +63,7 @@ class ServerSetup:
         self.test.run_script_and_wait(
             'hsi login --url http://localhost:{self.port} '
             '--dir {mount} --email {email} '
-            '--passwd {pwd}'.format(**locals()),
+            '--passwd {pwd} --default'.format(**locals()),
             expect_rc=0,
             expect_read="Mount: ... "
                         "{'UserSession': ... "

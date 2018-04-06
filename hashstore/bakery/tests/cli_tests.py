@@ -9,12 +9,14 @@ log = test.log
 
 def test_hsi():
     '''
-usage: hsi.py [-h] [--debug] {login,logout,ls,find,scan,backup,pull,sync} ...
+usage: hsi.py [-h] [--debug]
+              {login,logout,ls,find,scan,backup,pull,sync,create_potral,update_vtree,delete_in_vtree}
+              ...
 
 hsi - hashstore client
 
 positional arguments:
-  {login,logout,ls,find,scan,backup,pull,sync}
+  {login,logout,ls,find,scan,backup,pull,sync,create_potral,update_vtree,delete_in_vtree}
     login               authorize client to interact with server
     logout              logout from server
     ls                  list directory as of last scan.
@@ -23,6 +25,9 @@ positional arguments:
     backup              save local files on remote server
     pull                download remote changes for a dir
     sync                backup and pull. Use dir_id as portal.
+    create_potral       Create portal
+    update_vtree        Update path in vtree
+    delete_in_vtree     Delete path in vtree
 
 optional arguments:
   -h, --help            show this help message and exit

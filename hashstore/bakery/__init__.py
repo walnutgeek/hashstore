@@ -417,14 +417,14 @@ class Cake(utils.Stringable, utils.EnsureIt):
         return Cake.from_stream(open(file, 'rb'), role=role)
 
     @staticmethod
-    def new_portal(role=Role.SYNAPSE):
-        return Cake(os.urandom(32), key_structure=KeyStructure.PORTAL,
+    def new_portal(role=Role.SYNAPSE, key_structure=KeyStructure.PORTAL):
+        cake = Cake(os.urandom(32), key_structure=key_structure,
                     role=role)
+        cake.assert_portal()
+        return cake
 
     def transform_portal(self, key_structure):
         self.assert_portal()
-        if not is_key_structure_a_portal(self):
-            raise AssertionError("not portal")
         if key_structure == self.key_structure:
             return self
         return Cake(self._data, key_structure=self.key_structure,

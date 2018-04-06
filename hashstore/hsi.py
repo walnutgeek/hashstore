@@ -31,9 +31,10 @@ class ClientApp:
                 email='email used for login. Password '
                      'will be prompted.',
                 dir='mount dir. Any directory within mount tree '
-                   'will be authorized to access url above. '
+                   'will be authorized to access url above. ',
+                default=('use login as default', Switch)
                 )
-    def login(self, url, email, passwd=None, dir='.'):
+    def login(self, url, email, passwd=None, dir='.', default=False):
         if passwd is None:
             passwd = getpass.getpass()
         client = CakeClient()
@@ -41,12 +42,12 @@ class ClientApp:
             client.initdb()
         cu_session = ClientUserSession(client, url)
         cu_session.login(email, passwd=passwd)
-        cu_session.create_mount_session(dir)
+        cu_session.create_mount_session(dir,default=default)
 
 
     @ca.command('logout from server',
                 dir='directory within mount that was authorized '
-                   'with server previously. ')
+                    'with server previously. ')
     def logout(self, dir='.'):
         pass
 
@@ -113,9 +114,21 @@ class ClientApp:
             print('From: {src!s} \nCake: {cake!s}\n'
                   .format(**locals()))
 
-
     @ca.command('backup and pull. Use dir_id as portal.')
     def sync(self, dir='.'):
+        pass
+
+    @ca.command('Create portal')
+    def create_potral(self, portal_id=None, portal_type=None,
+                      cake=None, ):
+        pass
+
+    @ca.command('Update path in vtree')
+    def update_vtree(self, cake_path, cake=None, path=None ):
+        pass
+
+    @ca.command('Delete path in vtree')
+    def delete_in_vtree(self, cake_path, cake=None ):
         pass
 
 main = ca.main

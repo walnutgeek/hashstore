@@ -17,9 +17,10 @@ u.ensure_directory(test.dir)
 
 def test_docs():
     import doctest
-    import hashstore.utils as test1
-    import hashstore.utils.ignore_file as test2
-    for t in (test1,test2):
+    import hashstore.utils as utils
+    import hashstore.utils.ignore_file as ignore_file
+    import hashstore.utils.time as time
+    for t in (utils,ignore_file,time):
         r = doctest.testmod(t)
         ok_(r.attempted > 0, 'There is not doctests in module')
         eq_(r.failed,0)

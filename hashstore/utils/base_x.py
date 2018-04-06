@@ -81,6 +81,7 @@ class BaseX:
     def __init__(self, alphabet):
         self.alphabet = alphabet
         self.size = len(alphabet)
+        self.index = { alphabet[i]:i for i in range(self.size)}
 
     def encode_int(self, i):
         '''Encode an integer'''
@@ -120,7 +121,7 @@ class BaseX:
 
         decimal = 0
         for char in v:
-            decimal = decimal * self.size + self.alphabet.index(char)
+            decimal = decimal * self.size + self.index[char]
         return decimal
 
     def decode(self, v):

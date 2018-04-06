@@ -127,8 +127,8 @@ class ClientUserSession:
 
     def login(self, email, passwd):
         result = self.proxy.login(email=email,
-                                passwd = passwd,
-                                client_id = self.client_id)
+                                  passwd=passwd,
+                                  client_id=self.client_id)
         self.email = email
         self.session_id = Cake.ensure_it(result)
         self.init_headers()
@@ -140,7 +140,7 @@ class ClientUserSession:
             if self.client_id is not None:
                 self.headers['ClientID'] = str(self.client_id)
 
-    def create_mount_session(self, mount_dir):
+    def create_mount_session(self, mount_dir, default=False):
         abspath = os.path.abspath(mount_dir)
         with self.client.client_config_session() as session:
             session.merge(Server(id=self.server_id,
@@ -154,6 +154,12 @@ class ClientUserSession:
             mount_session.id = self.session_id
             mount_session.server_id = self.server_id
             mount_session.username = self.email
+            mount_session.default = default
+            if default:
+                session.query(MountSession)\
+                    .filter(MountSession.id != self.session_id,
+                            MountSession.default == True )\
+                    .update({MountSession.default: False})
         print("Mount: "+ abspath)
         print(self.headers)
 

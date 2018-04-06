@@ -6,9 +6,11 @@ from sniffer.api import *
 def py_files(filename):
     return filename.endswith('.py') or filename.endswith('.yaml') or filename.endswith('.rst')
 
-run_envs = ['py2',
-            'py3']
+
+run_envs = ['py2', 'py3']
+
 env_template = '. activate %s; coverage run -p -m nose %s'
+
 combine_cmd = '. activate py2; coverage combine; coverage report -m; {html} rm .coverage'
 
 
@@ -26,19 +28,18 @@ def execute_one_test(*args):
     # case += ' hashstore.tests.server_tests'
     # case += ' hashstore.tests.local_store_tests'
     # case += ' hashstore.bakery.tests.cli_tests'
-    case += ' hashstore.bakery.tests.init_tests'
+    # case += ' hashstore.bakery.tests.init_tests'
     # case += ' hashstore.bakery.tests.logic_tests'
     # case += ' hashstore.bakery.tests.cake_tree_tests'
-    # case += ' hashstore.bakery.tests.server_tests'
+    case += ' hashstore.bakery.tests.server_tests'
     # case += ' hashstore.bakery.tests.backend_tests'
     # case += ' hashstore.tests.ndb_models_tests'
-    case += ' hashstore.tests.ndb_tests'
+    # case += ' hashstore.tests.ndb_tests'
     # case += ' hashstore.tests.utils_tests'
     # case += ' hashstore.tests.utils_file_types_tests'
     # case += ' hashstore.tests.utils.base_x_tests'
     # case += ' hashstore.tests.doc_tests'
-    return run(case, [ 'py2',
-                        'py3'])
+    return run(case, [ 'py2', 'py3'], html=True)
 
 
 # #@runnable

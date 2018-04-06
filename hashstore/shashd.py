@@ -30,7 +30,7 @@ def args_parser():
                         nargs='?', default=None,
                         help='yaml configuration file name')
     parser.add_argument('--debug', dest="debug", action='store_true',
-                        help='change loginin leve to debug. '
+                        help='change loginin level to debug. '
                              'default is INFO')
 
     return parser
