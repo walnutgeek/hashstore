@@ -14,7 +14,7 @@ class Opt(_Opt):
         if has_default:
             help += 'Default is: %r. ' % default
         if choices is not None:
-            help += 'Choices are: %r. ' % (choices,)
+            help += 'Choices are: %r. ' % ([str(s) for s in choices],)
         return _Opt.__new__(cls, name, help, has_default, default, type, choices)
 
     def add_itself(self, parser):
@@ -68,7 +68,10 @@ class CommandArgs:
                 sw = False
                 opt_type = None
                 opt_help = opthelp_kw.get(n, '')
+                opt_choices = None
                 if isinstance(opt_help,tuple):
+                    if len(opt_help) > 2:
+                        opt_choices = opt_help[2]
                     opt_type = opt_help[1]
                     opt_help = opt_help[0]
                 has_default = True
@@ -82,7 +85,7 @@ class CommandArgs:
                 if sw:
                     options.append(Switch(n, opt_help, default))
                 else:
-                    options.append(Opt(n, opt_help, has_default, default, opt_type ))
+                    options.append(Opt(n, opt_help, has_default, default, opt_type, opt_choices ))
             self.commands.append(Cmd(fn.__name__, command_help, options))
             return fn
         return decorate

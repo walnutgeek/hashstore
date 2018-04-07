@@ -6,6 +6,7 @@ from hashstore.utils import Stringable, EnsureIt, Jsonable
 from six import BytesIO, string_types, iteritems, binary_type
 import hashlib
 import os
+import re
 import hashstore.utils as utils
 import base64
 from hashstore.utils.base_x import base_x,iseq
@@ -196,6 +197,16 @@ class Role(enum.IntEnum):
     SYNAPSE = 0
     NEURON = 1
 
+    def __str__(self):
+        return self.name
+
+    @staticmethod
+    def from_name(s):
+        for e in Role:
+            if e.name == s:
+                return e
+        raise ValueError('unknown role:' + s)
+
 
 class KeyStructure(enum.IntEnum):
     INLINE = 0
@@ -205,13 +216,27 @@ class KeyStructure(enum.IntEnum):
     PORTAL_DMOUNT = 4
     CAKEPATH = 5
 
+    def __str__(self):
+        return re.sub(r'^PORTAL_', '', self.name)
+
+
+portal_structs = ( KeyStructure.PORTAL,
+                   KeyStructure.PORTAL_DMOUNT,
+                   KeyStructure.PORTAL_VTREE )
+
+
+def portal_from_name(n):
+    if n is None or n == '':
+        return portal_structs[0]
+    for ps in portal_structs:
+        if n in (ps.name, str(ps)):
+            return ps
+    raise ValueError('unknown portal type:'+n)
+
+
 
 def is_key_structure_a_portal(key_structure):
-    return key_structure in (
-        KeyStructure.PORTAL,
-        KeyStructure.PORTAL_DMOUNT,
-        KeyStructure.PORTAL_VTREE
-    )
+    return key_structure in portal_structs
 
 
 def assert_key_structure(expected, key_structure):
@@ -417,7 +442,11 @@ class Cake(utils.Stringable, utils.EnsureIt):
         return Cake.from_stream(open(file, 'rb'), role=role)
 
     @staticmethod
-    def new_portal(role=Role.SYNAPSE, key_structure=KeyStructure.PORTAL):
+    def new_portal(role=None, key_structure=None):
+        if role is None:
+            role = Role.SYNAPSE
+        if key_structure is None:
+            key_structure = KeyStructure.PORTAL
         cake = Cake(os.urandom(32), key_structure=key_structure,
                     role=role)
         cake.assert_portal()

@@ -3,7 +3,8 @@ import logging
 import os
 
 from hashstore.bakery.cake_client import ClientUserSession, CakeClient
-from hashstore.bakery import cake_or_path, Cake
+from hashstore.bakery import cake_or_path, Cake, portal_structs, \
+    portal_from_name, Role
 from hashstore.ndb.models.scan import FileType
 from hashstore.utils.args import CommandArgs, Switch
 
@@ -118,10 +119,34 @@ class ClientApp:
     def sync(self, dir='.'):
         pass
 
-    @ca.command('Create portal')
-    def create_potral(self, portal_id=None, portal_type=None,
-                      cake=None, ):
-        pass
+    @ca.command('Create portal',
+                portal_type=('Type of portal. Only needed if portal_id '
+                             'is not provided. ',
+                             portal_from_name, portal_structs ),
+                portal_role=('Role of portal. Only needed if portal_id '
+                             'is not provided. ',
+                             Role.from_name, list(Role) ),
+                portal_id=('Portal to be created. If omitted new '
+                           'random portal_id will be created .', Cake),
+                cake=('Optional. Cake that created portal points to. ',
+                      Cake),
+                dir=('directory, used to lookup mount session. ')
+                )
+    def create_portal(self, portal_id=None, portal_role=None,
+                      portal_type=None, cake=None, dir='.'):
+        if portal_id is None:
+            portal_id = Cake.new_portal(role=portal_role,
+                                        key_structure=portal_type)
+        client = CakeClient()
+        cu_session = client.check_mount_session(dir)
+        if cu_session is None:
+            log.warning('{dir} is not mounted, use login command to '
+                        'establish mount_session with server')
+        else:
+            cu_session.proxy.create_portal(portal_id=portal_id,
+                                           cake=cake)
+        print('Portal: {portal_id!s} \nCake: {cake!s}\n'
+                .format(**locals()) )
 
     @ca.command('Update path in vtree')
     def update_vtree(self, cake_path, cake=None, path=None ):

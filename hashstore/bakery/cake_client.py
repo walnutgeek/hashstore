@@ -44,14 +44,22 @@ class CakeClient:
     def check_mount_session(self, dir):
         abspath = os.path.abspath(dir)
         with self.client_config_session() as session:
+            def client_session(mount_session):
+                server = session.query(Server) \
+                    .filter(Server.id == mount_session.server_id) \
+                    .one()
+                return ClientUserSession(self, server.server_url,
+                                         mount_session.id)
+            default_mount = None
             for mount_session in session.query(MountSession)\
                     .order_by(desc(MountSession.path)).all():
                 if is_file_in_directory(abspath, mount_session.path):
-                    server = session.query(Server)\
-                        .filter(Server.id == mount_session.server_id)\
-                        .one()
-                    return ClientUserSession(self, server.server_url,
-                                             mount_session.id)
+                    return client_session(mount_session)
+                if mount_session.default:
+                    default_mount = mount_session
+            if default_mount is not None:
+                return client_session(mount_session)
+
 
 
     def logout(self):

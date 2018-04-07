@@ -1,4 +1,6 @@
-from hashstore.bakery import SaltedSha
+from nose.tools import eq_
+
+from hashstore.bakery import SaltedSha, Cake, Role, KeyStructure
 from hashstore.tests import TestSetup, file_set1, file_set2, \
     prep_mount, update_mount, fileset1_cake, fileset2_cake
 import os
@@ -97,6 +99,17 @@ class ServerSetup:
             'hsi scan --dir {pull}'
                 .format(**locals()), expect_rc=0,
             expect_read=fileset2_cake)
+
+        _, save_words = self.test.run_script_and_wait(
+            'hsi create_portal --portal_type VTREE '
+            '--portal_role NEURON', expect_rc=0,
+            expect_read='''Portal: ...
+            Cake: None
+            ''',save_words=[])
+        print(save_words)
+        new_portal = Cake.ensure_it(save_words[0])
+        eq_(new_portal.role, Role.NEURON)
+        eq_(new_portal.key_structure, KeyStructure.PORTAL_VTREE)
 
         if self.shutdown:
             self.do_shutdown()
