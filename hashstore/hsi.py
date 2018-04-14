@@ -4,7 +4,7 @@ import os
 
 from hashstore.bakery.cake_client import ClientUserSession, CakeClient
 from hashstore.bakery import cake_or_path, Cake, portal_structs, \
-    portal_from_name, Role
+    portal_from_name, Role, CakePath
 from hashstore.ndb.models.scan import FileType
 from hashstore.utils.args import CommandArgs, Switch
 
@@ -148,9 +148,26 @@ class ClientApp:
         print('Portal: {portal_id!s} \nCake: {cake!s}\n'
                 .format(**locals()) )
 
-    @ca.command('Update path in vtree')
-    def update_vtree(self, cake_path, cake=None, path=None ):
-        pass
+    @ca.command('Update path in vtree',
+                cake_path=('Portal to be created. If omitted new '
+                           'random portal_id will be created .',
+                           CakePath),
+                cake=('Optional. Cake that created portal points to. ',
+                      Cake),
+                path=(''),
+                dir=('directory, used to lookup mount session. ')
+                )
+    def update_vtree(self, cake_path, cake=None, path=None, dir=None):
+        client = CakeClient()
+        cu_session = client.check_mount_session(path or '.')
+        if cu_session is None:
+            log.warning('{dir} is not mounted, use login command to '
+                        'establish mount_session with server')
+        else:
+            access = cu_session.proxy
+
+        print('CPath: {cake_path!s} \nCake: {cake!s}\n'
+                .format(**locals()) )
 
     @ca.command('Delete path in vtree')
     def delete_in_vtree(self, cake_path, cake=None ):

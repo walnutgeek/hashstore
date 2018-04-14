@@ -59,7 +59,8 @@ class FileScan(Scan):
                 open(self.path, 'rb'),
                 process_buffer=self.stats.count_bytes
             )
-            self.entry.cake = Cake.from_digest_and_inline_data(digest, inline_data)
+            self.entry.cake = Cake.from_digest_and_inline_data(
+                digest, inline_data)
         else:
             self.entry.cake = from_db.cake
 
@@ -150,10 +151,8 @@ class DirScan(CakeEntries, Scan):
                     entry = FileScan(self.path, f,
                                      old_db_entries.get(f, None),
                                      self.stats)
-            except OSError:
-                log.warning('cannot read: %s/%s' , self.path, f)
-            except IOError:
-                log.warning('cannot read: %s/%s' , self.path, f)
+            except (OSError,IOError):
+                log.warning('cannot read: %s/%s', self.path, f)
             else:
                 child_entries.append(entry)
 
@@ -237,16 +236,16 @@ def backup(path, access):
                 stored = access.write_content(fp)
                 if not stored.match(h):
                     log.info('path:%s, %s != %s' % (file, h, stored))
-                    dir_scan.bundle[name] = Cake (stored.hash_bytes(),
-                                                  h.key_structure,
-                                                  h.data_type)
+                    dir_scan.bundle[name] = Cake(stored.hash_bytes(),
+                                                 h.key_structure,
+                                                 h.data_type)
                     dir_scan.udk = dir_scan.bundle.cake()
                     store_dir = True
         progress.just_processed(sum(f.size for f in dir_scan.new_db_entries
                                     if f.file_type == FileType.FILE)
                                 + dir_scan.bundle.size(), dir_scan.path)
 
-    root_scan = DirScan(path,on_each_dir=ensure_files_in_store)
+    root_scan = DirScan(path, on_each_dir=ensure_files_in_store)
     portal_id = root_scan.dir_key().id
     latest_cake = root_scan.entry.cake
     access.create_portal(portal_id=portal_id, cake=latest_cake)

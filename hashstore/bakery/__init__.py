@@ -537,6 +537,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
 
 @six.add_metaclass(abc.ABCMeta)
 class HasHash(object):
+
     @abc.abstractmethod
     def cake(self):
         raise NotImplementedError('subclasses must override')

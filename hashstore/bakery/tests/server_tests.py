@@ -106,10 +106,15 @@ class ServerSetup:
             expect_read='''Portal: ...
             Cake: None
             ''',save_words=[])
-        print(save_words)
         new_portal = Cake.ensure_it(save_words[0])
         eq_(new_portal.role, Role.NEURON)
         eq_(new_portal.key_structure, KeyStructure.PORTAL_VTREE)
+
+        self.test.run_script_and_wait(
+            'hsi update_vtree --cake_path /{new_portal!s}/x/y '
+            '--path={files!s}/x/y'
+                .format(**locals()), expect_rc=0,
+            expect_read='CPath: ...\nCake: None')
 
         if self.shutdown:
             self.do_shutdown()
