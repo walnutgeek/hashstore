@@ -415,10 +415,9 @@ class Cake(utils.Stringable, utils.EnsureIt):
             if len(self._data) != 32:
                 raise AssertionError('invalid CAKey: %r ' % s)
 
-
     @staticmethod
     def from_digest_and_inline_data(digest, buffer,
-                                    role = Role.SYNAPSE):
+                                    role=Role.SYNAPSE):
         if buffer is not None and len(buffer) <= inline_max_bytes:
             return Cake(buffer, key_structure=KeyStructure.INLINE,
                         role=role)

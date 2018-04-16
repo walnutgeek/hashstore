@@ -26,7 +26,7 @@ positional arguments:
     pull                download remote changes for a dir
     sync                backup and pull. Use dir_id as portal.
     create_portal       Create portal
-    update_vtree        Update path in vtree
+    update_vtree        Update file in vtree
     delete_in_vtree     Delete path in vtree
 
 optional arguments:

@@ -496,17 +496,19 @@ class PrivilegedAccess(_Access):
 
 
     @user_api.call()
-    def edit_portal_tree(self, cake_path_to_cake_pairs, asof_dt=None):
+    def edit_portal_tree(self, files, asof_dt=None):
         '''
         update path with cake in portal_tree
         '''
         VT = VolatileTree
         glue_session = self.ctx.glue_session()
         if asof_dt is None:
-            asof_dt = datetime.datatime.utcnow()
+            asof_dt = datetime.datetime.utcnow()
+        unseen_cakes = set()
 
         def add_cake_to_vtree(cake_path, cake):
             cake_path = self._assert_vtree_(cake_path)
+            cake = Cake.ensure_it(cake)
             portal_id = cake_path.root
             path = cake_path.path_join()
             parent = cake_path.parent()
@@ -530,7 +532,7 @@ class PrivilegedAccess(_Access):
                                       self.auth_user)
                 if under_edit.cake != cake:
                     under_edit.end_dt = asof_dt
-                    under_edit.end_by = self.auth_user
+                    under_edit.end_by = self.auth_user.id
                     glue_session.add(under_edit)
                 else:
                     change = False
@@ -540,11 +542,14 @@ class PrivilegedAccess(_Access):
                     portal_id=portal_id,
                     path=path,
                     parent_path=parent_path,
-                    start_by=self.auth_user,
+                    start_by=self.auth_user.id,
                     cake=cake,
                     start_dt=asof_dt))
-        for cake_path,cake in cake_path_to_cake_pairs:
+                self._collect_unseen(cake, unseen_cakes)
+        for cake_path,cake in files:
             add_cake_to_vtree(cake_path,cake)
+        return list(unseen_cakes)
+
 
 
     @user_api.call()

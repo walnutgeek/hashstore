@@ -72,6 +72,32 @@ class ServerSetup:
                         "'ClientID': ...")
 
         _, save_words = self.test.run_script_and_wait(
+            'hsi create_portal --portal_type VTREE '
+            '--portal_role NEURON', expect_rc=0,
+            expect_read='''Portal: ...
+            Cake: None
+            ''',save_words=[])
+        new_portal = Cake.ensure_it(save_words[0])
+        eq_(new_portal.role, Role.NEURON)
+        eq_(new_portal.key_structure, KeyStructure.PORTAL_VTREE)
+
+        self.test.run_script_and_wait(
+            'hsi update_vtree --cake_path /{new_portal!s}/x/y/2 '
+            '--cake 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4'
+                .format(**locals()), expect_rc=0, expect_read=
+                    'WARNING:__main__:Server does not have '
+                    '2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4 stored.\n'
+                    'CPath: ...\n'
+                    'Cake: 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4')
+
+        self.test.run_script_and_wait(
+            'hsi update_vtree --cake_path /{new_portal!s}/x/y/2 '
+            '--file {files!s}/x/y/2'
+                .format(**locals()), expect_rc=0, expect_read=
+                    'CPath: ...\n'
+                    'Cake: 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4')
+
+        _, save_words = self.test.run_script_and_wait(
             'hsi backup --dir {files}'
                 .format(**locals()), expect_rc=0,
             expect_read='''....
@@ -100,21 +126,40 @@ class ServerSetup:
                 .format(**locals()), expect_rc=0,
             expect_read=fileset2_cake)
 
-        _, save_words = self.test.run_script_and_wait(
-            'hsi create_portal --portal_type VTREE '
-            '--portal_role NEURON', expect_rc=0,
-            expect_read='''Portal: ...
-            Cake: None
-            ''',save_words=[])
-        new_portal = Cake.ensure_it(save_words[0])
-        eq_(new_portal.role, Role.NEURON)
-        eq_(new_portal.key_structure, KeyStructure.PORTAL_VTREE)
+        self.test.run_script_and_wait(
+            'hsi update_vtree '
+            '--cake_path /{new_portal!s}/x/y/1 '
+            '--file {files!s}/x/y/1'
+                .format(**locals()), expect_rc=0, expect_read=
+                    'CPath: ...\n'
+                    'Cake: 2S5IatGd3u7Z7u5cptzH3SXhru9ACPGJgdT32QduZ8Df')
 
         self.test.run_script_and_wait(
-            'hsi update_vtree --cake_path /{new_portal!s}/x/y '
-            '--path={files!s}/x/y'
-                .format(**locals()), expect_rc=0,
-            expect_read='CPath: ...\nCake: None')
+            'hsi update_vtree '
+            '--cake_path /{new_portal!s}/x/y/1 '
+            '--file {files!s}/x/y/3'
+                .format(**locals()), expect_rc=0, expect_read=
+                    'CPath: ...\n'
+                    'Cake: 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4')
+
+        self.test.run_script_and_wait(
+            'hsi update_vtree '
+            '--cake_path /{new_portal!s}/x/z/3 '
+            '--file {files!s}/x/y/3'
+                .format(**locals()), expect_rc=0, expect_read=
+                    'CPath: ...\n'
+                    'Cake: 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4')
+
+        self.test.run_script_and_wait(
+            'hsi delete_in_vtree --cake_path /{new_portal!s}/x/y/2 '
+                .format(**locals()), expect_rc=0, expect_read=
+                    'Deleted: /{new_portal!s}/x/y/2'.format(**locals()))
+
+
+        self.test.run_script_and_wait(
+            'hsi delete_in_vtree --cake_path /{new_portal!s}/x/z'
+                .format(**locals()), expect_rc=0, expect_read=
+                    'Deleted: /{new_portal!s}/x/z'.format(**locals()))
 
         if self.shutdown:
             self.do_shutdown()

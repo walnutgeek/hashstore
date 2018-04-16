@@ -72,7 +72,7 @@ def ensure_vtree_path(glue_sess, cake_path, asof_dt, user):
             portal_id=cake_path.root,
             path=path,
             parent_path=parent_path,
-            start_by=user,
+            start_by=user.id,
             cake=None,
             start_dt=asof_dt,
             end_dt=None

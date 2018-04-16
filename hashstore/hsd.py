@@ -26,6 +26,9 @@ class DaemonApp():
     def __init__(self, store_dir='.', debug=False):
         level = logging.DEBUG if debug else logging.INFO
         logging.basicConfig(level=level)
+        if debug:
+            logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+            logging.getLogger('sqlalchemy.orm').setLevel(logging.INFO)
         self.store = CakeStore(store_dir)
 
 

@@ -223,7 +223,7 @@ def backup(path, access):
     progress = Progress(path)
 
     def ensure_files_in_store(dir_scan):
-        bundles = { str(dir_scan.entry.cake) : dir_scan.bundle}
+        bundles = {str(dir_scan.entry.cake): dir_scan.bundle}
         store_dir = True
         while store_dir:
             _, hashes_to_push = access.store_directories(directories=bundles)

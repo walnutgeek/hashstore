@@ -1,16 +1,14 @@
 import getpass
 import logging
 import os
-
+import sys
 from hashstore.bakery.cake_client import ClientUserSession, CakeClient
 from hashstore.bakery import cake_or_path, Cake, portal_structs, \
-    portal_from_name, Role, CakePath
+    portal_from_name, Role, CakePath, process_stream
 from hashstore.ndb.models.scan import FileType
 from hashstore.utils.args import CommandArgs, Switch
-
 from hashstore.utils import print_pad, exception_message
 import hashstore.bakery.cake_scan as cscan
-
 
 log = logging.getLogger(__name__)
 
@@ -26,6 +24,18 @@ class ClientApp:
     def __init__(self,debug):
         level = logging.DEBUG if debug else logging.INFO
         logging.basicConfig(level=level)
+
+    def _check_cu_session(self, dir):
+        client = CakeClient()
+        self.cu_session = client.check_mount_session(dir)
+        if self.cu_session is None:
+            log.warning('{dir} is not mounted, use login command to '
+                        'establish mount_session with server')
+            sys.exit(-1)
+
+    def remote(self):
+        return self.cu_session.proxy
+
 
     @ca.command('authorize client to interact with server',
                 url='a url where server is running',
@@ -88,16 +98,11 @@ class ClientApp:
 
     @ca.command('save local files on remote server')
     def backup(self, dir='.'):
-        client = CakeClient()
-        cu_session = client.check_mount_session(dir)
-        if cu_session is None:
-            log.warning('{dir} is not mounted, use login command to '
-                        'establish mount_session with server')
-        else:
-            portal_id,latest_cake = cscan.backup(dir, cu_session.proxy)
-            print('DirId: {portal_id!s}\n'
-                  'Cake: {latest_cake!s}\n'
-                  ''.format(**locals()))
+        self._check_cu_session(dir)
+        portal_id,latest_cake = cscan.backup(dir, self.remote())
+        print('DirId: {portal_id!s}\n'
+              'Cake: {latest_cake!s}\n'
+              ''.format(**locals()))
 
 
     @ca.command('download remote changes for a dir',
@@ -105,15 +110,11 @@ class ClientApp:
                 cake='content address or portal to restore from')
     def pull(self, cake, dir='.'):
         client = CakeClient()
-        cu_session = client.check_mount_session(dir)
-        if cu_session is None:
-            log.warning('{dir} is not mounted, use login command to '
-                        'establish mount_session with server')
-        else:
-            src = cake_or_path(cake)
-            cake = cscan.pull(cu_session.proxy, src, dir)
-            print('From: {src!s} \nCake: {cake!s}\n'
-                  .format(**locals()))
+        self._check_cu_session(dir)
+        src = cake_or_path(cake)
+        cake = cscan.pull(self.remote(), src, dir)
+        print('From: {src!s} \nCake: {cake!s}\n'
+              .format(**locals()))
 
     @ca.command('backup and pull. Use dir_id as portal.')
     def sync(self, dir='.'):
@@ -134,44 +135,51 @@ class ClientApp:
                 )
     def create_portal(self, portal_id=None, portal_role=None,
                       portal_type=None, cake=None, dir='.'):
+        self._check_cu_session(dir)
         if portal_id is None:
-            portal_id = Cake.new_portal(role=portal_role,
-                                        key_structure=portal_type)
-        client = CakeClient()
-        cu_session = client.check_mount_session(dir)
-        if cu_session is None:
-            log.warning('{dir} is not mounted, use login command to '
-                        'establish mount_session with server')
-        else:
-            cu_session.proxy.create_portal(portal_id=portal_id,
-                                           cake=cake)
+            portal_id = Cake.new_portal(
+                role=portal_role, key_structure=portal_type)
+        self.remote().create_portal(portal_id=portal_id,
+                                       cake=cake)
         print('Portal: {portal_id!s} \nCake: {cake!s}\n'
                 .format(**locals()) )
 
-    @ca.command('Update path in vtree',
-                cake_path=('Portal to be created. If omitted new '
-                           'random portal_id will be created .',
-                           CakePath),
-                cake=('Optional. Cake that created portal points to. ',
-                      Cake),
-                path=(''),
+    @ca.command('Update file in vtree',
+                cake_path=('Cake path in VTree portal where file should '
+                           'be stored.', CakePath),
+                cake=('Cake of the file. Warning is displayed if file '
+                      'is not on server.', Cake),
+                file=('File to be stored in vtree. If file is not on '
+                      'server file will be stored there'),
                 dir=('directory, used to lookup mount session. ')
                 )
-    def update_vtree(self, cake_path, cake=None, path=None, dir=None):
+    def update_vtree(self, cake_path, cake=None, file=None, dir=None):
         client = CakeClient()
-        cu_session = client.check_mount_session(path or '.')
-        if cu_session is None:
-            log.warning('{dir} is not mounted, use login command to '
-                        'establish mount_session with server')
-        else:
-            access = cu_session.proxy
+        self._check_cu_session(dir or file or '.')
+        if cake is None:
+            digest, _, buff = process_stream(
+                open(file, 'rb')
+            )
+            cake = Cake.from_digest_and_inline_data(digest, buff)
+
+        unseen = self.remote().edit_portal_tree(
+            files=[(cake_path,cake),])
+        for cake_to_write in map(Cake.ensure_it, unseen):
+            if cake != cake_to_write:
+                raise AssertionError('{cake} != {cake_to_write}'
+                                     .format(**locals()))
+            elif file is None:
+                log.warning('Server does not have %s stored.'%cake)
+            else:
+                fp = open(file, 'rb')
+                stored = self.remote().write_content(fp)
 
         print('CPath: {cake_path!s} \nCake: {cake!s}\n'
                 .format(**locals()) )
 
     @ca.command('Delete path in vtree')
-    def delete_in_vtree(self, cake_path, cake=None ):
-        pass
+    def delete_in_vtree(self, cake_path ):
+        print('Deleted: ' + cake_path)
 
 main = ca.main
 
