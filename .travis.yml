@@ -6,7 +6,6 @@ install:
   - cd hashstore/bakery/js
   - npm install
   - cd ../../..
-  - npm install
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
@@ -27,7 +26,6 @@ script:
   - cd hashstore/bakery/js
   - npm run build
   - cd ../../..
-  - npm run build
   - for e in py2 py3 ;
     do
       source activate $e;
