@@ -236,10 +236,33 @@ class StrKeyMixin:
     '''
     mixin for immutable objects to implement
     `__hash__()`, `__eq__()`, `__ne__()`
+
+    >>> class X(StrKeyMixin):
+    ...     def __init__(self, x):
+    ...         self.x = x
+    ...
+    ...     def __str__(self):
+    ...         return self.x
+    ...
+    >>> a = X('A')
+    >>> a != X('B')
+    True
+    >>> X('A') == X('B')
+    False
+    >>> a == X('A')
+    True
+    >>> a == 'A'
+    False
+    >>> a != X('A')
+    False
+    >>> hash(a) == hash(X('A'))
+    True
+    >>> hash(a) != hash(X('B'))
+    True
     '''
     def __cached_str(self):
         if not(hasattr(self, '_str')):
-            self._str = self.str()
+            self._str = str(self)
         return self._str
 
     def __hash__(self):
@@ -337,15 +360,6 @@ def read_in_chunks(fp, chunk_size=65535):
         if not data:
             break
         yield data
-
-
-def _cacheable(fn):
-    @functools.wraps(fn)
-    def _(self):
-        if fn.__name__ not in self.cache:
-            self.cache[fn.__name__] = fn(self)
-        return self.cache[fn.__name__]
-    return _
 
 
 class FileNotFound(Exception):
@@ -495,6 +509,7 @@ def normalize_url(url):
         url = 'http://' + url
     return url
 
+
 def _build_if_not_yet(cls, factory):
     return lambda v: v if issubclass(type(v), cls) else factory(v)
 
@@ -536,6 +551,22 @@ def create_converter(cls):
     ...
     >>> create_converter(Y)({'x': '3'})
     Y(x=X(x=3))
+
+    >>> @attr.s
+    ... class Q(object):
+    ...    d = attr.ib(converter=create_converter(date))
+    ...
+
+    >>> create_converter(Q)({'d': '2018-04-23'})
+    Q(d=datetime.date(2018, 4, 23))
+
+    >>> @attr.s
+    ... class Q2(object):
+    ...    d = attr.ib(converter=create_converter(datetime))
+    ...
+
+    >>> create_converter(Q2)({'d': '2018-04-23'})
+    Q2(d=datetime.datetime(2018, 4, 23, 0, 0))
 
     :return: converter for particular type
     '''
@@ -604,7 +635,7 @@ def from_json(cls, s):
     return create_converter(cls)(json_decode(s))
 
 
-class GlobalRef(Stringable,EnsureIt,StrKeyMixin):
+class GlobalRef(Stringable, EnsureIt, StrKeyMixin):
     '''
     >>> ref = GlobalRef('hashstore.utils:GlobalRef')
     >>> ref

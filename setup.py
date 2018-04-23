@@ -32,12 +32,12 @@ setup(name='hashstore',
       author_email='wg@walnutgeek.com',
       license='Apache 2.0',
       packages=find_packages(exclude=("tests",)),
-      package_data={'': ['utils/file_types.json','app/*', 'bakery/app/*', 'bakery/app/fonts/*']},
+      package_data={'': ['utils/file_types.json', 'bakery/app/*', 'bakery/app/fonts/*']},
       cmdclass={'sdist': MySdistCommand},
       entry_points={
           'console_scripts': [
               '%s=hashstore.%s:main'%(n, n) for n in
-              'shash shashd hsi hsd'.split()
+              'hsi hsd'.split()
           ],
       },
       install_requires=install_requires,
