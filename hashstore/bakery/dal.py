@@ -3,8 +3,7 @@ from hashstore.bakery import Cake, NamedCAKes, CakePath, Role
 from hashstore.ndb.models.server_config import ServerKey, \
     ServerConfigBase
 from hashstore.ndb.models.glue import Portal, \
-    PortalHistory, GlueBase, User, UserState, Permission, \
-    PermissionType, Acl, VolatileTree
+    PortalHistory, User, Permission, VolatileTree
 
 from sqlalchemy import or_, and_
 
@@ -49,7 +48,6 @@ def ensure_vtree_path(glue_sess, cake_path, asof_dt, user):
     if cake_path is None:
         return
     parent = cake_path.parent()
-    ensure_vtree_path(glue_sess, parent, asof_dt, user)
     VT = VolatileTree
     parent_path = '' if parent is None else parent.path_join()
     path = cake_path.path_join()
@@ -59,14 +57,11 @@ def ensure_vtree_path(glue_sess, cake_path, asof_dt, user):
             VT.path == path,
             VT.end_dt == None
         ).one_or_none()
-    add = False
-    if entry is None:
-        add = True
-    else:
-        if entry.cake is not None:
-            raise AssertionError(
-                'cannot overwrite %s with %s' %
-                (Role.SYNAPSE, Role.NEURON))
+    add = entry is None
+    if not(add) and entry.cake is not None:
+        raise AssertionError(
+            'cannot overwrite %s with %s' %
+            (Role.SYNAPSE, Role.NEURON))
     if add:
         glue_sess.add(VT(
             portal_id=cake_path.root,
@@ -77,6 +72,8 @@ def ensure_vtree_path(glue_sess, cake_path, asof_dt, user):
             start_dt=asof_dt,
             end_dt=None
         ))
+        ensure_vtree_path(glue_sess, parent, asof_dt, user)
+
 
 def edit_portal(glue_sess,portal):
     glue_sess.merge(portal)

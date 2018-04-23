@@ -160,6 +160,16 @@ class PrivilegedAccess(_Access):
         raise NotAuthorizedError('%s does not have %r permissions' %
                                  (self.auth_user.email, required_acls))
 
+    def authorize_all(self, cakes, pts):
+        if self.system_access:
+            return
+        autorized = set()
+        for cake in cakes:
+            if cake in autorized:
+                continue
+            self.authorize(cake, pts)
+            autorized.add(cake)
+
     def get_content(self, cake_or_path):
         '''
         get_content(data_cake)   -> Content
@@ -295,13 +305,6 @@ class PrivilegedAccess(_Access):
                                  dirs_mismatch_input_cake)
         return len(dirs_stored), list(unseen_cakes)
 
-
-    @user_api.call()
-    def find_unseen(self, cakes):
-        unseen_set = set()
-        for cake in map(Cake.ensure_it, cakes):
-            self._collect_unseen(cake, unseen_set)
-        return unseen_set
 
     def _collect_unseen(self, cake, unseen_set):
         if not cake.has_data():
@@ -500,6 +503,11 @@ class PrivilegedAccess(_Access):
         '''
         update path with cake in portal_tree
         '''
+        files = [(self._assert_vtree_(cp),Cake.ensure_it(c))
+                  for cp,c in files]
+
+        self.authorize_all((cp.root for cp,_ in files),
+                           (PT.Edit_Portal_, PT.Admin))
         VT = VolatileTree
         glue_session = self.ctx.glue_session()
         if asof_dt is None:
@@ -507,7 +515,6 @@ class PrivilegedAccess(_Access):
         unseen_cakes = set()
 
         def add_cake_to_vtree(cake_path, cake):
-            cake_path = self._assert_vtree_(cake_path)
             cake = Cake.ensure_it(cake)
             portal_id = cake_path.root
             path = cake_path.path_join()
@@ -528,8 +535,6 @@ class PrivilegedAccess(_Access):
                     raise ValueError(
                         "cannot endate under_edit:%r for asof_dt:%r " %
                         (under_edit,asof_dt))
-                dal.ensure_vtree_path(glue_session, parent, asof_dt,
-                                      self.auth_user)
                 if under_edit.cake != cake:
                     under_edit.end_dt = asof_dt
                     under_edit.end_by = self.auth_user.id
@@ -546,16 +551,46 @@ class PrivilegedAccess(_Access):
                     cake=cake,
                     start_dt=asof_dt))
                 self._collect_unseen(cake, unseen_cakes)
+                dal.ensure_vtree_path(glue_session, parent, asof_dt,
+                                      self.auth_user)
+
         for cake_path,cake in files:
             add_cake_to_vtree(cake_path,cake)
         return list(unseen_cakes)
 
-
-
     @user_api.call()
     def delete_in_portal_tree(self, cake_path, asof_dt = None):
-        # cake_path = self._assert_vtree_(cake_path)
-        pass
+        cake_path = self._assert_vtree_(cake_path)
+        self.authorize(cake_path.root, (PT.Edit_Portal_, PT.Admin))
+        path = cake_path.path_join()
+        VT = VolatileTree
+        glue_session = self.ctx.glue_session()
+        if asof_dt is None:
+            asof_dt = datetime.datetime.utcnow()
+        delete_root = glue_session.query(VT) \
+            .filter(
+                VT.portal_id == cake_path.root,
+                VT.path == path,
+                VT.end_dt == None
+            ).one_or_none()
+        if delete_root is None:
+            return False
+        if delete_root.start_dt > asof_dt:
+            raise ValueError( "cannot endate :%r for asof_dt:%r " %
+                              (delete_root, asof_dt))
+        if delete_root.cake is not None:
+            delete_root.end_dt = asof_dt
+            delete_root.end_by = self.auth_user.id
+        else:
+            rc = glue_session.query(VT).filter(
+                VT.portal_id == cake_path.root,
+                or_(VT.path == path,
+                    VT.path.startswith(path+'/', autoescape=True)),
+                VT.end_dt == None
+            ).update({VT.end_dt: asof_dt,
+                      VT.end_by: self.auth_user.id},
+                     synchronize_session=False)
+        return True
 
     @user_api.call()
     def get_portal_tree(self, portal_id, asof_dt=None):

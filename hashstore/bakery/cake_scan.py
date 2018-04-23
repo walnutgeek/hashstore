@@ -119,7 +119,7 @@ class CakeEntries:
 
 
 class DirScan(CakeEntries, Scan):
-    def __init__(self, path, addname=None, stats = None,
+    def __init__(self, path, addname=None, stats=None,
                  ignore_entries=[], on_each_dir=None, parent=None):
         self.parent = parent
         if stats is None:
@@ -133,20 +133,23 @@ class DirScan(CakeEntries, Scan):
                           failback(self.directory_usage, [])()}
 
         files = sorted(filter(ignore_files, os.listdir(self.path)))
-        ignore_entries = parse_ignore_specs(self.path, files, ignore_entries)
+        ignore_entries = parse_ignore_specs(self.path, files,
+                                            ignore_entries)
 
         for f in files:
             path_to_file = os.path.join(self.path, f)
             if os.path.islink(path_to_file):
                 continue
             isdir = os.path.isdir(path_to_file)
-            if check_if_path_should_be_ignored(ignore_entries, path_to_file, isdir):
+            if check_if_path_should_be_ignored(ignore_entries,
+                                               path_to_file, isdir):
                 continue
 
             try:
                 if isdir:
                     entry = DirScan(self.path, f, self.stats,
-                                    ignore_entries, on_each_dir, parent=self)
+                                    ignore_entries, on_each_dir,
+                                    parent=self)
                 else:
                     entry = FileScan(self.path, f,
                                      old_db_entries.get(f, None),
@@ -156,11 +159,11 @@ class DirScan(CakeEntries, Scan):
             else:
                 child_entries.append(entry)
 
-        self.new_db_entries =[e.entry for e in child_entries]
+        self.new_db_entries = [e.entry for e in child_entries]
         self.bundle = build_bundle(self.new_db_entries)
         self.entry.cake = self.bundle.cake()
-        self.entry.size = sum(e.entry.size for e in child_entries) \
-                    + self.bundle.size()
+        self.entry.size = sum(e.entry.size for e in child_entries) + \
+                          self.bundle.size()
 
         stat = os.stat(self.path)
 
@@ -168,7 +171,6 @@ class DirScan(CakeEntries, Scan):
         if len(child_entries) > 0:
             youngest_file = max(e.entry.modtime for e in child_entries)
             self.entry.modtime = max(self.entry.modtime, youngest_file)
-
 
         self.store_entries(self.new_db_entries)
 
@@ -189,7 +191,6 @@ class Progress:
         self.terminal = sys.stdout.isatty()
         self.pad_to = 0
         self._value = ''
-
 
     def just_processed(self, towards_total, directory ):
         self.current += towards_total
@@ -215,7 +216,7 @@ class Progress:
     def pct_value(self):
         if self.total is None or self.total == 0.:
             return '?'
-        pct_format = '%3.2f%%' if self.terminal  else  '%3d%%'
+        pct_format = '%3.2f%%' if self.terminal else '%3d%%'
         return pct_format % (100 * float(self.current)/self.total)
 
 

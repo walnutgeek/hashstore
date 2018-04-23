@@ -154,7 +154,6 @@ class ClientApp:
                 dir=('directory, used to lookup mount session. ')
                 )
     def update_vtree(self, cake_path, cake=None, file=None, dir=None):
-        client = CakeClient()
         self._check_cu_session(dir or file or '.')
         if cake is None:
             digest, _, buff = process_stream(
@@ -178,8 +177,10 @@ class ClientApp:
                 .format(**locals()) )
 
     @ca.command('Delete path in vtree')
-    def delete_in_vtree(self, cake_path ):
-        print('Deleted: ' + cake_path)
+    def delete_in_vtree(self, cake_path, dir='.'):
+        self._check_cu_session(dir)
+        deleted = self.remote().delete_in_portal_tree(cake_path=cake_path)
+        print(('Deleted: ' if deleted else 'Not there: ') + cake_path)
 
 main = ca.main
 

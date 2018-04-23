@@ -82,9 +82,8 @@ def check_if_path_should_be_ignored(ignore_entries, path, isdir):
 IGNORE_FILENAMES = [u'.svn', u'.git', u'.DS_Store', u'.vol',
                     u'.hotfiles.btree', u'.ssh']
 
-IGNORE_IF_STARTS_WITH = [u'.shamo',  u'.cake', u'.backup', u'.Spotlight',
-                         u'._', u'.Trash']
-
+IGNORE_IF_STARTS_WITH = [u'.shamo',  u'.cake', u'.backup',
+                         u'.Spotlight', u'._', u'.Trash']
 
 def ignore_files(n):
     return not(n in IGNORE_FILENAMES or

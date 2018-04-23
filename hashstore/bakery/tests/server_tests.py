@@ -161,6 +161,11 @@ class ServerSetup:
                 .format(**locals()), expect_rc=0, expect_read=
                     'Deleted: /{new_portal!s}/x/z'.format(**locals()))
 
+        self.test.run_script_and_wait(
+            'hsi delete_in_vtree --cake_path /{new_portal!s}/x/z'
+                .format(**locals()), expect_rc=0, expect_read=
+                    'Not there: /{new_portal!s}/x/z'.format(**locals()))
+
         if self.shutdown:
             self.do_shutdown()
             self.test.wait_process(server_id, expect_rc=0)
