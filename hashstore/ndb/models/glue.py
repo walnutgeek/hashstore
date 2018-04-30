@@ -88,6 +88,7 @@ class PermissionType(enum.Enum):
     Create_Portals = 4
     Own_Portal_ = 5
     Read_Any_Portal = 6
+    Write_Guest_Bookmarks = 7
     Admin = 42
 
     def expand(self):
@@ -143,8 +144,6 @@ class User(GuidPk, NameIt, Cdt, Udt, ReprIt, GlueBase):
     full_name = Column(String, nullable=True)
     permissions = relationship("Permission", order_by="Permission.id",
                                back_populates = "user")
-    bookmarks = relationship("Bookmark", order_by="Bookmark.name",
-                             back_populates = "user")
 
     def acls(self):
         if not hasattr(self, '_acls'):
@@ -197,14 +196,6 @@ class Permission(GuidPk, NameIt, Cdt, Udt, GlueBase):
     def expanded_acls(self):
         for pt in self.permission_type.expand():
             yield Acl(None, pt, self.cake)
-
-
-class Bookmark(NameIt, Cdt, Udt, GlueBase):
-    user_id = Column(None, ForeignKey('user.id'), primary_key=True)
-    name = Column(String, primary_key=True)
-    path = Column(StringCast(CakePath), nullable=False)
-    user = relationship("User", back_populates="bookmarks")
-
 
 
 class Server(ServersMixin, GlueBase):

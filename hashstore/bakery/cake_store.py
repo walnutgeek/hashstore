@@ -15,7 +15,7 @@ from hashstore.ndb.models.server_config import UserSession, ServerKey, \
     ServerConfigBase
 from hashstore.ndb.models.glue import Portal, \
     GlueBase, User, UserState, Permission, \
-    PermissionType as PT, Acl, Bookmark, VolatileTree
+    PermissionType as PT, Acl, VolatileTree
 
 import logging
 
@@ -211,7 +211,6 @@ class PrivilegedAccess(_Access):
         else:
             raise AssertionError('should never get here')
 
-
     def writer(self):
         '''
             get writer object
@@ -230,7 +229,6 @@ class PrivilegedAccess(_Access):
                 break
             w.write(buf)
         return w.done()
-
 
     def get_content_by_path(self, cake_path):
         '''
@@ -350,40 +348,6 @@ class PrivilegedAccess(_Access):
         return [{"permission": p.permission_type.name ,
                   "cake": p.cake }
                  for p in self.auth_user.permissions]
-
-    @user_api.query()
-    def bookmarks(self):
-        '''
-        loads user's bookmarks
-        '''
-        r = NamedCAKes()
-        for p in self.auth_user.bookmarks:
-            r[p.name] = p.path
-        return r
-
-    @user_api.query()
-    def save_bookmark(self, name, cake_path):
-        '''
-        add cake to bookmarks than will
-        '''
-        cake_path = CakePath.ensure_it(cake_path)
-        self.authorize(cake_path.root, self.Permissions.read_data_cake)
-        check_bookmark_name(name)
-        self.ctx.glue_session().merge(
-            Bookmark(name=name, path=cake_path, user=self.auth_user))
-
-    @user_api.query()
-    def remove_bookmark(self, name):
-        '''
-        remove bookmark
-        '''
-        session = self.ctx.glue_session()
-        bookmark = session.query(Bookmark).filter(
-            Bookmark.name == name,
-            Bookmark.user == self.auth_user).one_or_none()
-        if bookmark is None:
-            raise ValueError("bookmark does not exist:" + name)
-        session.delete(bookmark)
 
     @user_api.call()
     def list_portals(self):
