@@ -15,7 +15,7 @@ from hashstore.ndb.models.server_config import UserSession, ServerKey, \
     ServerConfigBase
 from hashstore.ndb.models.glue import Portal, \
     GlueBase, User, UserState, Permission, \
-    PermissionType as PT, Acl, VolatileTree
+    PermissionType as PT, Acl, VolatileTree, UserType
 
 import logging
 
@@ -84,7 +84,7 @@ class GuestAccess(_Access):
 
     @guest_api.call()
     def login(self, email, passwd, client_id=None):
-        user = dal.find_user(self.ctx.glue_session(), email)
+        user = dal.find_normal_user(self.ctx.glue_session(), email)
         if user.passwd.check_secret(passwd):
             client_ssha = None
             if client_id is not None:
@@ -148,7 +148,7 @@ class PrivilegedAccess(_Access):
         if isinstance(user, User):
             return user
         else:
-            return dal.find_user(self.ctx.glue_session(), user)
+            return dal.find_normal_user(self.ctx.glue_session(), user)
 
     def authorize(self, cake, pts):
         if self.system_access:
@@ -318,7 +318,7 @@ class PrivilegedAccess(_Access):
 
     def remove_user(self, user_or_email):
         self.authorize(None, (PT.Admin,))
-        user = dal.find_user(self.ctx.glue_session(), user_or_email)
+        user = dal.find_normal_user(self.ctx.glue_session(), user_or_email)
         user.user_state = UserState.disabled
 
     def add_acl(self, user_or_email, acl):
@@ -630,12 +630,16 @@ class CakeStore:
                              os.path.join(self.store_dir, 'server.db'))
         self.glue_db = Dbf(GlueBase.metadata,
                            os.path.join(self.store_dir, 'glue.db'))
+        self.guest, self.system = None, None
 
     def backend(self):
         if self._backend is None:
             self._backend = LiteBackend(
                 os.path.join(self.store_dir, 'backend')
             )
+            self.glue_db.ensure_db()
+            with self.glue_db.session_scope() as sess:
+                self.guest,self.system = dal.get_special_users(sess)
         return self._backend
 
     def initdb(self, external_ip, port):
@@ -643,15 +647,39 @@ class CakeStore:
             os.makedirs(self.store_dir)
         self.srvcfg_db.ensure_db()
         os.chmod(self.srvcfg_db.path, 0o600)
-        self.glue_db.ensure_db()
         self.backend()
-        with self.srvcfg_db.session_scope() as session:
-            skey = session.query(ServerKey).one_or_none()
+        with self.srvcfg_db.session_scope() as srv_session:
+            skey = srv_session.query(ServerKey).one_or_none()
             if skey is None:
                 skey = ServerKey()
             skey.port = port
             skey.external_ip = external_ip
-            session.merge(skey)
+            srv_session.merge(skey)
+        if self.guest is None or self.system is None:
+            with self.glue_db.session_scope() as glue_session:
+                def make_user(n):
+                    return User(email='%s@' % n,
+                                user_type=UserType[n],
+                                user_state=UserState.active,
+                                passwd=SaltedSha.from_secret('*'),
+                                full_name='%s user' % n
+                                )
+                if self.guest is None:
+                    self.guest = make_user('guest')
+                    glue_session.add(self.guest)
+                    glue_session.flush()
+                    glue_session.add(Portal(id=self.guest.id))
+                    glue_session.add(
+                        Permission(permission_type=PT.Read_,
+                                   cake=self.guest.id,
+                                   user=self.guest))
+                if self.system is None:
+                    self.system = make_user('system')
+                    glue_session.add(self.system)
+                    glue_session.add(
+                        Permission(permission_type=PT.Admin,
+                                   user=self.system))
+
 
     def ctx(self):
         return StoreContext(self)

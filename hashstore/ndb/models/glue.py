@@ -88,7 +88,6 @@ class PermissionType(enum.Enum):
     Create_Portals = 4
     Own_Portal_ = 5
     Read_Any_Portal = 6
-    Write_Guest_Bookmarks = 7
     Admin = 42
 
     def expand(self):
@@ -137,9 +136,16 @@ class UserState(enum.Enum):
     invitation = 2
 
 
+class UserType(enum.Enum):
+    guest = 0
+    normal = 1
+    system = 999
+
 class User(GuidPk, NameIt, Cdt, Udt, ReprIt, GlueBase):
-    email= Column(String, nullable=False)
+    email = Column(String, nullable=False)
     user_state = Column(IntCast(UserState), nullable=False)
+    user_type = Column(IntCast(UserType), nullable=False,
+                       default=UserType.normal)
     passwd = Column(StringCast(SaltedSha), nullable=False)
     full_name = Column(String, nullable=True)
     permissions = relationship("Permission", order_by="Permission.id",

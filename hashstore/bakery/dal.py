@@ -3,20 +3,22 @@ from hashstore.bakery import Cake, NamedCAKes, CakePath, Role
 from hashstore.ndb.models.server_config import ServerKey, \
     ServerConfigBase
 from hashstore.ndb.models.glue import Portal, \
-    PortalHistory, User, Permission, VolatileTree
+    PortalHistory, User, Permission, VolatileTree, UserType
 
 from sqlalchemy import or_, and_
 
 from hashstore.utils import is_str
 
 
-def find_user(glue_sess, user_or_email):
+def find_normal_user(glue_sess, user_or_email):
     if is_str(user_or_email) and '@' in user_or_email:
         column = User.email
     else:
         column = User.id
         user_or_email = Cake.ensure_it(user_or_email)
-    return glue_sess.query(User).filter(column == user_or_email).one()
+    return glue_sess.query(User)\
+        .filter(column == user_or_email,
+                User.user_type == UserType.normal).one()
 
 
 def find_permissions(glue_sess, user, *acls):
@@ -80,5 +82,13 @@ def edit_portal(glue_sess,portal):
     if portal.latest is not None:
         glue_sess.add(PortalHistory(portal_id=portal.id,
                                     cake=portal.latest))
+
+def query_users_by_type(glue_session, user_type):
+    return glue_session.query(User).filter(
+        User.user_type == user_type)
+
+def get_special_users(glue_session):
+    return tuple(query_users_by_type(glue_session, t).one_or_none()
+                 for t in (UserType.guest, UserType.system))
 
 PERM_SORT = lambda r: (r.permission_type.name, str(r.cake))
