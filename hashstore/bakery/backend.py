@@ -154,7 +154,7 @@ class LiteBackend:
                     yield ContentAddress(f)
 
     def get_content(self, k):
-        return self.lookup(k).content().set_data_type(k)
+        return self.lookup(k).content().set_role(k)
 
     def lookup(self, cake_or_cadr):
         if isinstance(cake_or_cadr, Cake):

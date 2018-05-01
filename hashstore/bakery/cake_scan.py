@@ -239,7 +239,7 @@ def backup(path, access):
                     log.info('path:%s, %s != %s' % (file, h, stored))
                     dir_scan.bundle[name] = Cake(stored.hash_bytes(),
                                                  h.key_structure,
-                                                 h.data_type)
+                                                 h.role)
                     dir_scan.udk = dir_scan.bundle.cake()
                     store_dir = True
         progress.just_processed(sum(f.size for f in dir_scan.new_db_entries

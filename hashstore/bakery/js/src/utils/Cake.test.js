@@ -11,6 +11,10 @@ test('Cake', () => {
   expect(longer_cake.keyStructure).toBe("SHA256");
   expect(longer_cake.role).toBe("NEURON");
   expect(longer_cake.data.length).toBe(32);
+  longer_cake = new Cake('5vJTH93SapJAY88AZ5kRwqXAhEsjxwKpQT7Z0AaWVyDR');
+  expect(longer_cake.keyStructure).toBe("PORTAL");
+  expect(longer_cake.role).toBe("NEURON");
+  expect(longer_cake.data.length).toBe(32);
 });
 
 test('EncoderDecoder', ()=>{

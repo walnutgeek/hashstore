@@ -135,7 +135,7 @@ class Content(Jsonable):
 
     def __init__(self, data=None, file=None, stream_fn=None,
                  mime=None, file_type=None, created_dt=None,
-                 size=None, data_type=None, lookup=None):
+                 size=None, role=None, lookup=None):
         self.mime = mime
         self.file_type = file_type
         if data is None and file is None and stream_fn is None:
@@ -143,7 +143,7 @@ class Content(Jsonable):
         self.data = data
         self.file = file
         self.stream_fn = stream_fn
-        self.data_type = data_type
+        self.role = role
         if lookup is None:
             self.size = size
             self.created_dt = created_dt
@@ -161,11 +161,11 @@ class Content(Jsonable):
             self.mime = file_types[self.file_type].mime
         return self
 
-    def set_data_type(self, copy_from):
-        if hasattr(copy_from, 'data_type'):
-            self.data_type = copy_from.data_type
+    def set_role(self, copy_from):
+        if hasattr(copy_from, 'role'):
+            self.role = copy_from.role
             if self.file_type is None:
-                if self.data_type == Role.NEURON:
+                if self.role == Role.NEURON:
                     self.file_type = HSB
         return self.guess_file_type()
 
@@ -270,14 +270,14 @@ def _header(key_structure, role):
     return (key_structure.value << 1)|role.value
 
 
-def pack_in_bytes(key_structure, data_type, data_bytes):
+def pack_in_bytes(key_structure, role, data_bytes):
     r"""
     >>> pack_in_bytes(KeyStructure.INLINE,Role.SYNAPSE, b'ABC')
     b'\x00ABC'
     >>> pack_in_bytes(KeyStructure.SHA256,Role.NEURON, b'XYZ')
     b'\x03XYZ'
     """
-    return to_byte(_header(key_structure, data_type)) + data_bytes
+    return to_byte(_header(key_structure, role)) + data_bytes
 
 
 def quick_hash(data):

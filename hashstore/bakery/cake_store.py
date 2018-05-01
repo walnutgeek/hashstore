@@ -193,7 +193,7 @@ class PrivilegedAccess(_Access):
         cake = cake_or_path
         if cake.has_data():
             return Content(data=cake_or_path.data())\
-                .set_data_type(cake_or_path)
+                .set_role(cake_or_path)
         elif cake.is_resolved():
             self.authorize(cake_or_path, self.Permissions.read_data_cake)
             return self.backend().get_content(cake_or_path)
@@ -452,7 +452,7 @@ class PrivilegedAccess(_Access):
                 namedCakes[file] = child.cake
 
             return Content(data=namedCakes.in_bytes(),
-                           data_type=Role.NEURON)
+                           role=Role.NEURON)
         else:
             return self.get_content(neuron_maybe.cake)
 
