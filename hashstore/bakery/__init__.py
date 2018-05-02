@@ -628,7 +628,7 @@ class NamedCAKes(utils.Jsonable, HasHash):
 
     def __setitem__(self, k, v):
         self._clear_cached()
-        self.store[k] = Cake.ensure_it(v)
+        self.store[k] = Cake.ensure_it_or_none(v)
 
     def __delitem__(self, k):
         self._clear_cached()

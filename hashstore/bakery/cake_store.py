@@ -56,14 +56,31 @@ class StoreContext(MultiSessionContextManager):
                         raise CredentialsError('client_id does not match')
                 self.params['user_id'] = user_session.user
                 self.params['session_id'] = user_session.id
-                return PrivilegedAccess(self, user_session.user)
+                return PrivilegedAccess(self, user=user_session.user)
         log.warning('{session_id} {client_id}'.format(**locals()))
         raise CredentialsError('cannot validate session')
 
 
-class _Access:
-    def __init__(self, ctx):
+guest_api = ApiCallRegistry()
+
+
+class GuestAccess:
+
+    api = guest_api
+
+    def __init__(self, ctx, user=None, user_type=UserType.guest):
         self.ctx = ctx
+        if user is None:
+            self.auth_user = dal.query_users_by_type(
+                self.ctx.glue_session(), user_type).one()
+        else:
+            self.auth_user = self.ensure_user(user)
+
+    def ensure_user(self, user):
+        if isinstance(user, User):
+            return user
+        else:
+            return dal.find_normal_user(self.ctx.glue_session(), user)
 
     def backend(self):
         return self.ctx.store.backend()
@@ -71,12 +88,6 @@ class _Access:
     def process_api_call(self, method, params):
         # log.debug("{self} {method}({params})".format(**locals()))
         return self.api.run(self, method, params)
-
-guest_api = ApiCallRegistry()
-
-
-class GuestAccess(_Access):
-    api = guest_api
 
     @guest_api.call()
     def info(self):
@@ -103,72 +114,6 @@ class GuestAccess(_Access):
 
     def server_login(self, server_id, server_secret):
         pass # validate and create server session logic
-
-user_api = ApiCallRegistry()
-
-
-class PrivilegedAccess(_Access):
-    api = user_api
-
-    @user_api.call()
-    def info(self):
-        any_cake = Acl(None,PT.Read_Any_Data,None) \
-                   in self.auth_user.acls()
-        return {"isAuthenticated": True, "anyCakeAccess": any_cake}
-
-    @user_api.call()
-    def logout(self):
-        session_id = self.ctx.params['session_id']
-        user_session = self.ctx.srvcfg_session().query(UserSession)\
-            .filter(UserSession.id == session_id).one()
-        user_session.active = False
-
-    class Permissions:
-        read_data_cake = (PT.Read_, PT.Read_Any_Data)
-        read_portal = (PT.Read_, PT.Read_Any_Portal)
-        write_data = (PT.Write_Any_Data,)
-        portals = (PT.Read_, PT.Edit_Portal_, PT.Own_Portal_)
-
-    def __init__(self, ctx, auth_user, system_access=False):
-        _Access.__init__(self,ctx)
-        self.system_access = system_access
-        if self.system_access:
-            self.auth_user = None
-        else:
-            self.auth_user = self.ensure_user(auth_user)
-
-    @staticmethod
-    def system_access(ctx):
-        return PrivilegedAccess(ctx, None, system_access=True)
-
-    def is_authenticated(self):
-        return self.auth_user is not None
-
-    def ensure_user(self, user):
-        if isinstance(user, User):
-            return user
-        else:
-            return dal.find_normal_user(self.ctx.glue_session(), user)
-
-    def authorize(self, cake, pts):
-        if self.system_access:
-            return
-        required_acls = Acl.cake_acls(cake, pts)
-        for acl in required_acls:
-            if acl in self.auth_user.acls():
-                return
-        raise NotAuthorizedError('%s does not have %r permissions' %
-                                 (self.auth_user.email, required_acls))
-
-    def authorize_all(self, cakes, pts):
-        if self.system_access:
-            return
-        autorized = set()
-        for cake in cakes:
-            if cake in autorized:
-                continue
-            self.authorize(cake, pts)
-            autorized.add(cake)
 
     def get_content(self, cake_or_path):
         '''
@@ -211,25 +156,6 @@ class PrivilegedAccess(_Access):
         else:
             raise AssertionError('should never get here')
 
-    def writer(self):
-        '''
-            get writer object
-        '''
-        self.authorize(None, self.Permissions.write_data)
-        return self.backend().writer()
-
-    def write_content(self, fp, chunk_size=65355):
-        '''
-            Write content
-        '''
-        w = self.writer()
-        while True:
-            buf = fp.read(chunk_size)
-            if len(buf) == 0:
-                break
-            w.write(buf)
-        return w.done()
-
     def get_content_by_path(self, cake_path):
         '''
         get_content_by_path (cake/a/b/c) -> cake     Read_, Read_Any_Data
@@ -258,6 +184,78 @@ class PrivilegedAccess(_Access):
             else:
                 content = self.get_content(next_cake)
         return content.guess_file_type(cake_path.filename())
+
+user_api = ApiCallRegistry()
+
+
+class PrivilegedAccess(GuestAccess):
+    api = user_api
+
+    @staticmethod
+    def system_access(ctx):
+        return PrivilegedAccess(ctx, user_type=UserType.system)
+
+    @user_api.call()
+    def info(self):
+        any_cake = Acl(None,PT.Read_Any_Data,None) \
+                   in self.auth_user.acls()
+        return {"isAuthenticated": True, "anyCakeAccess": any_cake}
+
+    @user_api.call()
+    def logout(self):
+        session_id = self.ctx.params['session_id']
+        user_session = self.ctx.srvcfg_session().query(UserSession)\
+            .filter(UserSession.id == session_id).one()
+        user_session.active = False
+
+    class Permissions:
+        read_data_cake = (PT.Read_, PT.Read_Any_Data)
+        read_portal = (PT.Read_, PT.Read_Any_Portal)
+        write_data = (PT.Write_Any_Data,)
+        portals = (PT.Read_, PT.Edit_Portal_, PT.Own_Portal_)
+
+    def is_authenticated(self):
+        return self.auth_user is not None
+
+
+    def authorize(self, cake, pts):
+        if self.auth_user.id == cake and PT.Read_ in pts:
+            return
+        required_acls = Acl.cake_acls(cake, pts)
+        for acl in required_acls:
+            if acl in self.auth_user.acls():
+                return
+        raise NotAuthorizedError('%s does not have %r permissions' %
+                                 (self.auth_user.email, required_acls))
+
+    def authorize_all(self, cakes, pts):
+        if self.system_access:
+            return
+        autorized = set()
+        for cake in cakes:
+            if cake in autorized:
+                continue
+            self.authorize(cake, pts)
+            autorized.add(cake)
+
+    def writer(self):
+        '''
+            get writer object
+        '''
+        self.authorize(None, self.Permissions.write_data)
+        return self.backend().writer()
+
+    def write_content(self, fp, chunk_size=65355):
+        '''
+            Write content
+        '''
+        w = self.writer()
+        while True:
+            buf = fp.read(chunk_size)
+            if len(buf) == 0:
+                break
+            w.write(buf)
+        return w.done()
 
     #TODO query and
     # @user_api.call()
@@ -452,7 +450,7 @@ class PrivilegedAccess(_Access):
                 namedCakes[file] = child.cake
 
             return Content(data=namedCakes.in_bytes(),
-                           role=Role.NEURON)
+                           role=Role.NEURON, file_type='HSB')
         else:
             return self.get_content(neuron_maybe.cake)
 
@@ -630,16 +628,13 @@ class CakeStore:
                              os.path.join(self.store_dir, 'server.db'))
         self.glue_db = Dbf(GlueBase.metadata,
                            os.path.join(self.store_dir, 'glue.db'))
-        self.guest, self.system = None, None
+
 
     def backend(self):
         if self._backend is None:
             self._backend = LiteBackend(
                 os.path.join(self.store_dir, 'backend')
             )
-            self.glue_db.ensure_db()
-            with self.glue_db.session_scope() as sess:
-                self.guest,self.system = dal.get_special_users(sess)
         return self._backend
 
     def initdb(self, external_ip, port):
@@ -647,6 +642,7 @@ class CakeStore:
             os.makedirs(self.store_dir)
         self.srvcfg_db.ensure_db()
         os.chmod(self.srvcfg_db.path, 0o600)
+        self.glue_db.ensure_db()
         self.backend()
         with self.srvcfg_db.session_scope() as srv_session:
             skey = srv_session.query(ServerKey).one_or_none()
@@ -655,30 +651,31 @@ class CakeStore:
             skey.port = port
             skey.external_ip = external_ip
             srv_session.merge(skey)
-        if self.guest is None or self.system is None:
-            with self.glue_db.session_scope() as glue_session:
-                def make_user(n):
-                    return User(email='%s@' % n,
-                                user_type=UserType[n],
-                                user_state=UserState.active,
-                                passwd=SaltedSha.from_secret('*'),
-                                full_name='%s user' % n
-                                )
-                if self.guest is None:
-                    self.guest = make_user('guest')
-                    glue_session.add(self.guest)
-                    glue_session.flush()
-                    glue_session.add(Portal(id=self.guest.id))
-                    glue_session.add(
-                        Permission(permission_type=PT.Read_,
-                                   cake=self.guest.id,
-                                   user=self.guest))
-                if self.system is None:
-                    self.system = make_user('system')
-                    glue_session.add(self.system)
-                    glue_session.add(
-                        Permission(permission_type=PT.Admin,
-                                   user=self.system))
+        with self.glue_db.session_scope() as glue_session:
+            make_user = lambda n: User(email='%s@' % n,
+                                       user_type=UserType[n],
+                                       user_state=UserState.active,
+                                       passwd=SaltedSha.from_secret('*'),
+                                       full_name='%s user' % n)
+            guest = dal.query_users_by_type(
+                glue_session,UserType.guest).one_or_none()
+            if guest is None:
+                guest = make_user('guest')
+                glue_session.add(guest)
+                glue_session.flush()
+                glue_session.add(Portal(id=guest.id))
+                glue_session.add(
+                    Permission(permission_type=PT.Read_,
+                               cake=guest.id,
+                               user=guest))
+            system = dal.query_users_by_type(
+                glue_session, UserType.system).one_or_none()
+            if system is None:
+                system = make_user('system')
+                glue_session.add(system)
+                glue_session.add(
+                    Permission(permission_type=PT.Admin,
+                               user=system))
 
 
     def ctx(self):

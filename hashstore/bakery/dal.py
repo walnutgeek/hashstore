@@ -87,8 +87,5 @@ def query_users_by_type(glue_session, user_type):
     return glue_session.query(User).filter(
         User.user_type == user_type)
 
-def get_special_users(glue_session):
-    return tuple(query_users_by_type(glue_session, t).one_or_none()
-                 for t in (UserType.guest, UserType.system))
 
 PERM_SORT = lambda r: (r.permission_type.name, str(r.cake))
