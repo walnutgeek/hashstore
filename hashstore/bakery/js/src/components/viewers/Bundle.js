@@ -10,7 +10,7 @@ const Bundle = {
             let hsb = JSON.parse(content);
             const rows = _.map(hsb[0], (name, i) =>
                 ({name, nlink: path.child(name),
-                    cake: new Cake(hsb[1][i])}));
+                    cake: Cake.ensureCake(hsb[1][i])}));
             return (<table className="pt-table pt-bordered">
               <thead>
                 <tr>
@@ -27,9 +27,12 @@ const Bundle = {
                             </ToLink>
                         </td>
                         <td>
-                            <ToLink to={cake.link(path.aliasPath.cakepath())}>
-                                {cake.displayName()}
-                            </ToLink>
+                            { cake === null ? "" : (
+                                <ToLink
+                                    to={cake.link(path.aliasPath.cakepath())}>
+                                    {cake.displayName()}
+                                </ToLink> )
+                            }
                         </td>
                     </tr>))}
               </tbody>

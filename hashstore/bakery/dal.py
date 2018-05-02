@@ -12,13 +12,11 @@ from hashstore.utils import is_str
 
 def find_normal_user(glue_sess, user_or_email):
     if is_str(user_or_email) and '@' in user_or_email:
-        column = User.email
+        condition = User.email == user_or_email
     else:
-        column = User.id
-        user_or_email = Cake.ensure_it(user_or_email)
-    return glue_sess.query(User)\
-        .filter(column == user_or_email,
-                User.user_type == UserType.normal).one()
+        condition = User.id == Cake.ensure_it(user_or_email)
+    return glue_sess.query(User).filter(
+        condition, User.user_type == UserType.normal).one()
 
 
 def find_permissions(glue_sess, user, *acls):

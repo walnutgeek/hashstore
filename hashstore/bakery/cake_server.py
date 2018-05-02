@@ -44,8 +44,8 @@ class _StoreAccessMixin:
                     self.request.remote_ip
         self.ctx().params['remote_ip'] = remote_ip
         try:
-            self.access = self.ctx().validate_session(session_id,
-                                                      client_id)
+            self.access = self.ctx().validate_session(
+                session_id, client_id)
         except:
             log.debug(exception_message())
             self.access = GuestAccess(self.ctx())

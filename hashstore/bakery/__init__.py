@@ -162,8 +162,14 @@ class Content(Jsonable):
         return self
 
     def set_role(self, copy_from):
-        if hasattr(copy_from, 'role'):
-            self.role = copy_from.role
+        role = None
+        if isinstance(copy_from, Role):
+            role = copy_from
+        else:
+            if hasattr(copy_from, 'role'):
+                role = copy_from.role
+        if role is not None:
+            self.role = role
             if self.file_type is None:
                 if self.role == Role.NEURON:
                     self.file_type = HSB

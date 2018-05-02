@@ -3,16 +3,16 @@ import os
 import datetime
 
 from hashstore.bakery import NotAuthorizedError, CredentialsError, \
-    Content, Cake, NamedCAKes, CakePath, SaltedSha, check_bookmark_name, \
-    KeyStructure, assert_key_structure, Role
+    Content, Cake, NamedCAKes, CakePath, SaltedSha, \
+    check_bookmark_name, KeyStructure, assert_key_structure, Role
 from hashstore.bakery.backend import LiteBackend
 from hashstore.bakery.cake_tree import CakeTree
 from hashstore.ndb import Dbf, MultiSessionContextManager
 from hashstore.utils import ensure_dict,reraise_with_msg
 import hashstore.bakery.dal as dal
 from sqlalchemy import and_, or_
-from hashstore.ndb.models.server_config import UserSession, ServerKey, \
-    ServerConfigBase
+from hashstore.ndb.models.server_config import UserSession, \
+    ServerKey, ServerConfigBase
 from hashstore.ndb.models.glue import Portal, \
     GlueBase, User, UserState, Permission, \
     PermissionType as PT, Acl, VolatileTree, UserType
@@ -24,6 +24,13 @@ from hashstore.utils.api import ApiCallRegistry
 log = logging.getLogger(__name__)
 
 FROM_COOKIE='FROM_COOKIE'
+
+
+class Permissions:
+    read_data_cake = (PT.Read_, PT.Read_Any_Data)
+    read_portal = (PT.Read_, PT.Read_Any_Portal)
+    write_data = (PT.Write_Any_Data,)
+    portals = (PT.Read_, PT.Edit_Portal_, PT.Own_Portal_)
 
 
 class StoreContext(MultiSessionContextManager):
@@ -140,15 +147,15 @@ class GuestAccess:
             return Content(data=cake_or_path.data())\
                 .set_role(cake_or_path)
         elif cake.is_resolved():
-            self.authorize(cake_or_path, self.Permissions.read_data_cake)
+            self.authorize(cake_or_path, Permissions.read_data_cake)
             return self.backend().get_content(cake_or_path)
         elif cake.is_portal():
-            self.authorize(cake_or_path, self.Permissions.read_portal)
+            self.authorize(cake_or_path, Permissions.read_portal)
             if cake.key_structure == KeyStructure.PORTAL :
                 resolution_stack = dal.resolve_cake_stack(
                     self.ctx.glue_session(), cake_or_path)
                 for resolved_portal in resolution_stack[:-1]:
-                    self.authorize(cake_or_path, self.Permissions.read_portal)
+                    self.authorize(cake_or_path, Permissions.read_portal)
                 return self.backend().get_content(resolution_stack[-1])
             elif cake.key_structure in [KeyStructure.PORTAL_DMOUNT,
                                         KeyStructure.PORTAL_VTREE] :
@@ -185,6 +192,7 @@ class GuestAccess:
                 content = self.get_content(next_cake)
         return content.guess_file_type(cake_path.filename())
 
+
 user_api = ApiCallRegistry()
 
 
@@ -208,11 +216,6 @@ class PrivilegedAccess(GuestAccess):
             .filter(UserSession.id == session_id).one()
         user_session.active = False
 
-    class Permissions:
-        read_data_cake = (PT.Read_, PT.Read_Any_Data)
-        read_portal = (PT.Read_, PT.Read_Any_Portal)
-        write_data = (PT.Write_Any_Data,)
-        portals = (PT.Read_, PT.Edit_Portal_, PT.Own_Portal_)
 
     def is_authenticated(self):
         return self.auth_user is not None
@@ -242,7 +245,7 @@ class PrivilegedAccess(GuestAccess):
         '''
             get writer object
         '''
-        self.authorize(None, self.Permissions.write_data)
+        self.authorize(None, Permissions.write_data)
         return self.backend().writer()
 
     def write_content(self, fp, chunk_size=65355):
@@ -257,16 +260,6 @@ class PrivilegedAccess(GuestAccess):
             w.write(buf)
         return w.done()
 
-    #TODO query and
-    # @user_api.call()
-    # def get_query_cake_dict(self, query_names):
-    #     query_cake_dict = {}
-    #     return query_cake_dict
-    #
-    # @user_api.call()
-    # def get_query_content(self, query_name):
-    #     query_content = None
-    #     return query_content
 
     @user_api.call()
     def store_directories(self, directories):
@@ -446,18 +439,18 @@ class PrivilegedAccess(GuestAccess):
             children = query(VT.parent_path == path).all()
             namedCakes = NamedCAKes()
             for child in children:
+                if child.path == '':
+                    continue
                 _,file = os.path.split(child.path)
                 namedCakes[file] = child.cake
-
-            return Content(data=namedCakes.in_bytes(),
-                           role=Role.NEURON, file_type='HSB')
+            return Content(data=namedCakes.in_bytes())\
+                .set_role(Role.NEURON)
         else:
             return self.get_content(neuron_maybe.cake)
 
 
     def _read_dmount(self, cake_path, asof_dt=None):
         raise AssertionError('not impl')
-
 
 
     @user_api.call()
@@ -589,10 +582,10 @@ class PrivilegedAccess(GuestAccess):
 
         portal = self.ctx.glue_session().query(Portal).\
             filter(Portal.id == portal_id).one()
-        if permission_type not in self.Permissions.portals:
+        if permission_type not in Permissions.portals:
             raise AssertionError('pt:%r has to be one of %r' %
                                  (permission_type,
-                                  self.Permissions.portals))
+                                  Permissions.portals))
 
         grantee = self.ensure_user(grantee)
 
@@ -684,3 +677,4 @@ class CakeStore:
     def server_config(self):
         with self.srvcfg_db.session_scope() as session:
             return session.query(ServerKey).one()
+
