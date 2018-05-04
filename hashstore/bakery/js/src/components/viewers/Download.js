@@ -5,7 +5,7 @@ const Download = {
     render({path}) {
         return (
             <div>
-                <a href={`/.get/data/${path.aliasPath.toUrl()}`} download>
+                <a href={`/-/get/data/${path.aliasPath.toUrl()}`} download>
                     <Icon iconName="download" />
                 </a>
             </div>);

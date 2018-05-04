@@ -856,7 +856,7 @@ class NotAuthorizedError(ValueError): pass
 class NotFoundError(ValueError): pass
 
 
-RESERVED_NAMES = ('_', '.app', '.api', '.get', '.pid', '.server_id')
+RESERVED_NAMES = ('_', '.', '~', '-')
 
 
 def check_bookmark_name(name):

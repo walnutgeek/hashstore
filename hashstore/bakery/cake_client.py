@@ -69,7 +69,7 @@ class CakeClient:
 class ClientUserSession:
     def __init__(self, client, url, session_id=None):
         self.url = normalize_url(url)
-        resp = requests.get(self.url+'.server_id')
+        resp = requests.get(self.url+'-/server_id')
         self.server_id, self.server_secret = (
             t.ensure_it(s) for t,s in
             zip((Cake, SaltedSha), json.loads(resp.text)) )
@@ -80,7 +80,7 @@ class ClientUserSession:
 
         class AccessProxy:
             def write_content(_, fp):
-                r = requests.post(self.url + '.api/up',
+                r = requests.post(self.url + '-/api/up',
                                   headers=self.headers, data=fp)
                 log.debug('text: {r.text}'.format(**locals()))
                 return ContentAddress.ensure_it(json_decode(r.text))
@@ -95,7 +95,7 @@ class ClientUserSession:
                 if skinny:
                     info = {}
                 else:
-                    resp = self.get_response('.get/info', cake_or_path)
+                    resp = self.get_response('-/get/info', cake_or_path)
                     info = json_decode(resp.text)
                 return Content(
                     stream_fn=( lambda: self.get_stream(cake_or_path)),
@@ -112,7 +112,7 @@ class ClientUserSession:
                 return proxy_call
         self.proxy = AccessProxy()
 
-    def post_json(self, data, endpoint='.api/post'):
+    def post_json(self, data, endpoint='-/api/post'):
         meta_url = self.url + endpoint
         in_data = json_encoder.encode(data)
         r = requests.post(meta_url, headers=self.headers, data=in_data)
@@ -130,7 +130,7 @@ class ClientUserSession:
                             stream=do_stream)
 
     def get_stream(self, cake_or_path):
-        return self.get_response('.get/data', cake_or_path,
+        return self.get_response('-/get/data', cake_or_path,
                                  do_stream=True).raw
 
     def login(self, email, passwd):

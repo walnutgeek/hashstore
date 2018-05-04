@@ -65,7 +65,7 @@ class PathBarBody extends React.Component {
             <nav className="pt-navbar pt-">
                 <div className="pt-navbar-group pt-align-left">
                     <div className="pt-navbar-heading">
-                        <img src="/.app/hashstore.svg"
+                        <img src="/-/app/hashstore.svg"
                              style={{width: 30, height: 30,
                                  marginRight: 10}}
                              onClick={()=>history.push('/')}/>

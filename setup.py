@@ -9,9 +9,8 @@ version = open('version.txt').read().strip()
 class MySdistCommand(sdist):
     def run(self):
         import subprocess
-        for d in ('hashstore/bakery/js',): # '.',
-            for c in (['npm', 'install'], ['npm', 'run', 'build'] ):
-                subprocess.check_call(c, cwd=d)
+        for c in (['npm', 'install'], ['npm', 'run', 'build'] ):
+            subprocess.check_call(c, cwd='hashstore/bakery/js')
         sdist.run(self)
 
 setup(name='hashstore',
@@ -36,8 +35,8 @@ setup(name='hashstore',
       cmdclass={'sdist': MySdistCommand},
       entry_points={
           'console_scripts': [
-              '%s=hashstore.%s:main'%(n, n) for n in
-              'hsi hsd'.split()
+              '%s=hashstore.%s:main' % (n, n)
+              for n in ('hsi','hsd')
           ],
       },
       install_requires=install_requires,

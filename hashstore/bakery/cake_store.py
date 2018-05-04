@@ -443,7 +443,8 @@ class PrivilegedAccess(GuestAccess):
                     continue
                 _,file = os.path.split(child.path)
                 namedCakes[file] = child.cake
-            return Content(data=namedCakes.in_bytes())\
+            return Content(created_dt=neuron_maybe.start_dt,
+                           data=namedCakes.in_bytes())\
                 .set_role(Role.NEURON)
         else:
             return self.get_content(neuron_maybe.cake)

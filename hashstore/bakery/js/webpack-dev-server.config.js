@@ -20,7 +20,7 @@ const config = {
     host: 'localhost', // Change to '0.0.0.0' for external facing server
     proxy: [
       {
-        context: ['/.api/**', '/.get/**', '/.server_id' ],
+        context: [ '/-/**' ],
         target: 'lo',
         secure: false
       }

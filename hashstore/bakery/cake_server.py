@@ -170,7 +170,7 @@ class CakeServer:
     def shutdown(self, wait_until_down):
         try:
             while True:
-                response = requests.get('http://localhost:%d/.pid' %
+                response = requests.get('http://localhost:%d/-/pid' %
                                         (self.config.port,))
                 pid = int(response.content)
                 if pid:
@@ -207,13 +207,14 @@ class CakeServer:
 
         store_ref = {'store': self.store}
         handlers = [
-            (r'/(\.pid)$', _string_handler(pid),),
-            (r'/(\.server_id)$', _string_handler(server_id),),
-            (r'/\.api/up$', StreamHandler, store_ref),
-            (r'/\.api/post$', PostHandler, store_ref),
-            (r'/\.get/(.*)$', GetCakeHandler, store_ref),
-            (r'/\.app/(.*)$', AppContentHandler,),
+            (r'/-/(pid)$', _string_handler(pid),),
+            (r'/-/(server_id)$', _string_handler(server_id),),
+            (r'/-/api/up$', StreamHandler, store_ref),
+            (r'/-/api/post$', PostHandler, store_ref),
+            (r'/-/get/(.*)$', GetCakeHandler, store_ref),
+            (r'/-/app/(.*)$', AppContentHandler,),
             (r'(.*)$', IndexHandler,)
+            # - ~ _
         ]
         application = tornado.web.Application(handlers)
         signal.signal(signal.SIGINT, stop_server)
