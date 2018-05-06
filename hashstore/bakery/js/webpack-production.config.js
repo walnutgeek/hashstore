@@ -92,4 +92,17 @@ const config = {
   },
 };
 
+var fs = require('fs');
+if (!fs.existsSync(path.resolve(config.output.path, 'favicon.ico'))) {
+  const icongen = require('icon-gen');
+  icongen( './src/www/hashstore.svg', config.output.path, { report: true })
+  .then((results) => {
+    console.log(results)
+  })
+  .catch((err) => {
+    console.error(err)
+  });
+}
+
+
 module.exports = config;

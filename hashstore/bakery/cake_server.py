@@ -199,6 +199,11 @@ class CakeServer:
                 return Content(file=os.path.join(app_dir, 'index.html'))\
                     .guess_file_type()
 
+        class FavIconHandler(_ContentHandler):
+            def content(self, _):
+                return Content(file=os.path.join(app_dir, 'favicon.ico'))\
+                    .guess_file_type()
+
         pid = str(os.getpid())
         server_id = json_encoder.encode(
             (str(self.config.id),
@@ -213,6 +218,7 @@ class CakeServer:
             (r'/-/api/post$', PostHandler, store_ref),
             (r'/-/get/(.*)$', GetCakeHandler, store_ref),
             (r'/-/app/(.*)$', AppContentHandler,),
+            (r'/(favicon.ico)$', FavIconHandler,),
             (r'(.*)$', IndexHandler,)
             # - ~ _
         ]
