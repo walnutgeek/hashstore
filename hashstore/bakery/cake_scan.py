@@ -1,4 +1,3 @@
-import six
 from hashstore.utils import ensure_unicode, failback, read_in_chunks, \
     reraise_with_msg, ensure_directory
 from hashstore.utils.ignore_file import ignore_files, \
@@ -235,8 +234,6 @@ class Progress:
             directory = directory[:look(look(look(0)))]
         except:
             pass
-        if six.PY2:
-            directory = directory.encode('utf-8')
         output = '%s %s ' % (self.pct_value(), directory)
         if self._value != output:
             self._value = output

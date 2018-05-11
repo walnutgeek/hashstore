@@ -71,14 +71,7 @@ class LazyVars(Mapping):
 def exception_message(e = None):
     if e is None:
         e = sys.exc_info()[1]
-    return e.message if six.PY2 else str(e)
-
-
-if six.PY2:
-    from hashstore.utils.py2 import _raise_it
-else:
-    def _raise_it(etype, new_exception, traceback):
-        raise new_exception.with_traceback(traceback)
+    return str(e)
 
 
 def reraise_with_msg(msg, exception=None):
@@ -90,7 +83,7 @@ def reraise_with_msg(msg, exception=None):
     except:
         new_exception = ValueError(exception_message(exception) + '\n'+ msg)
     traceback = sys.exc_info()[2]
-    _raise_it(etype,new_exception,traceback)
+    raise new_exception.with_traceback(traceback)
 
 
 def ensure_directory(directory):
@@ -110,22 +103,17 @@ def call_if_defined (o, k, *args):
     return getattr(o,k)(*args) if hasattr(o,k) else None
 
 
-if bytes == str:  # python2
-    is_str = lambda s: isinstance(s, (str, unicode))
-    binary_type = str
-    ensure_bytes = lambda s: s if isinstance(s, bytes) else str(s)
-    ensure_unicode = lambda s: s if isinstance(s, unicode)\
-        else unicode(s,'utf-8')
-    ensure_string = ensure_bytes
-else:  # python3
-    is_str = lambda s: isinstance(s, (str))
-    binary_type = bytes
-    ensure_bytes = lambda s: s if isinstance(s, bytes)\
-        else str(s).encode('utf-8')
-    ensure_unicode = lambda s: s if isinstance(s, str)\
-        else s.decode('utf-8') if isinstance(s, bytes) else str(s)
-    ensure_string = lambda s: s.decode('utf-8') if isinstance(s, bytes)\
-        else s
+is_str = lambda s: isinstance(s, (str))
+
+binary_type = bytes
+
+ensure_bytes = lambda s: s if isinstance(s, bytes)\
+    else str(s).encode('utf-8')
+
+ensure_unicode = lambda s: s if isinstance(s, str)\
+    else s.decode('utf-8') if isinstance(s, bytes) else str(s)
+
+ensure_string = ensure_unicode
 
 
 def v2s(vars_dict, *var_keys):

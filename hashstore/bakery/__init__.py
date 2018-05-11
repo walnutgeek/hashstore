@@ -9,7 +9,6 @@ from hashstore.utils import Stringable, EnsureIt, Jsonable
 from six import BytesIO, string_types, iteritems, binary_type
 import hashlib
 import os
-import re
 import hashstore.utils as utils
 import base64
 from hashstore.utils.base_x import base_x,iseq
@@ -22,12 +21,8 @@ from hashstore.utils.file_types import guess_name, file_types, HSB
 
 log = logging.getLogger(__name__)
 
-if bytes == str:  # python2
-    to_byte = chr
-    to_int = ord
-else:  # python3
-    to_byte = lambda code: bytes([code])
-    to_int = lambda b : b
+to_byte = lambda code: bytes([code])
+to_int = lambda b : b
 
 B62 = base_x(62)
 B36 = base_x(36)

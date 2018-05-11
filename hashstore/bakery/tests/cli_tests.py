@@ -64,9 +64,8 @@ optional arguments:
     '''
     test.run_script_and_wait('hsd -h',expect_rc=0,
                              expect_read=test_hsd.__doc__)
-    if bytes != str: # only in py3
-        test.run_script_and_wait('hsd ',expect_rc=0,
-                                 expect_read=test_hsd.__doc__)
+    test.run_script_and_wait('hsd ',expect_rc=0,
+                             expect_read=test_hsd.__doc__)
 
 
 def test_scan_ls():

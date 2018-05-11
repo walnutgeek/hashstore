@@ -3,18 +3,16 @@
 # it will create python v2 and v3 virtual environments. and install
 # dependencies in both of them
 #
-npm install
-npm run build
 cd hashstore/bakery/js
 npm install
 npm run build
 cd -
 . deactivate
 pip install sniffer
-for e in 2 3
+for e in 4 5 6
 do
     conda remove -n py${e} --all -y|| echo py${e} not here, it is ok!
-    conda create -y -n py${e} python=${e} python
+    conda create -y -n py${e} python=3.${e} python
     . activate py${e}
     pip install -r requirements.txt
     pip install -r test-requirements.txt
@@ -24,10 +22,10 @@ do
     fi
 done
 if [ "$1" == "run_all_tests" ] ; then
-  source activate py2
+  source activate py6
   coverage combine
   coverage report -m
+  test $(cat py4.status) == 0  && test $(cat py5.status) == 0 && test $(cat py6.status) == 0
 fi
-test $(cat py2.status) == 0  && test $(cat py3.status) == 0
 
 
