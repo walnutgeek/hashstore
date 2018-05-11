@@ -481,12 +481,24 @@ class KeyMapper:
         return self._altkey_dict.keys()
 
 
-def ensure_dict(in_dict, key_type, val_type):
+def map_dict(key_fn, val_fn, in_dict):
     out_dict = {}
     for k in in_dict:
         val = in_dict[k]
-        out_dict[key_type.ensure_it(k)] = val_type.ensure_it(val)
+        out_dict[key_fn(k)] = val_fn(val)
     return out_dict
+
+
+def tuple_mapper(*mappers):
+    l = len(mappers)
+    def map_fn(i):
+        if i < l and mappers[i] is not None:
+            return mappers[i]
+        else:
+            return lambda x: x
+    def _mapper(in_tuple):
+        return tuple(map_fn(i)(v) for i, v in enumerate(in_tuple))
+    return _mapper
 
 
 def normalize_url(url):

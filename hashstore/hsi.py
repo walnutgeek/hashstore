@@ -3,8 +3,8 @@ import logging
 import os
 import sys
 from hashstore.bakery.cake_client import ClientUserSession, CakeClient
-from hashstore.bakery import cake_or_path, Cake, portal_structs, \
-    portal_from_name, Role, CakePath, process_stream
+from hashstore.bakery import cake_or_path, Cake, PORTAL_TYPES, \
+    portal_from_name, CakeRole, CakePath, process_stream, CakeType
 from hashstore.ndb.models.scan import FileType
 from hashstore.utils.args import CommandArgs, Switch
 from hashstore.utils import print_pad, exception_message
@@ -93,14 +93,37 @@ class ClientApp:
 
     @ca.command('scan tree and recalculate hashes for all changed files')
     def scan(self, dir='.'):
-        cake = cscan.DirScan(dir).entry.cake
+        cake = cscan.DirScan(cscan.ScanPath(dir)).entry.cake
         print(cake)
 
-    @ca.command('save local files on remote server')
-    def backup(self, dir='.'):
+    @ca.command('save local files on remote server',
+                portal_type=('Type of portal. Only used if '
+                             'remote_path is not provided. ',
+                             portal_from_name,
+                             (CakeType.VTREE, CakeType.PORTAL)),
+                remote_path=('CakePath where data should be saved. ',
+                             CakePath.ensure_it_or_none),
+                )
+    def backup(self, dir='.', remote_path=None,
+               portal_type=None ):
         self._check_cu_session(dir)
-        portal_id,latest_cake = cscan.backup(dir, self.remote())
+        scan_path = cscan.ScanPath(dir)
+        dirkey = scan_path.cake_entries().dir_key()
+        if remote_path is None:
+            if portal_type is not None:
+                remote = dirkey.id.transform_portal(portal_type)
+                remote_path = CakePath(None,_root=remote)
+            else:
+                print(dirkey.id)
+                if dirkey.last_backup_path is None:
+                    remote = dirkey.id.transform_portal(CakeType.PORTAL)
+                    remote_path = CakePath(None, _root=remote)
+                else:
+                    remote_path = dirkey.last_backup_path
+        scan_path.set_remote_path(remote_path)
+        portal_id,latest_cake = cscan.backup(scan_path, self.remote())
         print('DirId: {portal_id!s}\n'
+              'RemotePath: {remote_path!s}\n'
               'Cake: {latest_cake!s}\n'
               ''.format(**locals()))
 
@@ -123,10 +146,10 @@ class ClientApp:
     @ca.command('Create portal',
                 portal_type=('Type of portal. Only needed if portal_id '
                              'is not provided. ',
-                             portal_from_name, portal_structs ),
-                portal_role=('Role of portal. Only needed if portal_id '
+                             portal_from_name, PORTAL_TYPES),
+                portal_role=('CakeRole of portal. Only needed if portal_id '
                              'is not provided. ',
-                             Role.from_name, list(Role) ),
+                             CakeRole.from_name, list(CakeRole)),
                 portal_id=('Portal to be created. If omitted new '
                            'random portal_id will be created .', Cake),
                 cake=('Optional. Cake that created portal points to. ',
@@ -138,7 +161,7 @@ class ClientApp:
         self._check_cu_session(dir)
         if portal_id is None:
             portal_id = Cake.new_portal(
-                role=portal_role, key_structure=portal_type)
+                role=portal_role, type=portal_type)
         self.remote().create_portal(portal_id=portal_id,
                                        cake=cake)
         print('Portal: {portal_id!s} \nCake: {cake!s}\n'

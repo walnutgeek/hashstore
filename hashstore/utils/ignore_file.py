@@ -4,7 +4,19 @@ from hashstore.utils import path_split_all
 import os
 
 import logging
+
 log = logging.getLogger(__name__)
+
+
+IGNORE_SPECS = ('.gitignore', '.ignore')
+
+
+IGNORE_FILENAMES = (u'.svn', u'.git', u'.DS_Store', u'.vol',
+                    u'.hotfiles.btree', u'.ssh')
+
+
+IGNORE_IF_STARTS_WITH = (u'.shamo',  u'.cake', u'.backup',
+                         u'.Spotlight', u'._', u'.Trash')
 
 
 def pick_ignore_specs(n):
@@ -14,8 +26,11 @@ def pick_ignore_specs(n):
     >>> pick_ignore_specs('.gitignore')
     True
     '''
-    return n in ['.gitignore', '.ignore']
+    return n in IGNORE_SPECS
 
+def ignore_files(n):
+    return not(n in IGNORE_FILENAMES or
+               any(n.startswith(t) for t in IGNORE_IF_STARTS_WITH))
 
 class IgnoreEntry:
     '''
@@ -78,16 +93,4 @@ def parse_ignore_specs(cur_dir, files, initial_ignore_entries):
 def check_if_path_should_be_ignored(ignore_entries, path, isdir):
     return any(entry.should_ignore_path(path,isdir)
                for entry in ignore_entries )
-
-IGNORE_FILENAMES = [u'.svn', u'.git', u'.DS_Store', u'.vol',
-                    u'.hotfiles.btree', u'.ssh']
-
-IGNORE_IF_STARTS_WITH = [u'.shamo',  u'.cake', u'.backup',
-                         u'.Spotlight', u'._', u'.Trash']
-
-def ignore_files(n):
-    return not(n in IGNORE_FILENAMES or
-               any(n.startswith(t) for t in IGNORE_IF_STARTS_WITH))
-
-
 

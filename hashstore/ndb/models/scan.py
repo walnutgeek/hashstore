@@ -1,5 +1,5 @@
-from hashstore.ndb.mixins import ReprIt, NameIt, Singleton
-from hashstore.bakery import Cake
+from hashstore.ndb.mixins import ReprIt, NameIt, Singleton, DirSingleton
+from hashstore.bakery import Cake, CakePath
 from hashstore.ndb import IntCast,StringCast
 import enum
 
@@ -17,8 +17,8 @@ class FileType(enum.Enum):
         return self.name
 
 
-class DirKey(Singleton, ScanBase):
-    pass
+class DirKey(DirSingleton, ScanBase):
+    last_backup_path = Column(StringCast(CakePath), nullable=True)
 
 
 class DirEntry(NameIt, ReprIt, ScanBase):

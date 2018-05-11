@@ -10,7 +10,8 @@ import sys
 
 from hashstore.bakery.cake_store import StoreContext, GuestAccess, \
     FROM_COOKIE
-from hashstore.bakery import Content, cake_or_path, SaltedSha
+from hashstore.bakery import Content, cake_or_path, SaltedSha, \
+    NotAuthorizedError
 from hashstore.utils import json_encoder, FileNotFound, ensure_bytes, \
     exception_message
 from hashstore.utils.file_types import guess_type
@@ -87,7 +88,9 @@ class _ContentHandler(tornado.web.RequestHandler):
                     streaming_callback=self.on_chunk)
             else:
                 self.finish(content.get_data())
-
+        except NotAuthorizedError:
+            self.write(exception_message())
+            self.send_error(403)
         except FileNotFound:
             self.send_error(404)
         except:

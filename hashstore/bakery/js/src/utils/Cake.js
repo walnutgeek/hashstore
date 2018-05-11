@@ -9,26 +9,26 @@ export const base62 = factory(  '0123456789' +
 
 import {IntEnum} from './enums';
 
-export const KeyStructure = new IntEnum({
+export const CakeType = new IntEnum({
     INLINE: 0,
     SHA256: 1,
     PORTAL: 2,
-    PORTAL_VTREE: 3,
-    PORTAL_DMOUNT: 4,
+    VTREE: 3,
+    DMOUNT: 4,
     CAKEPATH: 5
 },{displayPrefix: {
     INLINE: '=',
     SHA256: '#',
     PORTAL: '$',
-    PORTAL_VTREE: '$',
-    PORTAL_DMOUNT: '$',
+    VTREE: '$',
+    DMOUNT: '$',
     CAKEPATH: '>'
 }});
 
 const trimForDisplay = (s)=> s.length > 8 ? s.substring(s.length-8) : s;
 
 
-export const Role = new IntEnum({
+export const CakeRole = new IntEnum({
     SYNAPSE: 0,
     NEURON: 1,
 });
@@ -82,8 +82,8 @@ export class Cake{
         this.s = s;
         const buf = base62.decode(s);
         const header = buf[0];
-        this.keyStructure = KeyStructure.i2s[header >> 1];
-        this.role = Role.i2s[header & 1];
+        this.keyStructure = CakeType.i2s[header >> 1];
+        this.role = CakeRole.i2s[header & 1];
         this.data = buf.slice(1);
     }
 
@@ -96,7 +96,7 @@ export class Cake{
     }
 
     displayName(){
-        const ch = KeyStructure.displayPrefix[this.keyStructure];
+        const ch = CakeType.displayPrefix[this.keyStructure];
         if( this.is_cakepath() ){
             const cp = this.cakepath();
             const path = cp.isRelative() ? cp.path:
@@ -116,17 +116,17 @@ export class Cake{
     }
 
     has_data(){
-        return this.keyStructure === KeyStructure.INLINE;
+        return this.keyStructure === CakeType.INLINE;
     }
 
     is_guid(){
-        return this.keyStructure === KeyStructure.PORTAL
-            && this.keyStructure === KeyStructure.PORTAL_VTREE
-            && this.keyStructure === KeyStructure.PORTAL_DMOUNT;
+        return this.keyStructure === CakeType.PORTAL
+            && this.keyStructure === CakeType.VTREE
+            && this.keyStructure === CakeType.DMOUNT;
     }
 
     is_cakepath(){
-        return this.keyStructure === KeyStructure.CAKEPATH;
+        return this.keyStructure === CakeType.CAKEPATH;
     }
 
     cakepath(){

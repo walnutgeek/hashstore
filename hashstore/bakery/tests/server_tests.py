@@ -1,6 +1,6 @@
 from nose.tools import eq_
 
-from hashstore.bakery import SaltedSha, Cake, Role, KeyStructure
+from hashstore.bakery import SaltedSha, Cake, CakeRole, CakeType
 from hashstore.tests import TestSetup, file_set1, file_set2, \
     prep_mount, update_mount, fileset1_cake, fileset2_cake
 import os
@@ -78,8 +78,8 @@ class ServerSetup:
             Cake: None
             ''',save_words=[])
         new_portal = Cake.ensure_it(save_words[0])
-        eq_(new_portal.role, Role.NEURON)
-        eq_(new_portal.key_structure, KeyStructure.PORTAL_VTREE)
+        eq_(new_portal.role, CakeRole.NEURON)
+        eq_(new_portal.type, CakeType.VTREE)
 
         self.test.run_script_and_wait(
             'hsi update_vtree --cake_path /{new_portal!s}/x/y/2 '
@@ -102,22 +102,26 @@ class ServerSetup:
                 .format(**locals()), expect_rc=0,
             expect_read='''....
             DirId: ...
+            RemotePath: ...
             Cake: {cake1}'''.format(**locals()), save_words=[])
         dirId = save_words[0]
 
         update_mount(files, file_set2)
+
+        stored = Cake(dirId).transform_portal(CakeType.PORTAL)
 
         self.test.run_script_and_wait(
             'hsi backup --dir {files}'
                 .format(**locals()), expect_rc=0,
             expect_read='''....
             DirId: {dirId!s}
+            RemotePath: /{stored!s}/
             Cake: {cake2}'''.format(**locals()))
 
         self.test.run_script_and_wait(
-            'hsi pull --cake {dirId} --dir {pull}'
+            'hsi pull --cake {stored} --dir {pull}'
                 .format(**locals()), expect_rc=0,
-            expect_read='From: {dirId!s}\n'
+            expect_read='From: ...\n'
                         'Cake: {cake2}\n'
                 .format(**locals()))
 

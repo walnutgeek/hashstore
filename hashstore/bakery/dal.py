@@ -1,4 +1,4 @@
-from hashstore.bakery import Cake, NamedCAKes, CakePath, Role
+from hashstore.bakery import Cake, NamedCAKes, CakePath, CakeRole
 
 from hashstore.ndb.models.server_config import ServerKey, \
     ServerConfigBase
@@ -61,7 +61,7 @@ def ensure_vtree_path(glue_sess, cake_path, asof_dt, user):
     if not(add) and entry.cake is not None:
         raise AssertionError(
             'cannot overwrite %s with %s' %
-            (Role.SYNAPSE, Role.NEURON))
+            (CakeRole.SYNAPSE, CakeRole.NEURON))
     if add:
         glue_sess.add(VT(
             portal_id=cake_path.root,

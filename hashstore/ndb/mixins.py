@@ -1,11 +1,9 @@
 from hashstore.ndb import StringCast
-from hashstore.bakery import Cake, SaltedSha, Role
+from hashstore.bakery import Cake, SaltedSha, CakeRole, CakeType as KS
 import datetime
 from sqlalchemy import Column, DateTime, String, Integer
 from sqlalchemy.ext.declarative import declared_attr
 from hashstore.utils import from_camel_case_to_underscores
-
-new_bundle_guid = lambda: Cake.new_portal(Role.NEURON)
 
 
 class ReprIt:
@@ -45,6 +43,14 @@ class ServersMixin(NameIt, Cdt, Udt):
     secret = Column(StringCast(SaltedSha), nullable=False)
 
 
-class Singleton(NameIt, ReprIt):
-    single = Column(Integer,primary_key=True, default=1)
-    id = Column(StringCast(Cake), nullable=False, default=new_bundle_guid)
+def newSingleton(ks=KS.PORTAL):
+    new_dmount = lambda: Cake.new_portal(CakeRole.NEURON, ks)
+    class NewSingleton(NameIt, ReprIt):
+        single = Column(Integer,primary_key=True, default=1)
+        id = Column(StringCast(Cake), nullable=False,
+                    default=new_dmount)
+    return NewSingleton
+
+Singleton = newSingleton()
+
+DirSingleton = newSingleton(KS.DMOUNT)

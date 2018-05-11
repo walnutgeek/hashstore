@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from nose.tools import eq_,ok_
 import hashstore.bakery as bakery
 import six
@@ -49,7 +52,7 @@ def test_Bundle():
     with open(file_path, 'w') as w:
         w.write(b1.content())
     b2 = bakery.NamedCAKes().parse(b1.content())
-    u_f = bakery.Cake.from_file(file_path, bakery.Role.NEURON)
+    u_f = bakery.Cake.from_file(file_path, bakery.CakeRole.NEURON)
     u2 = b2.cake()
     eq_(u_f, u2)
     eq_(u1,u2)
@@ -79,8 +82,6 @@ def test_Bundle():
     eq_(str(b1),udk_bundle_str)
     eq_(hash(b1),hash(udk_bundle_str))
     eq_(u1 == str(u1), False)
-
-
 
 
 

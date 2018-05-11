@@ -4,11 +4,11 @@ import datetime
 
 from hashstore.bakery import NotAuthorizedError, CredentialsError, \
     Content, Cake, NamedCAKes, CakePath, SaltedSha, \
-    check_bookmark_name, KeyStructure, assert_key_structure, Role
+    check_bookmark_name, CakeType, assert_key_structure, CakeRole
 from hashstore.bakery.backend import LiteBackend
 from hashstore.bakery.cake_tree import CakeTree
 from hashstore.ndb import Dbf, MultiSessionContextManager
-from hashstore.utils import ensure_dict,reraise_with_msg
+from hashstore.utils import reraise_with_msg, tuple_mapper
 import hashstore.bakery.dal as dal
 from sqlalchemy import and_, or_
 from hashstore.ndb.models.server_config import UserSession, \
@@ -119,6 +119,16 @@ class GuestAccess:
             raise CredentialsError('Credentials does not match for: '
                                    + email)
 
+    def authorize(self, cake, pts):
+        if self.auth_user.id == cake and PT.Read_ in pts:
+            return
+        required_acls = Acl.cake_acls(cake, pts)
+        for acl in required_acls:
+            if acl in self.auth_user.acls():
+                return
+        raise NotAuthorizedError('%s does not have %r permissions' %
+                                 (self.auth_user.email, required_acls))
+
     def server_login(self, server_id, server_secret):
         pass # validate and create server session logic
 
@@ -151,14 +161,14 @@ class GuestAccess:
             return self.backend().get_content(cake_or_path)
         elif cake.is_portal():
             self.authorize(cake_or_path, Permissions.read_portal)
-            if cake.key_structure == KeyStructure.PORTAL :
+            if cake.type == CakeType.PORTAL :
                 resolution_stack = dal.resolve_cake_stack(
                     self.ctx.glue_session(), cake_or_path)
                 for resolved_portal in resolution_stack[:-1]:
                     self.authorize(cake_or_path, Permissions.read_portal)
                 return self.backend().get_content(resolution_stack[-1])
-            elif cake.key_structure in [KeyStructure.PORTAL_DMOUNT,
-                                        KeyStructure.PORTAL_VTREE] :
+            elif cake.type in [CakeType.DMOUNT,
+                                        CakeType.VTREE] :
                 return self.get_content_by_path(CakePath(None, _root=cake, _path=[]))
         else:
             raise AssertionError('should never get here')
@@ -174,9 +184,9 @@ class GuestAccess:
         if cake_path.relative():
             raise AssertionError('path has to be absolute: %s '%cake_path)
         root = cake_path.root
-        if root.key_structure == KeyStructure.PORTAL_VTREE:
+        if root.type == CakeType.VTREE:
             return self._read_vtree(cake_path)
-        elif root.key_structure == KeyStructure.PORTAL_DMOUNT:
+        elif root.type == CakeType.DMOUNT:
             return self._read_dmount(cake_path)
         content=self.get_content(root)
         for next_name in cake_path.path:
@@ -216,24 +226,7 @@ class PrivilegedAccess(GuestAccess):
             .filter(UserSession.id == session_id).one()
         user_session.active = False
 
-
-    def is_authenticated(self):
-        return self.auth_user is not None
-
-
-    def authorize(self, cake, pts):
-        if self.auth_user.id == cake and PT.Read_ in pts:
-            return
-        required_acls = Acl.cake_acls(cake, pts)
-        for acl in required_acls:
-            if acl in self.auth_user.acls():
-                return
-        raise NotAuthorizedError('%s does not have %r permissions' %
-                                 (self.auth_user.email, required_acls))
-
     def authorize_all(self, cakes, pts):
-        if self.system_access:
-            return
         autorized = set()
         for cake in cakes:
             if cake in autorized:
@@ -270,14 +263,19 @@ class PrivilegedAccess(GuestAccess):
         :param directories:
         :return:
         '''
-        directories = ensure_dict( directories, Cake, NamedCAKes)
+        self.authorize(None, Permissions.write_data)
+        mapper = tuple_mapper(
+            CakePath.ensure_it_or_none,
+            Cake.ensure_it,
+            NamedCAKes.ensure_it)
+        directories = map(mapper, directories)
         unseen_cakes = set()
         dirs_stored = set()
         dirs_mismatch_input_cake = set()
-        for dir_cake in directories:
-            dir_contents=directories[dir_cake]
+
+        def store_bundle(dir_cake, dir_contents):
             lookup = self.backend().lookup(dir_cake)
-            if not lookup.found() :
+            if not lookup.found():
                 w = self.backend().writer()
                 w.write(dir_contents.in_bytes(), done=True)
                 lookup = self.backend().lookup(dir_cake)
@@ -286,9 +284,24 @@ class PrivilegedAccess(GuestAccess):
                 else: # pragma: no cover
                     dirs_mismatch_input_cake.add(dir_cake)
             for file_name in dir_contents:
-                file_cake = dir_contents[file_name]
-                if file_cake not in  directories:
-                    self._collect_unseen(file_cake, unseen_cakes)
+                self._collect_unseen(dir_contents[file_name],
+                                     unseen_cakes)
+
+        for cake_path, dir_cake, dir_contents in directories:
+            print(cake_path)
+            if cake_path is None or cake_path.root is None \
+                    or cake_path.root.type == CakeType.PORTAL :
+                store_bundle(dir_cake,dir_contents)
+                if cake_path is not None and cake_path.is_root():
+                    self.create_portal(portal_id=cake_path.root,
+                                       cake=dir_cake)
+            elif cake_path.root.type == CakeType.VTREE:
+                raise AssertionError('store vtree:'+ cake_path)
+            else:
+                raise AssertionError('cannot store: {cake_path!s} '
+                                     '{cake_path.root.type!s}'
+                                     .format(**locals()))
+
         if len(dirs_mismatch_input_cake) > 0: # pragma: no cover
             raise AssertionError('could not store directories: %r' %
                                  dirs_mismatch_input_cake)
@@ -377,12 +390,11 @@ class PrivilegedAccess(GuestAccess):
         if add_portal or already_own:
             dal.edit_portal(self.ctx.glue_session(),
                             Portal(id=portal_id, latest=cake))
-            if self.is_authenticated():
-                if not already_own:
-                    self.ctx.glue_session().add(Permission(
-                        user=self.auth_user,
-                        permission_type=PT.Own_Portal_,
-                        cake=portal_id))
+            if not already_own:
+                self.ctx.glue_session().add(Permission(
+                    user=self.auth_user,
+                    permission_type=PT.Own_Portal_,
+                    cake=portal_id))
         else:
             raise AssertionError('portal %r is already exists.' %
                                  portal_id)
@@ -411,8 +423,8 @@ class PrivilegedAccess(GuestAccess):
         if cake_path.relative():
             raise ValueError('cake_path has to be absolute: %r'
                              % cake_path)
-        assert_key_structure(KeyStructure.PORTAL_VTREE,
-                             cake_path.root.key_structure)
+        assert_key_structure(CakeType.VTREE,
+                             cake_path.root.type)
         return cake_path
 
     def _read_vtree(self, cake_path, asof_dt=None):
@@ -445,7 +457,7 @@ class PrivilegedAccess(GuestAccess):
                 namedCakes[file] = child.cake
             return Content(created_dt=neuron_maybe.start_dt,
                            data=namedCakes.in_bytes())\
-                .set_role(Role.NEURON)
+                .set_role(CakeRole.NEURON)
         else:
             return self.get_content(neuron_maybe.cake)
 
@@ -486,7 +498,7 @@ class PrivilegedAccess(GuestAccess):
                 if under_edit.cake is None:
                     raise AssertionError(
                         'cannot overwrite %s with %s' %
-                        (Role.NEURON, Role.SYNAPSE))
+                        (CakeRole.NEURON, CakeRole.SYNAPSE))
                 if under_edit.start_dt > asof_dt:
                     raise ValueError(
                         "cannot endate under_edit:%r for asof_dt:%r " %
@@ -554,9 +566,9 @@ class PrivilegedAccess(GuestAccess):
         read whole tree into `CakeTree`
         '''
         portal_id = Cake.ensure_it(portal_id)
-        if portal_id.key_structure != KeyStructure.PORTAL_VTREE:
+        if portal_id.type != CakeType.VTREE:
             raise AssertionError("%s is not a TREE:%s " % (
-                portal_id, portal_id.key_structure, ))
+                portal_id, portal_id.type, ))
         VT = VolatileTree
         if asof_dt is not None:
             condition = and_(VT.portal_id == portal_id, VT.start_dt <= asof_dt,
@@ -607,11 +619,10 @@ class PrivilegedAccess(GuestAccess):
         '''
         portal_id = Cake.ensure_it(portal_id)
         portal_id.assert_portal()
-        if self.is_authenticated():
-            self.authorize(portal_id, (PT.Own_Portal_, PT.Admin))
-            portal = self.ctx.glue_session().query(Portal).\
-                filter(Portal.id == portal_id).one()
-            portal.active=False
+        self.authorize(portal_id, (PT.Own_Portal_, PT.Admin))
+        portal = self.ctx.glue_session().query(Portal).\
+            filter(Portal.id == portal_id).one()
+        portal.active=False
 
 
 class CakeStore:
@@ -658,10 +669,6 @@ class CakeStore:
                 glue_session.add(guest)
                 glue_session.flush()
                 glue_session.add(Portal(id=guest.id))
-                glue_session.add(
-                    Permission(permission_type=PT.Read_,
-                               cake=guest.id,
-                               user=guest))
             system = dal.query_users_by_type(
                 glue_session, UserType.system).one_or_none()
             if system is None:

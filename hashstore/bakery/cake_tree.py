@@ -1,6 +1,6 @@
 from enum import IntEnum
 
-from hashstore.bakery import CakePath, HasHash, Cake, NamedCAKes, Role
+from hashstore.bakery import CakePath, HasHash, Cake, NamedCAKes, CakeRole
 
 
 class NodeState(IntEnum):
@@ -96,7 +96,7 @@ class Neuron(Node):
                         NodeState.pruned)
 
     def role(self):
-        return Role.NEURON
+        return CakeRole.NEURON
 
     def clean(self):
         self._bundle = None

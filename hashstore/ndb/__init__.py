@@ -29,6 +29,7 @@ class StringCast(TypeDecorator):
 
 
 class IntCast(TypeDecorator):
+
     impl = Integer
 
     def __init__(self, values, extract_key=None, *arg, **kw):
@@ -46,6 +47,7 @@ class IntCast(TypeDecorator):
 
 
 class Dbf:
+
     def __init__(self,meta,path):
         if ismodule(meta):
             meta = meta.Base.metadata
