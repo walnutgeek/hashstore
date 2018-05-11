@@ -12,6 +12,8 @@ import attr
 from collections import Mapping
 from datetime import date, datetime
 from dateutil.parser import parse as dt_parse
+import codecs
+
 
 
 def quict(**kwargs):
@@ -115,6 +117,7 @@ ensure_unicode = lambda s: s if isinstance(s, str)\
 
 ensure_string = ensure_unicode
 
+utf8_reader = codecs.getreader("utf-8")
 
 def v2s(vars_dict, *var_keys):
     '''

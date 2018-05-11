@@ -8,7 +8,7 @@ from nose.tools import eq_,ok_
 import sys, re
 from doctest import OutputChecker, DocTestRunner, DocTestFinder
 
-pyenv = 'py' + sys.version[0]
+pyenv = 'py%d' % sys.version_info.minor
 
 
 def assert_text(src, expect, save_words=None):

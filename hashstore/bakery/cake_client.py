@@ -168,7 +168,11 @@ class ClientUserSession:
                     .filter(MountSession.id != self.session_id,
                             MountSession.default == True )\
                     .update({MountSession.default: False})
+
+        def print_header(n):
+            print(n+': '+self.headers.get(n))
         print("Mount: "+ abspath)
-        print(self.headers)
+        print_header('ClientID')
+        print_header('UserSession')
 
 

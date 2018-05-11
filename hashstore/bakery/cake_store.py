@@ -8,7 +8,7 @@ from hashstore.bakery import NotAuthorizedError, CredentialsError, \
 from hashstore.bakery.backend import LiteBackend
 from hashstore.bakery.cake_tree import CakeTree
 from hashstore.ndb import Dbf, MultiSessionContextManager
-from hashstore.utils import reraise_with_msg, tuple_mapper
+from hashstore.utils import reraise_with_msg, tuple_mapper, utf8_reader
 import hashstore.bakery.dal as dal
 from sqlalchemy import and_, or_
 from hashstore.ndb.models.server_config import UserSession, \
@@ -190,7 +190,7 @@ class GuestAccess:
             return self._read_dmount(cake_path)
         content=self.get_content(root)
         for next_name in cake_path.path:
-            bundle = NamedCAKes(content.stream())
+            bundle = NamedCAKes(utf8_reader(content.stream()))
             try:
                 next_cake = bundle[next_name]
             except:

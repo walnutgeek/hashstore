@@ -1,3 +1,5 @@
+import json
+
 from nose.tools import eq_,ok_,with_setup
 import sys
 from hashstore.tests import TestSetup
@@ -89,7 +91,7 @@ def test_LazyVars():
     eq_('v=a', lv['a'])
     eq_(1, read_count)
     eq_('b', lv['b'])
-    eq_(str(lv),"{'a': 'v=a', 'b': 'b'}")
+    eq_(json.dumps(dict(lv), sort_keys=True),'{"a": "v=a", "b": "b"}')
     lv = u.LazyVars( a = val_a, b = 'b')
     eq_('{a} -- {b}'.format(**lv),'v=a -- b')
 

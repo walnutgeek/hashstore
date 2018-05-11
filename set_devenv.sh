@@ -12,7 +12,7 @@ pip install sniffer
 for e in 4 5 6
 do
     conda remove -n py${e} --all -y|| echo py${e} not here, it is ok!
-    conda create -y -n py${e} python=3.${e} python
+    conda create -y -n py${e} python=3.${e}
     . activate py${e}
     pip install -r requirements.txt
     pip install -r test-requirements.txt

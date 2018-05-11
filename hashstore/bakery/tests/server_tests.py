@@ -68,8 +68,8 @@ class ServerSetup:
             '--passwd {pwd} --default'.format(**locals()),
             expect_rc=0,
             expect_read="Mount: ... "
-                        "{'UserSession': ... "
-                        "'ClientID': ...")
+                        "ClientID: ... "
+                        "UserSession: ... ")
 
         _, save_words = self.test.run_script_and_wait(
             'hsi create_portal --portal_type VTREE '

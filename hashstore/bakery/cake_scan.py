@@ -1,5 +1,5 @@
 from hashstore.utils import ensure_unicode, failback, read_in_chunks, \
-    reraise_with_msg, ensure_directory
+    reraise_with_msg, ensure_directory, utf8_reader
 from hashstore.utils.ignore_file import ignore_files, \
     parse_ignore_specs, check_if_path_should_be_ignored
 from hashstore.bakery import Cake, process_stream, NamedCAKes, CakeRole, \
@@ -299,7 +299,7 @@ def pull(store, cake_or_path, path):
 
     def restore_inner(cake, content, path):
         try:
-            bundle = NamedCAKes(content.stream())
+            bundle = NamedCAKes(utf8_reader(content.stream()))
         except:
             data = content.get_data()
             reraise_with_msg('Cake: {cake} {data}'.format(**locals()))

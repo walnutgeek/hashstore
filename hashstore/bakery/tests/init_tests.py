@@ -4,7 +4,7 @@
 from nose.tools import eq_,ok_
 import hashstore.bakery as bakery
 import six
-from hashstore.utils import ensure_bytes
+from hashstore.utils import ensure_bytes, utf8_reader
 from hashstore.tests import TestSetup, doctest_it
 
 import logging
@@ -62,7 +62,7 @@ def test_Bundle():
     eq_(str(b1), udk_bundle_str)
     u1 = b1.cake()
     ok_(u1 != u2)
-    b2.parse(six.BytesIO(ensure_bytes(b1.content())))
+    b2.parse(utf8_reader(six.BytesIO(ensure_bytes(b1.content()))))
     eq_(str(b2), udk_bundle_str)
     eq_(b2.size(),55)
     u2 = b2.cake()
