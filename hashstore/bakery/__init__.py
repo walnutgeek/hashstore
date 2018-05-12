@@ -515,7 +515,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
 
     def cakepath(self):
         if self.is_cakepath():
-            return CakePath(utils.ensure_unicode(self._data))
+            return CakePath(utils.ensure_string(self._data))
 
     def hash_bytes(self):
         """
@@ -775,7 +775,7 @@ class CakePath(utils.Stringable, utils.EnsureIt):
         if self.relative():
             return self.path_join()
         else:
-            return u'/%s/%s' % (utils.ensure_unicode(str(self.root)), utils.ensure_unicode(self.path_join()))
+            return u'/%s/%s' % (utils.ensure_string(str(self.root)), utils.ensure_string(self.path_join()))
 
     def path_join(self):
         return u'/'.join(self.path)

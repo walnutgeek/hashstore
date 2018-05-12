@@ -3,7 +3,7 @@ import attr
 from six import itervalues, text_type
 from os.path import join, dirname
 from hashstore.utils import (
-    ensure_bytes, ensure_unicode,
+    ensure_bytes, ensure_string,
     DictKey, load_json_file,
     type_required as required,
     type_list_of as list_of,
@@ -25,13 +25,13 @@ my_mime_dict = dict(
     (cvt(ext),cvt(ft.mime))
     for ft in itervalues(file_types)
         for ext in ft.ext
-            for cvt in [ensure_unicode, ensure_bytes])
+            for cvt in [ensure_string, ensure_bytes])
 
 my_name_dict = dict(
     (cvt(ext),ft._key_)
     for ft in itervalues(file_types)
         for ext in ft.ext
-            for cvt in [ensure_unicode, ensure_bytes])
+            for cvt in [ensure_string, ensure_bytes])
 
 WDF = 'WDF'
 HSB = 'HSB'

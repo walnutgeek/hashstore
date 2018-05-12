@@ -1,4 +1,4 @@
-from hashstore.utils import ensure_unicode, failback, read_in_chunks, \
+from hashstore.utils import ensure_string, failback, read_in_chunks, \
     reraise_with_msg, ensure_directory, utf8_reader
 from hashstore.utils.ignore_file import ignore_files, \
     parse_ignore_specs, check_if_path_should_be_ignored
@@ -84,11 +84,11 @@ class CakeEntries:
 
 class ScanPath:
     def __init__(self, fs_path, addname=None , remote_path = None ):
-        fs_path=ensure_unicode(fs_path)
+        fs_path=ensure_string(fs_path)
         if addname is None:
             name = os.path.basename(fs_path)
         else:
-            addname = ensure_unicode(addname)
+            addname = ensure_string(addname)
             fs_path = os.path.join(fs_path, addname)
             name = addname
         self.fs_path = os.path.abspath(fs_path)

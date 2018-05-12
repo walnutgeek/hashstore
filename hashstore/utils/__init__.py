@@ -112,10 +112,8 @@ binary_type = bytes
 ensure_bytes = lambda s: s if isinstance(s, bytes)\
     else str(s).encode('utf-8')
 
-ensure_unicode = lambda s: s if isinstance(s, str)\
+ensure_string = lambda s: s if isinstance(s, str)\
     else s.decode('utf-8') if isinstance(s, bytes) else str(s)
-
-ensure_string = ensure_unicode
 
 utf8_reader = codecs.getreader("utf-8")
 
@@ -472,14 +470,6 @@ class KeyMapper:
         return self._altkey_dict.keys()
 
 
-def map_dict(key_fn, val_fn, in_dict):
-    out_dict = {}
-    for k in in_dict:
-        val = in_dict[k]
-        out_dict[key_fn(k)] = val_fn(val)
-    return out_dict
-
-
 def tuple_mapper(*mappers):
     l = len(mappers)
     def map_fn(i):
@@ -491,6 +481,17 @@ def tuple_mapper(*mappers):
         return tuple(map_fn(i)(v) for i, v in enumerate(in_tuple))
     return _mapper
 
+
+def map_dict(key_fn, val_fn, in_dict):
+    """
+    >>> m = { 'a': 5, 'x': 10 }
+    >>> sorted(map_dict(lambda x: x+'q', None, m).items())
+    [('aq', 5), ('xq', 10)]
+    >>> sorted(map_dict(None, lambda x: x*3, m).items())
+    [('a', 15), ('x', 30)]
+    """
+    mapper = tuple_mapper(key_fn,val_fn)
+    return dict(mapper(t) for t in in_dict.items())
 
 def normalize_url(url):
     '''
