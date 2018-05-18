@@ -151,8 +151,8 @@ class User(GuidPk, NameIt, Cdt, Udt, ReprIt, GlueBase):
     permissions = relationship("Permission", order_by="Permission.id",
                                back_populates = "user")
 
-    def acls(self):
-        if not hasattr(self, '_acls'):
+    def acls(self, force_refresh = False ):
+        if force_refresh or not hasattr(self, '_acls'):
             self._acls = set()
             for p in self.permissions:
                 self._acls.update(p.expanded_acls())

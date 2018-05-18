@@ -17,6 +17,7 @@ substitutions = {'{test_dir}': test.dir, '{q}': 'q'}
 
 u.ensure_directory(test.dir)
 
+
 def test_docs():
     import doctest
     import hashstore.utils as utils
@@ -27,20 +28,6 @@ def test_docs():
         ok_(r.attempted > 0, 'There is not doctests in module')
         eq_(r.failed,0)
 
-
-def test_path_resolver():
-    r = u.create_path_resolver(substitutions)
-    eq_(r('{test_dir}/x/y/z'), test.dir + '/x/y/z')
-    eq_(r('x/{q}/y/z'), 'x/q/y/z')
-    eq_(r('/x/{q}/y/z'), '/x/q/y/z')
-    eq_(r('/x/{q}/y/z/'), '/x/q/y/z/')
-    eq_(r('{env.HOME}/y/z/'), environ.get('HOME') + '/y/z/')
-    eq_(r('~/y/z/'), environ.get('HOME') + '/y/z/')
-
-    #override environment variable
-    r = u.create_path_resolver({'{env.HOME}' : 'other'})
-    eq_(r('{env.HOME}/y/z/'), 'other/y/z/')
-    eq_(r('~/y/z/'), environ.get('HOME') + '/y/z/')
 
 
 def test_split_all():

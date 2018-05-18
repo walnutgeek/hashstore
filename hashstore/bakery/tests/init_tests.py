@@ -18,6 +18,14 @@ log = test.log
 def test_docs():
     doctest_it(bakery)
 
+def test_PatchAction():
+    eq_(bakery.PatchAction.update, bakery.PatchAction['update'])
+    eq_(bakery.PatchAction.delete, bakery.PatchAction['delete'])
+    eq_(bakery.PatchAction.delete, bakery.PatchAction.ensure_it('delete'))
+    eq_(bakery.PatchAction.update, bakery.PatchAction.ensure_it_or_none('update'))
+    ok_(bakery.PatchAction.ensure_it_or_none(None) is None)
+    eq_(str(bakery.PatchAction.update), 'update')
+
 
 def test_CAKe():
     def do_test(c, s, d=None):
@@ -44,14 +52,14 @@ def test_CAKe():
 
 def test_Bundle():
     inline_udk = '01aMUQDApalaaYbXFjBVMMvyCAMfSPcTojI0745igi'
-    b1 = bakery.NamedCAKes()
+    b1 = bakery.CakeRack()
     eq_(b1.content(),'[[], []]')
     u1 = b1.cake()
     u0 = u1
     file_path = test.file_path('content.json')
     with open(file_path, 'w') as w:
         w.write(b1.content())
-    b2 = bakery.NamedCAKes().parse(b1.content())
+    b2 = bakery.CakeRack().parse(b1.content())
     u_f = bakery.Cake.from_file(file_path, bakery.CakeRole.NEURON)
     u2 = b2.cake()
     eq_(u_f, u2)
@@ -76,8 +84,8 @@ def test_Bundle():
     eq_([k for k in b2], [])
     eq_(b1.get_name_by_cake(inline_udk), 'a')
     eq_(b1.get_name_by_cake(str(bakery.Cake(inline_udk))), 'a')
-    eq_(bakery.NamedCAKes(b1.to_json()), b1)
-    eq_(bakery.NamedCAKes.ensure_it(b1.to_json()), b1)
+    eq_(bakery.CakeRack(b1.to_json()), b1)
+    eq_(bakery.CakeRack.ensure_it(b1.to_json()), b1)
     eq_(len(b1),1)
     eq_(str(b1),udk_bundle_str)
     eq_(hash(b1),hash(udk_bundle_str))

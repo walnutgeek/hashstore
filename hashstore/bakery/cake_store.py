@@ -3,8 +3,9 @@ import os
 import datetime
 
 from hashstore.bakery import NotAuthorizedError, CredentialsError, \
-    Content, Cake, NamedCAKes, CakePath, SaltedSha, \
-    check_bookmark_name, CakeType, assert_key_structure, CakeRole
+    Content, Cake, CakeRack, CakePath, SaltedSha, \
+    check_bookmark_name, CakeType, assert_key_structure, CakeRole, \
+    PatchAction
 from hashstore.bakery.backend import LiteBackend
 from hashstore.bakery.cake_tree import CakeTree
 from hashstore.ndb import Dbf, MultiSessionContextManager
@@ -190,7 +191,7 @@ class GuestAccess:
             return self._read_dmount(cake_path)
         content=self.get_content(root)
         for next_name in cake_path.path:
-            bundle = NamedCAKes(utf8_reader(content.stream()))
+            bundle = CakeRack(utf8_reader(content.stream()))
             try:
                 next_cake = bundle[next_name]
             except:
@@ -264,11 +265,11 @@ class PrivilegedAccess(GuestAccess):
         :return:
         '''
         self.authorize(None, Permissions.write_data)
-        mapper = tuple_mapper(
+        name2cakepath = tuple_mapper(
             CakePath.ensure_it_or_none,
             Cake.ensure_it,
-            NamedCAKes.ensure_it)
-        directories = map(mapper, directories)
+            CakeRack.ensure_it)
+        directories = map(name2cakepath, directories)
         unseen_cakes = set()
         dirs_stored = set()
         dirs_mismatch_input_cake = set()
@@ -288,7 +289,6 @@ class PrivilegedAccess(GuestAccess):
                                      unseen_cakes)
 
         for cake_path, dir_cake, dir_contents in directories:
-            print(cake_path)
             if cake_path is None or cake_path.root is None \
                     or cake_path.root.type == CakeType.PORTAL :
                 store_bundle(dir_cake,dir_contents)
@@ -296,7 +296,15 @@ class PrivilegedAccess(GuestAccess):
                     self.create_portal(portal_id=cake_path.root,
                                        cake=dir_cake)
             elif cake_path.root.type == CakeType.VTREE:
-                raise AssertionError('store vtree:'+ cake_path)
+                path = cake_path.path_join()
+                prev_dir = self._make_bundle(
+                    self._query_vtree(cake_path.root, None)(
+                        VolatileTree.parent_path == path).all())
+                name2cakepath = tuple_mapper(None,cake_path.child)
+                patches = [name2cakepath(t) for t in
+                           dir_contents.merge(prev_dir)]
+                dirs_stored.add(dir_cake)
+                unseen_cakes.update(self.edit_portal_tree(patches))
             else:
                 raise AssertionError('cannot store: {cake_path!s} '
                                      '{cake_path.root.type!s}'
@@ -429,13 +437,33 @@ class PrivilegedAccess(GuestAccess):
 
     def _read_vtree(self, cake_path, asof_dt=None):
         cake_path = self._assert_vtree_(cake_path)
-        portal_id = cake_path.root
         path = cake_path.path_join()
-        VT = VolatileTree
+        query = self._query_vtree(cake_path.root, asof_dt)
+        neuron_maybe = query(VolatileTree.path == path).one_or_none()
+        if neuron_maybe.cake is None: # yes it is
+            namedCakes = self._make_bundle(
+                query(VolatileTree.parent_path == path).all())
+            return Content(created_dt=neuron_maybe.start_dt,
+                           data=namedCakes.in_bytes())\
+                .set_role(CakeRole.NEURON)
+        else:
+            return self.get_content(neuron_maybe.cake)
+
+    @staticmethod
+    def _make_bundle(vtree_rs):
+        namedCakes = CakeRack()
+        for child in vtree_rs:
+            if child.path == '':
+                continue
+            _, file = os.path.split(child.path)
+            namedCakes[file] = child.cake
+        return namedCakes
+
+    def _query_vtree(self, portal_id, asof_dt):
         def query(path_condition):
             VT = VolatileTree
             if asof_dt is not None:
-                condition=and_(
+                condition = and_(
                     VT.portal_id == portal_id,
                     path_condition,
                     VT.start_dt <= asof_dt,
@@ -445,22 +473,8 @@ class PrivilegedAccess(GuestAccess):
                     VT.portal_id == portal_id,
                     path_condition,
                     VT.end_dt == None)
-            return self.ctx.glue_session().query(VT).filter(condition)
-        neuron_maybe = query(VT.path == path).one_or_none()
-        if neuron_maybe.cake is None: # yes it is
-            children = query(VT.parent_path == path).all()
-            namedCakes = NamedCAKes()
-            for child in children:
-                if child.path == '':
-                    continue
-                _,file = os.path.split(child.path)
-                namedCakes[file] = child.cake
-            return Content(created_dt=neuron_maybe.start_dt,
-                           data=namedCakes.in_bytes())\
-                .set_role(CakeRole.NEURON)
-        else:
-            return self.get_content(neuron_maybe.cake)
-
+            return self.ctx.glue_session().query(VolatileTree).filter(condition)
+        return query
 
     def _read_dmount(self, cake_path, asof_dt=None):
         raise AssertionError('not impl')
@@ -471,59 +485,69 @@ class PrivilegedAccess(GuestAccess):
         '''
         update path with cake in portal_tree
         '''
-        files = [(self._assert_vtree_(cp),Cake.ensure_it(c))
-                  for cp,c in files]
-
-        self.authorize_all((cp.root for cp,_ in files),
-                           (PT.Edit_Portal_, PT.Admin))
-        VT = VolatileTree
+        ensure_types = tuple_mapper(PatchAction.ensure_it,
+                                    self._assert_vtree_,
+                                    Cake.ensure_it_or_none )
+        files = list(map(ensure_types,files))
+        roots = set(t[1].root for t in files)
         glue_session = self.ctx.glue_session()
+        roots_founds = [p.id for p in glue_session.query(Portal)
+            .filter(Portal.id.in_(roots)).all()]
+        if len(roots) > len(roots_founds):
+            for r in roots:
+                if r not in roots_founds:
+                    self.create_portal(r, None)
+            self.auth_user.acls(force_refresh=True)
+        self.authorize_all(roots,(PT.Edit_Portal_, PT.Admin))
+        VT = VolatileTree
         if asof_dt is None:
             asof_dt = datetime.datetime.utcnow()
         unseen_cakes = set()
 
-        def add_cake_to_vtree(cake_path, cake):
-            cake = Cake.ensure_it(cake)
-            portal_id = cake_path.root
-            path = cake_path.path_join()
-            parent = cake_path.parent()
-            under_edit = glue_session.query(VT)\
-                .filter(
-                    VT.portal_id == portal_id,
-                    VT.path == cake_path.path_join(),
-                    VT.end_dt == None
-                ).one_or_none()
-            change = True
-            if under_edit is not None:
-                if under_edit.cake is None:
-                    raise AssertionError(
-                        'cannot overwrite %s with %s' %
-                        (CakeRole.NEURON, CakeRole.SYNAPSE))
-                if under_edit.start_dt > asof_dt:
-                    raise ValueError(
-                        "cannot endate under_edit:%r for asof_dt:%r " %
-                        (under_edit,asof_dt))
-                if under_edit.cake != cake:
-                    under_edit.end_dt = asof_dt
-                    under_edit.end_by = self.auth_user.id
-                    glue_session.add(under_edit)
-                else:
-                    change = False
-            if change:
-                parent_path = parent.path_join()
-                glue_session.add(VT(
-                    portal_id=portal_id,
-                    path=path,
-                    parent_path=parent_path,
-                    start_by=self.auth_user.id,
-                    cake=cake,
-                    start_dt=asof_dt))
-                self._collect_unseen(cake, unseen_cakes)
-                dal.ensure_vtree_path(glue_session, parent, asof_dt,
-                                      self.auth_user)
+        def add_cake_to_vtree(action, cake_path, cake):
+            if action == PatchAction.delete:
+                self.delete_in_portal_tree(cake_path,asof_dt)
+            else:
+                portal_id = cake_path.root
+                path = cake_path.path_join()
+                parent = cake_path.parent()
+                under_edit = glue_session.query(VT)\
+                    .filter(
+                        VT.portal_id == portal_id,
+                        VT.path == cake_path.path_join(),
+                        VT.end_dt == None
+                    ).one_or_none()
+                change = True
+                if under_edit is not None:
+                    if under_edit.cake is None:
+                        raise AssertionError(
+                            'cannot overwrite %s with %s' %
+                            (CakeRole.NEURON, CakeRole.SYNAPSE))
+                    if under_edit.start_dt > asof_dt:
+                        raise ValueError(
+                            "cannot endate under_edit:%r for asof_dt:%r " %
+                            (under_edit,asof_dt))
+                    if under_edit.cake != cake:
+                        under_edit.end_dt = asof_dt
+                        under_edit.end_by = self.auth_user.id
+                        glue_session.add(under_edit)
+                    else:
+                        change = False
+                if change:
+                    parent_path = parent.path_join()
+                    glue_session.add(VT(
+                        portal_id=portal_id,
+                        path=path,
+                        parent_path=parent_path,
+                        start_by=self.auth_user.id,
+                        cake=cake,
+                        start_dt=asof_dt))
+                    self._collect_unseen(cake, unseen_cakes)
+                    dal.ensure_vtree_path(glue_session, parent, asof_dt,
+                                          self.auth_user)
 
-        for cake_path,cake in files:
-            add_cake_to_vtree(cake_path,cake)
+        for action, cake_path, cake in files:
+            add_cake_to_vtree(action,cake_path,cake)
         return list(unseen_cakes)
 
     @user_api.call()

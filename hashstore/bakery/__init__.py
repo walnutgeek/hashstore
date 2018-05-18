@@ -6,7 +6,7 @@ import abc
 import six
 
 from hashstore.utils import Stringable, EnsureIt, Jsonable
-from six import BytesIO, string_types, iteritems, binary_type
+from six import BytesIO, string_types, iteritems
 import hashlib
 import os
 import hashstore.utils as utils
@@ -20,9 +20,6 @@ from hashstore.utils import path_split_all
 from hashstore.utils.file_types import guess_name, file_types, HSB
 
 log = logging.getLogger(__name__)
-
-to_byte = lambda code: bytes([code])
-to_int = lambda b : b
 
 B62 = base_x(62)
 B36 = base_x(36)
@@ -294,7 +291,7 @@ def pack_in_bytes(type, role, data_bytes):
     >>> pack_in_bytes(CakeType.SHA256,CakeRole.NEURON, b'XYZ')
     b'\x03XYZ'
     """
-    return to_byte(_header(type, role)) + data_bytes
+    return bytes([_header(type, role)]) + data_bytes
 
 
 def quick_hash(data):
@@ -327,7 +324,7 @@ def process_stream(fd,  process_buffer=NOP_process_buffer, chunk_size=65355):
     :param process_buffer: function  called on every chan
     :return:
     """
-    inline_data = binary_type()
+    inline_data = bytes()
     digest = hashlib.sha256()
     length = 0
     while True:
@@ -358,7 +355,6 @@ class Cake(utils.Stringable, utils.EnsureIt):
     We allow future extension and use different type of hash algos.
     Currently we have 4 `CakeType` defined, leaving 12 more for
     future extension.
-
     >>> list(CakeType) #doctest: +NORMALIZE_WHITESPACE
     [<CakeType.INLINE: 0>, <CakeType.SHA256: 1>,
     <CakeType.PORTAL: 2>, <CakeType.VTREE: 3>,
@@ -423,7 +419,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
             self.role = role
         else:
             decoded = B62.decode(utils.ensure_string(s))
-            header = to_int(decoded[0])
+            header = decoded[0]
             self._data = decoded[1:]
             self.type = CakeType(header >> 1)
             self.role = CakeRole(header & 1)
@@ -552,21 +548,37 @@ class Cake(utils.Stringable, utils.EnsureIt):
 
 
 @six.add_metaclass(abc.ABCMeta)
-class HasHash(object):
+class HasCake(object):
 
     @abc.abstractmethod
     def cake(self):
         raise NotImplementedError('subclasses must override')
 
 
-class NamedCAKes(utils.Jsonable, HasHash):
+class PatchAction(Jsonable, enum.Enum):
+    update = +1
+    delete = -1
+
+    @classmethod
+    def factory(cls):
+        return lambda s: cls[s]
+
+    def __str__(self):
+        return self.name
+
+    def to_json(self):
+        return str(self)
+
+
+
+class CakeRack(utils.Jsonable, HasCake):
     """
     sorted dictionary of names and corresponding Cakes
 
     >>> short_k = Cake.from_bytes(b'The quick brown fox jumps over')
     >>> longer_k = Cake.from_bytes(b'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.')
 
-    >>> cakes = NamedCAKes()
+    >>> cakes = CakeRack()
     >>> cakes['short'] = short_k
     >>> cakes['longer'] = longer_k
     >>> len(cakes)
@@ -595,6 +607,7 @@ class NamedCAKes(utils.Jsonable, HasHash):
         self._content = None
         self._size = None
         self._in_bytes = None
+        self._defined = None
 
     def inverse(self):
         if self._inverse is None:
@@ -621,13 +634,21 @@ class NamedCAKes(utils.Jsonable, HasHash):
             self._build_content()
         return self._size
 
+    def is_defined(self):
+        if self._defined is None:
+            self._build_content()
+        return self._defined
+
     def _build_content(self):
         self._content = str(self)
+        self._defined = all(v is not None for v in self.store.values())
         self._in_bytes = utils.ensure_bytes(self._content)
         self._size = len(self._in_bytes)
         self._cake = Cake.from_digest_and_inline_data(
             quick_hash(self._in_bytes),self._in_bytes,
             role=CakeRole.NEURON)
+
+
 
     def parse(self, o):
         self._clear_cached()
@@ -637,8 +658,69 @@ class NamedCAKes(utils.Jsonable, HasHash):
             names, cakes = o
         else:
             names, cakes = json.load(o)
-        self.store.update(zip(names, map(Cake.ensure_it, cakes)))
+        self.store.update(zip(names, map(Cake.ensure_it_or_none, cakes)))
         return self
+
+    def merge(self, previous):
+        """
+        >>> o1 = Cake.from_bytes(b'The quick brown fox jumps over')
+        >>> o2v1 = Cake.from_bytes(b'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.')
+        >>> o2v2 = Cake.from_bytes(b'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. v2')
+        >>> o3 = CakeRack().cake()
+        >>> r1 = CakeRack()
+        >>> r1['o1']=o1
+        >>> r1['o2']=o2v1
+        >>> r1['o3']=None
+        >>> r2 = CakeRack()
+        >>> r2['o1']=o1
+        >>> r2['o2']=o2v2
+        >>> r2['o3']=o3
+        >>> list(r2.merge(r1))
+        [(<PatchAction.update: 1>, 'o2', Cake('2KLrqwGfNUC75Zk46B8SIbyYQFcm4FoW8UgOd9xnkKD9'))]
+        >>> list(r1.merge(r2))
+        [(<PatchAction.update: 1>, 'o2', Cake('2xgkyws1ZbSlXUvZRCSIrjne73Pv1kmYArYvhOrTtqkX'))]
+        >>> r1['o1'] = None
+        >>> list(r2.merge(r1)) #doctest: +NORMALIZE_WHITESPACE
+        [(<PatchAction.delete: -1>, 'o1', None),
+        (<PatchAction.update: 1>, 'o1', Cake('01aMUQDApalaaYbXFjBVMMvyCAMfSPcTojI0745igi')),
+        (<PatchAction.update: 1>, 'o2', Cake('2KLrqwGfNUC75Zk46B8SIbyYQFcm4FoW8UgOd9xnkKD9'))]
+        >>> list(r1.merge(r2)) #doctest: +NORMALIZE_WHITESPACE
+        [(<PatchAction.delete: -1>, 'o1', None),
+        (<PatchAction.update: 1>, 'o1', None),
+        (<PatchAction.update: 1>, 'o2', Cake('2xgkyws1ZbSlXUvZRCSIrjne73Pv1kmYArYvhOrTtqkX'))]
+        >>> del r1["o2"]
+        >>> list(r2.merge(r1)) #doctest: +NORMALIZE_WHITESPACE
+        [(<PatchAction.delete: -1>, 'o1', None),
+        (<PatchAction.update: 1>, 'o1', Cake('01aMUQDApalaaYbXFjBVMMvyCAMfSPcTojI0745igi')),
+        (<PatchAction.update: 1>, 'o2', Cake('2KLrqwGfNUC75Zk46B8SIbyYQFcm4FoW8UgOd9xnkKD9'))]
+        >>> list(r1.merge(r2)) #doctest: +NORMALIZE_WHITESPACE
+        [(<PatchAction.delete: -1>, 'o1', None),
+        (<PatchAction.update: 1>, 'o1', None),
+        (<PatchAction.delete: -1>, 'o2', None)]
+        """
+        for k in sorted(list(set(self.keys() + previous.keys()))):
+            if k not in self and k in previous:
+                yield PatchAction.delete, k, None
+            else:
+                v = self[k]
+                neuron = self.is_neuron(k)
+                if k in self and k not in previous:
+                    yield PatchAction.update, k, v
+                else:
+                    prev_v = previous[k]
+                    prev_neuron = previous.is_neuron(k)
+                    if v != prev_v:
+                        if neuron == True and prev_neuron == True:
+                            continue
+                        if prev_neuron == neuron:
+                            yield PatchAction.update, k, v
+                        else:
+                            yield PatchAction.delete, k, None
+                            yield PatchAction.update, k, v
+
+    def is_neuron(self, k):
+        v = self.store[k]
+        return v is None or v.role == CakeRole.NEURON
 
     def __iter__(self):
         return iter(self.keys())
@@ -656,6 +738,9 @@ class NamedCAKes(utils.Jsonable, HasHash):
 
     def __len__(self):
         return len(self.store)
+
+    def __contains__(self, k):
+        return k in self.store
 
     def get_name_by_cake(self, k):
         return self.inverse()[Cake.ensure_it(k)]
@@ -795,6 +880,16 @@ def cake_or_path(s, relative_to_root=False):
         return CakePath('/'+s)
     else:
         return Cake(s)
+
+
+def ensure_cakepath(s):
+    if not(isinstance(s, (Cake,CakePath) )):
+        s = cake_or_path(s)
+    if isinstance(s, Cake):
+        return CakePath(None, _root=s)
+    else:
+        return s
+
 
 SSHA_MARK='{SSHA}'
 

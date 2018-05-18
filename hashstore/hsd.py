@@ -5,7 +5,7 @@ from hashstore.ndb.models.glue import PermissionType, Acl
 from hashstore.utils import print_pad
 from hashstore.utils.args import Switch, CommandArgs
 from hashstore.bakery.cake_scan import pull, backup, ScanPath
-from hashstore.bakery import SaltedSha, cake_or_path
+from hashstore.bakery import SaltedSha, ensure_cakepath
 import getpass
 
 import logging
@@ -95,7 +95,7 @@ class DaemonApp():
     def pull(self, cake, dir):
         with self.store.ctx() as ctx:
             actions = PrivilegedAccess.system_access(ctx)
-            pull(actions, cake_or_path(cake), dir)
+            pull(actions, ensure_cakepath(cake), dir)
 
     @ca.command('start server')
     def start(self):

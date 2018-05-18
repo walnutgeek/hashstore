@@ -3,8 +3,9 @@ import logging
 import os
 import sys
 from hashstore.bakery.cake_client import ClientUserSession, CakeClient
-from hashstore.bakery import cake_or_path, Cake, PORTAL_TYPES, \
-    portal_from_name, CakeRole, CakePath, process_stream, CakeType
+from hashstore.bakery import Cake, PORTAL_TYPES, \
+    portal_from_name, CakeRole, CakePath, process_stream, CakeType, \
+    PatchAction, ensure_cakepath
 from hashstore.ndb.models.scan import FileType
 from hashstore.utils.args import CommandArgs, Switch
 from hashstore.utils import print_pad, exception_message
@@ -112,7 +113,7 @@ class ClientApp:
         if remote_path is None:
             if portal_type is not None:
                 remote = dirkey.id.transform_portal(portal_type)
-                remote_path = CakePath(None,_root=remote)
+                remote_path = CakePath(None, _root=remote)
             else:
                 print(dirkey.id)
                 if dirkey.last_backup_path is None:
@@ -134,7 +135,7 @@ class ClientApp:
     def pull(self, cake, dir='.'):
         client = CakeClient()
         self._check_cu_session(dir)
-        src = cake_or_path(cake)
+        src = ensure_cakepath(cake)
         cake = cscan.pull(self.remote(), src, dir)
         print('From: {src!s} \nCake: {cake!s}\n'
               .format(**locals()))
@@ -185,7 +186,7 @@ class ClientApp:
             cake = Cake.from_digest_and_inline_data(digest, buff)
 
         unseen = self.remote().edit_portal_tree(
-            files=[(cake_path,cake),])
+            files=[(PatchAction.update, cake_path,cake),])
         for cake_to_write in map(Cake.ensure_it, unseen):
             if cake != cake_to_write:
                 raise AssertionError('{cake} != {cake_to_write}'

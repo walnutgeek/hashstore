@@ -4,7 +4,7 @@ import datetime
 import pylru
 
 from hashstore.ndb import Dbf
-from hashstore.utils import binary_type, ensure_bytes,ensure_directory
+from hashstore.utils import ensure_bytes,ensure_directory
 
 from sqlalchemy import func,select
 
@@ -204,13 +204,13 @@ class IncomingFile:
 class ContentWriter:
     def __init__(self, backend):
         self.backend = backend
-        self.buffer = binary_type()
+        self.buffer = bytes()
         self.incoming_file = None
         self.digest = hashlib.sha256()
         self.file_id = None
 
     def write(self, content, done=False):
-        if not isinstance(content,binary_type):
+        if not isinstance(content,bytes):
             raise AssertionError('expecting bytes, got: %s %r' %
                                  (type(content),content))
         content = ensure_bytes(content)

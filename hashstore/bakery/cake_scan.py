@@ -2,7 +2,7 @@ from hashstore.utils import ensure_string, failback, read_in_chunks, \
     reraise_with_msg, ensure_directory, utf8_reader
 from hashstore.utils.ignore_file import ignore_files, \
     parse_ignore_specs, check_if_path_should_be_ignored
-from hashstore.bakery import Cake, process_stream, NamedCAKes, CakeRole, \
+from hashstore.bakery import Cake, process_stream, CakeRack, CakeRole, \
     CakePath
 from hashstore.ndb.models.scan import ScanBase, DirEntry, DirKey, \
     FileType
@@ -145,7 +145,7 @@ class FileScan(Scan):
 
 
 def build_bundle(entries):
-    bundle = NamedCAKes()
+    bundle = CakeRack()
     for e in entries:
         bundle[e.name] = e.cake
     return bundle
@@ -283,35 +283,29 @@ def backup(scan_path, access):
                                     if f.file_type == FileType.FILE)
                                 + dir_scan.bundle.size(),
                                 dir_scan.path.fs_path)
-
     root_scan = DirScan(scan_path, on_each_dir=ensure_files_in_store)
     dir_id = root_scan.path.cake_entries().dir_key().id
     latest_cake = root_scan.entry.cake
     return dir_id, latest_cake
 
 
-def pull(store, cake_or_path, path):
-    def child(cake_or_path, name, child_cake):
-        if isinstance(cake_or_path, Cake):
-            return child_cake
-        else:
-            return cake_or_path.child(name)
-
-    def restore_inner(cake, content, path):
+def pull(store, cakepath, path):
+    def restore_inner(cakepath, path):
+        content = store.get_content(cake_or_path=cakepath)
         try:
-            bundle = NamedCAKes(utf8_reader(content.stream()))
+            bundle = CakeRack(utf8_reader(content.stream()))
         except:
             data = content.get_data()
             reraise_with_msg('Cake: {cake} {data}'.format(**locals()))
         ensure_directory(path)
         for child_name in bundle:
             file_path = os.path.join(path, child_name)
-            child_cake = bundle[child_name]
-            file_cake = child(cake, child_name, child_cake)
-            file_content = store.get_content(cake_or_path=file_cake)
-            if child_cake.role == CakeRole.NEURON :
-                restore_inner(file_cake, file_content, file_path)
+            child_path = cakepath.child(child_name)
+            neuron = bundle.is_neuron(child_name)
+            if neuron:
+                restore_inner(child_path, file_path)
             else:
+                file_cake = bundle[child_name]
                 try:
                     out_fp = open(file_path, "wb")
                     in_fp = store.get_content(file_cake).stream()
@@ -320,12 +314,8 @@ def pull(store, cake_or_path, path):
                     in_fp.close()
                     out_fp.close()
                 except:
-                    reraise_with_msg(
-                        "%s -> %s" % (file_cake, file_path))
-        return bundle.cake()
-
-
-    content = store.get_content(cake_or_path)
-    return restore_inner(cake_or_path, content, path)
+                    reraise_with_msg( "%s -> %s" % (file_cake, file_path))
+        return bundle.cake() if bundle.is_defined() else None
+    return restore_inner(cakepath, path)
 
 

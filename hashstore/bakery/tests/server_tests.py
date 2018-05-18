@@ -1,6 +1,7 @@
 from nose.tools import eq_
 
-from hashstore.bakery import SaltedSha, Cake, CakeRole, CakeType
+from hashstore.bakery import SaltedSha, Cake, CakeRole, CakeType, \
+    CakePath
 from hashstore.tests import TestSetup, file_set1, file_set2, \
     prep_mount, update_mount, fileset1_cake, fileset2_cake
 import os
@@ -96,39 +97,42 @@ class ServerSetup:
                 .format(**locals()), expect_rc=0, expect_read=
                     'CPath: ...\n'
                     'Cake: 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4')
-
-        _, save_words = self.test.run_script_and_wait(
-            'hsi backup --dir {files}'
-                .format(**locals()), expect_rc=0,
-            expect_read='''....
-            DirId: ...
-            RemotePath: ...
-            Cake: {cake1}'''.format(**locals()), save_words=[])
-        dirId = save_words[0]
-
+        rpaths = []
+        for portal_type in [ 'VTREE', 'PORTAL' ]:
+            _, save_words = self.test.run_script_and_wait(
+                'hsi backup --dir {files} --portal_type {portal_type}'
+                    .format(**locals()), expect_rc=0,
+                expect_read='''....
+                DirId: ...
+                RemotePath: ...
+                Cake: {cake1}'''.format(**locals()), save_words=[])
+            dirId = save_words[0]
+            rpaths.append(CakePath(save_words[1]))
         update_mount(files, file_set2)
 
-        stored = Cake(dirId).transform_portal(CakeType.PORTAL)
+        for i,rpath in enumerate(rpaths):
+            stored = rpath.root
+            self.test.run_script_and_wait(
+                'hsi backup --dir {files} --remote_path {rpath!s}'
+                    .format(**locals()), expect_rc=0,
+                expect_read='''....
+                DirId: {dirId!s}
+                RemotePath: /{stored!s}/
+                Cake: {cake2}'''.format(**locals()))
 
-        self.test.run_script_and_wait(
-            'hsi backup --dir {files}'
-                .format(**locals()), expect_rc=0,
-            expect_read='''....
-            DirId: {dirId!s}
-            RemotePath: /{stored!s}/
-            Cake: {cake2}'''.format(**locals()))
+            outx = os.path.join(mount, 'out%d' % i)
+            match_cake = cake2 if i == 1 else 'None'
+            self.test.run_script_and_wait(
+                'hsi pull --cake {stored!s} --dir {outx}'
+                    .format(**locals()), expect_rc=0,
+                expect_read='From: ...\n'
+                            'Cake: {match_cake}\n'
+                    .format(**locals()))
 
-        self.test.run_script_and_wait(
-            'hsi pull --cake {stored} --dir {pull}'
-                .format(**locals()), expect_rc=0,
-            expect_read='From: ...\n'
-                        'Cake: {cake2}\n'
-                .format(**locals()))
-
-        self.test.run_script_and_wait(
-            'hsi scan --dir {pull}'
-                .format(**locals()), expect_rc=0,
-            expect_read=fileset2_cake)
+            self.test.run_script_and_wait(
+                'hsi scan --dir {outx}'
+                    .format(**locals()), expect_rc=0,
+                expect_read=fileset2_cake)
 
         self.test.run_script_and_wait(
             'hsi update_vtree '

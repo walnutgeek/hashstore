@@ -1,6 +1,6 @@
 from enum import IntEnum
 
-from hashstore.bakery import CakePath, HasHash, Cake, NamedCAKes, CakeRole
+from hashstore.bakery import CakePath, HasCake, Cake, CakeRack, CakeRole
 
 
 class NodeState(IntEnum):
@@ -23,7 +23,7 @@ class NodeState(IntEnum):
         return self.name[-1] == 'd'
 
 
-class Node(HasHash):
+class Node(HasCake):
     def __init__(self, parent, name, state=NodeState.unknown):
         self.name = name
         self.parent = parent
@@ -179,7 +179,7 @@ class Neuron(Node):
 
     def bundle(self):
         if self._bundle is None:
-            self._bundle = NamedCAKes()
+            self._bundle = CakeRack()
             for k in self.store:
                 self._bundle[k]= self.store[k].cake()
         return self._bundle

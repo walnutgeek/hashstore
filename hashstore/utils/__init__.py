@@ -15,11 +15,11 @@ from dateutil.parser import parse as dt_parse
 import codecs
 
 
-
 def quict(**kwargs):
     r = {}
     r.update(**kwargs)
     return r
+
 
 def failback(fn, default):
     '''
@@ -93,21 +93,13 @@ def ensure_directory(directory):
         os.makedirs(directory)
 
 
-def none2str(s):
-    return '' if s is None else s
-
-
 def get_if_defined(o, k):
     return getattr(o, k) if hasattr(o, k) else None
 
 
-def call_if_defined (o, k, *args):
+def call_if_defined(o, k, *args):
     return getattr(o,k)(*args) if hasattr(o,k) else None
 
-
-is_str = lambda s: isinstance(s, (str))
-
-binary_type = bytes
 
 ensure_bytes = lambda s: s if isinstance(s, bytes)\
     else str(s).encode('utf-8')
@@ -134,28 +126,6 @@ def v2s(vars_dict, *var_keys):
     '''
     s = ' '.join(k + '={' + k + '}' for k in var_keys)
     return s.format(**vars_dict)
-
-
-def create_path_resolver(substitutions = {}):
-    substitutions = dict(substitutions)
-    for k in os.environ:
-        env_key = '{env.' + k + '}'
-        if env_key not in substitutions:
-            substitutions[env_key] = os.environ[k]
-
-    def path_resolver(p):
-        split =  path_split_all(p)
-        updated = False
-        if '~' == split[0] :
-            split[0] = os.environ['HOME']
-            updated = True
-        for i,s in enumerate(split):
-            if s in substitutions:
-                split[i] = substitutions[s]
-                updated = True
-        return os.path.join(*split) if updated else p
-
-    return path_resolver
 
 
 def path_split_all(path, ensure_trailing_slash = None):
@@ -195,11 +165,16 @@ def path_split_all(path, ensure_trailing_slash = None):
 
 
 class EnsureIt:
+
+    @classmethod
+    def factory(cls):
+        return cls
+
     @classmethod
     def ensure_it(cls, o):
         if isinstance(o, cls):
             return o
-        return cls(o)
+        return cls.factory()(o)
 
     @classmethod
     def ensure_it_or_none(cls, o):

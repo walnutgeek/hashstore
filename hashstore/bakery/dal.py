@@ -1,4 +1,4 @@
-from hashstore.bakery import Cake, NamedCAKes, CakePath, CakeRole
+from hashstore.bakery import Cake, CakeRack, CakePath, CakeRole
 
 from hashstore.ndb.models.server_config import ServerKey, \
     ServerConfigBase
@@ -7,11 +7,9 @@ from hashstore.ndb.models.glue import Portal, \
 
 from sqlalchemy import or_, and_
 
-from hashstore.utils import is_str
-
 
 def find_normal_user(glue_sess, user_or_email):
-    if is_str(user_or_email) and '@' in user_or_email:
+    if isinstance(user_or_email, str) and '@' in user_or_email:
         condition = User.email == user_or_email
     else:
         condition = User.id == Cake.ensure_it(user_or_email)

@@ -28,15 +28,15 @@ def execute_one_test(*args):
     # case += ' hashstore.bakery.tests.init_tests'
     # case += ' hashstore.bakery.tests.logic_tests'
     # case += ' hashstore.bakery.tests.cake_tree_tests'
-    # case += ' hashstore.bakery.tests.server_tests'
+    case += ' hashstore.bakery.tests.server_tests'
     # case += ' hashstore.bakery.tests.backend_tests'
     # case += ' hashstore.tests.ndb_models_tests'
     # case += ' hashstore.tests.ndb_tests'
-    case += ' hashstore.tests.utils_tests'
+    # case += ' hashstore.tests.utils_tests'
     # case += ' hashstore.tests.utils_file_types_tests'
     # case += ' hashstore.tests.utils.base_x_tests'
     # case += ' hashstore.tests.doc_tests'
-    return run(case, run_envs, html=True)
+    return run(case, ['py6'], html=True)
 
 
 # #@runnable
