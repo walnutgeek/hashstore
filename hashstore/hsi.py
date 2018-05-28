@@ -107,17 +107,19 @@ class ClientApp:
                 )
     def backup(self, dir='.', remote_path=None,
                portal_type=None ):
+
         self._check_cu_session(dir)
         scan_path = cscan.ScanPath(dir)
         dirkey = scan_path.cake_entries().dir_key()
         if remote_path is None:
             if portal_type is not None:
-                remote = dirkey.id.transform_portal(portal_type)
+                remote = dirkey.id.transform_portal(type=portal_type)
                 remote_path = CakePath(None, _root=remote)
             else:
                 print(dirkey.id)
                 if dirkey.last_backup_path is None:
-                    remote = dirkey.id.transform_portal(CakeType.PORTAL)
+                    remote = dirkey.id.transform_portal(
+                        type=CakeType.PORTAL)
                     remote_path = CakePath(None, _root=remote)
                 else:
                     remote_path = dirkey.last_backup_path

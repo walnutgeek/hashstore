@@ -23,9 +23,15 @@ class NameIt(object):
 
 
 class GuidPk:
-    id = Column(StringCast(Cake), primary_key=True,
-                default=Cake.new_portal)
+    id = Column(StringCast(Cake), primary_key=True)
 
+
+def GuidPkWithDefault(role=None, type=None):
+    class GuidPk:
+        id = Column(
+            StringCast(Cake), primary_key=True,
+            default=lambda : Cake.new_portal(role, type))
+    return GuidPk
 
 class Cdt:
     created_dt = Column(DateTime, nullable=False,

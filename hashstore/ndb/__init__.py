@@ -97,21 +97,13 @@ class MultiSessionContextManager:
     def __init__(self):
         self._open_sessions = {}
 
-    def session_factory(self, name):
-        raise AssertionError('session_factory(name) has to be '
-                             'implemented in %s' % type(self).__name__)
-
-    @staticmethod
-    def decorate(fn):
-        session_name = re.sub(r'_session$', '', fn.__name__)
-
-        def lazy_session(self):
-            if session_name in self._open_sessions:
-                return self._open_sessions[session_name]
-            session = self.session_factory(session_name)
-            self._open_sessions[session_name] = session
-            return session
-        return lazy_session
+    def get_session(self, dbf_factory):
+        dbf = dbf_factory()
+        if dbf.path in self._open_sessions:
+            return self._open_sessions[dbf.path]
+        session = dbf.session()
+        self._open_sessions[dbf.path] = session
+        return session
 
     def __enter__(self):
         return self
@@ -120,7 +112,6 @@ class MultiSessionContextManager:
         for n in self._open_sessions:
             self._open_sessions[n].commit()
         self._open_sessions = {}
-
 
     def __exit__(self, type, value, tb):
         for n in self._open_sessions:

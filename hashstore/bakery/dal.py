@@ -1,9 +1,10 @@
-from hashstore.bakery import Cake, CakeRack, CakePath, CakeRole
+from hashstore.bakery import Cake, CakeRole
 
-from hashstore.ndb.models.server_config import ServerKey, \
-    ServerConfigBase
-from hashstore.ndb.models.glue import Portal, \
-    PortalHistory, User, Permission, VolatileTree, UserType
+from hashstore.ndb.models.glue import User, Permission, UserType
+
+from hashstore.ndb.models.cake_shard import (
+    Portal, PortalHistory, VolatileTree
+)
 
 from sqlalchemy import or_, and_
 
@@ -29,7 +30,7 @@ def find_permissions(glue_sess, user, *acls):
     return glue_sess.query(Permission).filter(condition).all()
 
 
-def resolve_cake_stack(glue_sess, cake):
+def resolve_cake_stack(session_factory, cake):
     cake_stack = []
     while True:
         cake_loop = cake in cake_stack
@@ -38,18 +39,19 @@ def resolve_cake_stack(glue_sess, cake):
             return cake_stack
         if cake_loop or len(cake_stack) > 10:
             raise AssertionError('cake loop? %r' % cake_stack)
-        cake = glue_sess.query(Portal).filter(Portal.id == cake)\
+        session = session_factory(cake)
+        cake = session.query(Portal).filter(Portal.id == cake)\
             .one().latest
 
 
-def ensure_vtree_path(glue_sess, cake_path, asof_dt, user):
+def ensure_vtree_path(session, cake_path, asof_dt, user):
     if cake_path is None:
         return
     parent = cake_path.parent()
     VT = VolatileTree
     parent_path = '' if parent is None else parent.path_join()
     path = cake_path.path_join()
-    entry = glue_sess.query(VT) \
+    entry = session.query(VT) \
         .filter(
             VT.portal_id == cake_path.root,
             VT.path == path,
@@ -61,7 +63,7 @@ def ensure_vtree_path(glue_sess, cake_path, asof_dt, user):
             'cannot overwrite %s with %s' %
             (CakeRole.SYNAPSE, CakeRole.NEURON))
     if add:
-        glue_sess.add(VT(
+        session.add(VT(
             portal_id=cake_path.root,
             path=path,
             parent_path=parent_path,
@@ -70,14 +72,15 @@ def ensure_vtree_path(glue_sess, cake_path, asof_dt, user):
             start_dt=asof_dt,
             end_dt=None
         ))
-        ensure_vtree_path(glue_sess, parent, asof_dt, user)
+        ensure_vtree_path(session, parent, asof_dt, user)
 
 
-def edit_portal(glue_sess,portal):
+def edit_portal(glue_sess, portal, by):
     glue_sess.merge(portal)
     if portal.latest is not None:
         glue_sess.add(PortalHistory(portal_id=portal.id,
-                                    cake=portal.latest))
+                                    cake=portal.latest,
+                                    by=by.id))
 
 def query_users_by_type(glue_session, user_type):
     return glue_session.query(User).filter(

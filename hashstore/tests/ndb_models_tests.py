@@ -1,11 +1,10 @@
 from nose.tools import eq_,ok_
-from hashstore.bakery import Cake, SaltedSha
+from hashstore.bakery import Cake, SaltedSha, CakeRole
 from hashstore.tests import TestSetup, doctest_it
 
-from sqlalchemy import Table, MetaData, Column, types, select
 
 from hashstore.ndb import Dbf
-from hashstore.ndb.models import glue
+from hashstore.ndb.models import glue, cake_shard
 import logging
 logging.basicConfig()
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
@@ -21,27 +20,32 @@ def test_server():
 
 
 def test_glue():
-    import hashstore.ndb.models.glue as glue
     dbf = Dbf(glue.GlueBase.metadata, test.file_path('test_glue.sqlite3'))
     dbf.ensure_db()
-    session = dbf.session()
-    joe = glue.User(email='joe@doe.com',
-                     user_state=glue.UserState.invitation,
-                     passwd=SaltedSha.from_secret('xyz'))
+    glue_session = dbf.session()
+    shard_dbf = Dbf(cake_shard.CakeShardBase.metadata, test.file_path('test_shard.sqlite3'))
+    shard_dbf.ensure_db()
+    shard_session = shard_dbf.session()
+    joe = glue.User(id=Cake.new_portal(CakeRole.SYNAPSE),
+                    email='joe@doe.com',
+                    user_state=glue.UserState.invitation,
+                    passwd=SaltedSha.from_secret('xyz'))
     cake = Cake.from_bytes(b'a' * 100)
-    portal = glue.Portal(latest=cake)
+    portal = cake_shard.Portal(id=Cake.new_portal(), latest=cake)
+    shard_session.add(portal)
     perm1 = glue.Permission(
-        user = joe, cake=portal.id,
+        user=joe, cake=portal.id,
         permission_type=glue.PermissionType.Read_,
     )
     perm2 = glue.Permission(
-        user = joe, cake=cake,
+        user=joe, cake=cake,
         permission_type=glue.PermissionType.Read_,
     )
-    session.add(
+    glue_session.add(
         perm1,perm2
     )
-    session.commit()
+    shard_session.commit()
+    glue_session.commit()
     # ok_(False)
 
 def test_models():

@@ -1,5 +1,5 @@
 from hashstore.ndb.mixins import ReprIt, NameIt, Cdt, Udt, \
-    GuidPk, Singleton
+    GuidPk, Singleton, GuidPkWithDefault
 from hashstore.bakery import Cake, SaltedSha, InetAddress
 from hashstore.ndb import StringCast
 
@@ -15,7 +15,7 @@ class ServerKey(Singleton, ServerConfigBase):
     port = Column(Integer, nullable=False)
 
 
-class UserSession(GuidPk, NameIt, Cdt, Udt, ReprIt, ServerConfigBase):
+class UserSession(GuidPkWithDefault(), NameIt, Cdt, Udt, ReprIt, ServerConfigBase):
     user = Column(StringCast(Cake), nullable=False)
     client = Column(StringCast(SaltedSha), nullable= True)
     remote_host = Column(String, nullable=True)

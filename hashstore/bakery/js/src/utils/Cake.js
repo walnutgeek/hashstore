@@ -15,14 +15,14 @@ export const CakeType = new IntEnum({
     PORTAL: 2,
     VTREE: 3,
     DMOUNT: 4,
-    CAKEPATH: 5
+    EVENT: 5
 },{displayPrefix: {
     INLINE: '=',
     SHA256: '#',
     PORTAL: '$',
     VTREE: '$',
     DMOUNT: '$',
-    CAKEPATH: '>'
+    EVENT: '>'
 }});
 
 const trimForDisplay = (s)=> s.length > 8 ? s.substring(s.length-8) : s;
@@ -97,12 +97,6 @@ export class Cake{
 
     displayName(){
         const ch = CakeType.displayPrefix[this.keyStructure];
-        if( this.is_cakepath() ){
-            const cp = this.cakepath();
-            const path = cp.isRelative() ? cp.path:
-                    [ "", cp.root.displayName() , ...cp.path]
-            return ch + path.join("/");
-        }
         return  ch + trimForDisplay(this.s) ;
     }
 
@@ -122,19 +116,13 @@ export class Cake{
     is_guid(){
         return this.keyStructure === CakeType.PORTAL
             && this.keyStructure === CakeType.VTREE
-            && this.keyStructure === CakeType.DMOUNT;
+            && this.keyStructure === CakeType.DMOUNT
+            && this.keyStructure === CakeType.EVENT;
     }
 
-    is_cakepath(){
-        return this.keyStructure === CakeType.CAKEPATH;
-    }
 
     cakepath(){
-        if(this.is_cakepath()) {
-            return new CakePath(de_utf8.decode(this.data));
-        }else{
-            return new CakePath(this, []);
-        }
+        return new CakePath(this, []);
     }
 
     toString(){

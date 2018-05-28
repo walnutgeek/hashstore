@@ -23,6 +23,7 @@ def test_docs():
     ok_(r.attempted > 0, 'There is not doctests in module')
     eq_(r.failed,0)
 
+
 def test_json():
     hl = logic.HashLogic("bakery")
     m1 = logic.Method('test')

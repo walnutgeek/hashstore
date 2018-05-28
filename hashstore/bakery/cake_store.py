@@ -14,9 +14,14 @@ import hashstore.bakery.dal as dal
 from sqlalchemy import and_, or_
 from hashstore.ndb.models.server_config import UserSession, \
     ServerKey, ServerConfigBase
-from hashstore.ndb.models.glue import Portal, \
-    GlueBase, User, UserState, Permission, \
-    PermissionType as PT, Acl, VolatileTree, UserType
+
+from hashstore.ndb.models.glue import (
+    GlueBase, User, UserState, Permission,
+    PermissionType as PT, Acl, UserType
+)
+
+from hashstore.ndb.models.cake_shard import Portal, VolatileTree, \
+    CakeShardBase
 
 import logging
 
@@ -41,16 +46,17 @@ class StoreContext(MultiSessionContextManager):
         self.remote_host = remote_host
         self.params = {}
 
-    def session_factory(self, name):
-        return getattr(self.store, name +'_db').session()
+    def glue_session(self):
+        return self.get_session(lambda : self.store.glue_db)
 
-    @MultiSessionContextManager.decorate
-    def glue_session(self):  # pragma: no cover
-        pass
+    def srvcfg_session(self):
+        return self.get_session(lambda : self.store.srvcfg_db)
 
-    @MultiSessionContextManager.decorate
-    def srvcfg_session(self):  # pragma: no cover
-        pass
+    def cake_session(self, cake):
+        if cake is None:
+            raise AssertionError('cake is alwais need to be provided to '
+                                 'be able to shard this db in future')
+        return self.get_session(lambda : self.store.cake_shard_db(cake))
 
     def validate_session(self, session_id, client_id=None):
         if session_id is not None:
@@ -164,7 +170,7 @@ class GuestAccess:
             self.authorize(cake_or_path, Permissions.read_portal)
             if cake.type == CakeType.PORTAL :
                 resolution_stack = dal.resolve_cake_stack(
-                    self.ctx.glue_session(), cake_or_path)
+                    self.ctx.cake_session, cake_or_path)
                 for resolved_portal in resolution_stack[:-1]:
                     self.authorize(cake_or_path, Permissions.read_portal)
                 return self.backend().get_content(resolution_stack[-1])
@@ -361,14 +367,6 @@ class PrivilegedAccess(GuestAccess):
                   "cake": p.cake }
                  for p in self.auth_user.permissions]
 
-    @user_api.call()
-    def list_portals(self):
-        '''
-        :return: list all active portals known for storage
-        '''
-        self.authorize(None, (PT.Read_Any_Portal,))
-        return self.ctx.glue_session().query(Portal)\
-            .filter(Portal.active == True).all()
 
     @user_api.call()
     def create_portal(self, portal_id, cake):
@@ -384,7 +382,8 @@ class PrivilegedAccess(GuestAccess):
         portal_id.assert_portal()
         self.authorize(None, (PT.Create_Portals,))
         cake = Cake.ensure_it_or_none(cake)
-        portal_in_db = self.ctx.glue_session().query(Portal).\
+        cake_session = self.ctx.cake_session(portal_id)
+        portal_in_db = cake_session.query(Portal).\
             filter(Portal.id == portal_id).one_or_none()
         add_portal = portal_in_db is None
         already_own = False
@@ -396,8 +395,9 @@ class PrivilegedAccess(GuestAccess):
                 pass
 
         if add_portal or already_own:
-            dal.edit_portal(self.ctx.glue_session(),
-                            Portal(id=portal_id, latest=cake))
+            dal.edit_portal(cake_session,
+                            Portal(id=portal_id, latest=cake),
+                            self.auth_user)
             if not already_own:
                 self.ctx.glue_session().add(Permission(
                     user=self.auth_user,
@@ -415,12 +415,14 @@ class PrivilegedAccess(GuestAccess):
         portal_id, cake = map(Cake.ensure_it,(portal_id,cake))
         portal_id.assert_portal()
         self.authorize(portal_id, (PT.Edit_Portal_, PT.Admin))
-        portal = self.ctx.glue_session().query(Portal).\
+        cake_session = self.ctx.cake_session(portal_id)
+        portal = cake_session.query(Portal).\
             filter(Portal.id == portal_id).one_or_none()
         if portal is not None:
             portal.latest = cake
-            dal.edit_portal(self.ctx.glue_session(),
-                            Portal(id=portal_id, latest=cake))
+            dal.edit_portal(cake_session,
+                            Portal(id=portal_id, latest=cake),
+                            self.auth_user)
         else:
             raise AssertionError('portal %r does not exists.' %
                                  portal_id)
@@ -461,6 +463,7 @@ class PrivilegedAccess(GuestAccess):
 
     def _query_vtree(self, portal_id, asof_dt):
         def query(path_condition):
+            cake_session = self.ctx.cake_session(portal_id)
             VT = VolatileTree
             if asof_dt is not None:
                 condition = and_(
@@ -473,7 +476,7 @@ class PrivilegedAccess(GuestAccess):
                     VT.portal_id == portal_id,
                     path_condition,
                     VT.end_dt == None)
-            return self.ctx.glue_session().query(VolatileTree).filter(condition)
+            return cake_session.query(VolatileTree).filter(condition)
         return query
 
     def _read_dmount(self, cake_path, asof_dt=None):
@@ -490,14 +493,12 @@ class PrivilegedAccess(GuestAccess):
                                     Cake.ensure_it_or_none )
         files = list(map(ensure_types,files))
         roots = set(t[1].root for t in files)
-        glue_session = self.ctx.glue_session()
-        roots_founds = [p.id for p in glue_session.query(Portal)
-            .filter(Portal.id.in_(roots)).all()]
-        if len(roots) > len(roots_founds):
-            for r in roots:
-                if r not in roots_founds:
-                    self.create_portal(r, None)
-            self.auth_user.acls(force_refresh=True)
+        for root in roots:
+            in_db = self.ctx.cake_session(root).query(Portal)\
+                .filter(Portal.id == root).one_or_none()
+            if in_db is None:
+                self.create_portal(root, None)
+        self.auth_user.acls(force_refresh=True)
         self.authorize_all(roots,(PT.Edit_Portal_, PT.Admin))
         VT = VolatileTree
         if asof_dt is None:
@@ -511,7 +512,8 @@ class PrivilegedAccess(GuestAccess):
                 portal_id = cake_path.root
                 path = cake_path.path_join()
                 parent = cake_path.parent()
-                under_edit = glue_session.query(VT)\
+                cake_session = self.ctx.cake_session(portal_id)
+                under_edit = cake_session.query(VT)\
                     .filter(
                         VT.portal_id == portal_id,
                         VT.path == cake_path.path_join(),
@@ -530,12 +532,12 @@ class PrivilegedAccess(GuestAccess):
                     if under_edit.cake != cake:
                         under_edit.end_dt = asof_dt
                         under_edit.end_by = self.auth_user.id
-                        glue_session.add(under_edit)
+                        cake_session.add(under_edit)
                     else:
                         change = False
                 if change:
                     parent_path = parent.path_join()
-                    glue_session.add(VT(
+                    cake_session.add(VT(
                         portal_id=portal_id,
                         path=path,
                         parent_path=parent_path,
@@ -543,7 +545,7 @@ class PrivilegedAccess(GuestAccess):
                         cake=cake,
                         start_dt=asof_dt))
                     self._collect_unseen(cake, unseen_cakes)
-                    dal.ensure_vtree_path(glue_session, parent, asof_dt,
+                    dal.ensure_vtree_path(cake_session, parent, asof_dt,
                                           self.auth_user)
 
         for action, cake_path, cake in files:
@@ -556,10 +558,10 @@ class PrivilegedAccess(GuestAccess):
         self.authorize(cake_path.root, (PT.Edit_Portal_, PT.Admin))
         path = cake_path.path_join()
         VT = VolatileTree
-        glue_session = self.ctx.glue_session()
+        cake_session = self.ctx.cake_session(cake_path.root)
         if asof_dt is None:
             asof_dt = datetime.datetime.utcnow()
-        delete_root = glue_session.query(VT) \
+        delete_root = cake_session.query(VT) \
             .filter(
                 VT.portal_id == cake_path.root,
                 VT.path == path,
@@ -574,7 +576,7 @@ class PrivilegedAccess(GuestAccess):
             delete_root.end_dt = asof_dt
             delete_root.end_by = self.auth_user.id
         else:
-            rc = glue_session.query(VT).filter(
+            rc = cake_session.query(VT).filter(
                 VT.portal_id == cake_path.root,
                 or_(VT.path == path,
                     VT.path.startswith(path+'/', autoescape=True)),
@@ -599,7 +601,7 @@ class PrivilegedAccess(GuestAccess):
                              or_(VT.end_dt == None, VT.end_dt > asof_dt))
         else:
             condition = and_(VT.portal_id == portal_id, VT.end_dt == None)
-        tree_paths = self.ctx.glue_session().query(VT).filter(
+        tree_paths = self.ctx.cake_session(portal_id).query(VT).filter(
             condition).all()
         tree = CakeTree(portal=portal_id)
         for r in tree_paths:
@@ -617,7 +619,7 @@ class PrivilegedAccess(GuestAccess):
         portal_id.assert_portal()
         self.authorize(portal_id, (PT.Own_Portal_, PT.Admin))
 
-        portal = self.ctx.glue_session().query(Portal).\
+        portal = self.ctx.cake_session(portal_id).query(Portal).\
             filter(Portal.id == portal_id).one()
         if permission_type not in Permissions.portals:
             raise AssertionError('pt:%r has to be one of %r' %
@@ -644,7 +646,7 @@ class PrivilegedAccess(GuestAccess):
         portal_id = Cake.ensure_it(portal_id)
         portal_id.assert_portal()
         self.authorize(portal_id, (PT.Own_Portal_, PT.Admin))
-        portal = self.ctx.glue_session().query(Portal).\
+        portal = self.ctx.cake_session(portal_id).query(Portal).\
             filter(Portal.id == portal_id).one()
         portal.active=False
 
@@ -653,11 +655,23 @@ class CakeStore:
     def __init__(self, store_dir):
         self.store_dir = store_dir
         self._backend = None
-        self.srvcfg_db = Dbf(ServerConfigBase.metadata,
-                             os.path.join(self.store_dir, 'server.db'))
-        self.glue_db = Dbf(GlueBase.metadata,
-                           os.path.join(self.store_dir, 'glue.db'))
+        self.srvcfg_db = Dbf(
+            ServerConfigBase.metadata,
+            os.path.join(self.store_dir, 'server.db')
+        )
+        self.glue_db = Dbf(
+            GlueBase.metadata,
+            os.path.join(self.store_dir, 'glue.db')
+        )
+        self.seed_db = Dbf(
+            CakeShardBase.metadata,
+            os.path.join(self.store_dir, 'cake_shard_seed.db')
+        )
 
+    def cake_shard_db(self, cake):
+        if not(self.seed_db.exists()):
+            self.seed_db.ensure_db()
+        return self.seed_db
 
     def backend(self):
         if self._backend is None:
@@ -686,13 +700,20 @@ class CakeStore:
                                        user_state=UserState.active,
                                        passwd=SaltedSha.from_secret('*'),
                                        full_name='%s user' % n)
+            #ensure guest
             guest = dal.query_users_by_type(
                 glue_session,UserType.guest).one_or_none()
             if guest is None:
                 guest = make_user('guest')
                 glue_session.add(guest)
                 glue_session.flush()
-                glue_session.add(Portal(id=guest.id))
+                index_portal = guest.id.transform_portal(
+                    role=CakeRole.NEURON)
+                with self.cake_shard_db(index_portal).session_scope() as \
+                        shard_session:
+                    shard_session.add(Portal(id=index_portal))
+
+            #ensure system
             system = dal.query_users_by_type(
                 glue_session, UserType.system).one_or_none()
             if system is None:

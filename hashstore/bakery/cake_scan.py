@@ -296,7 +296,7 @@ def pull(store, cakepath, path):
             bundle = CakeRack(utf8_reader(content.stream()))
         except:
             data = content.get_data()
-            reraise_with_msg('Cake: {cake} {data}'.format(**locals()))
+            reraise_with_msg('Cake: {cakepath} {data}'.format(**locals()))
         ensure_directory(path)
         for child_name in bundle:
             file_path = os.path.join(path, child_name)

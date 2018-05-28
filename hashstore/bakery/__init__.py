@@ -59,6 +59,11 @@ def is_it_shard(shard_name):
     return shard_num >= 0 and shard_num < MAX_NUM_OF_SHARDS
 
 
+def shard_num(hash_bytes):
+    b1, b2 = hash_bytes[:2]
+    return (b1 * 256 + b2) % MAX_NUM_OF_SHARDS
+
+
 class ContentAddress(Stringable, EnsureIt):
     """
     Content Address
@@ -95,9 +100,7 @@ class ContentAddress(Stringable, EnsureIt):
         else:
             self._id = hash_or_cake_or_str.lower()
             self.hash_bytes = B36.decode(self._id)
-        b1, b2 = iseq(self.hash_bytes[:2])
-        self.modulus = (b1*256+b2) % MAX_NUM_OF_SHARDS
-        self.shard_name = B36._encode_int(self.modulus)
+        self.shard_name = B36._encode_int(shard_num(self.hash_bytes))
 
     def __str__(self):
         return self._id
@@ -215,7 +218,7 @@ class CakeType(enum.IntEnum):
     PORTAL = 2
     VTREE = 3
     DMOUNT = 4
-    CAKEPATH = 5
+    EVENT = 5
 
     def __str__(self):
         return self.name
@@ -223,7 +226,8 @@ class CakeType(enum.IntEnum):
 
 PORTAL_TYPES = (CakeType.PORTAL,
                 CakeType.DMOUNT,
-                CakeType.VTREE)
+                CakeType.VTREE,
+                CakeType.EVENT)
 
 
 def portal_from_name(n):
@@ -249,7 +253,7 @@ def portal_from_name(n):
     raise ValueError('unknown portal type:'+n)
 
 
-def is_key_structure_a_portal(type):
+def is_cake_type_a_portal(type):
     return type in PORTAL_TYPES
 
 
@@ -358,7 +362,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
     >>> list(CakeType) #doctest: +NORMALIZE_WHITESPACE
     [<CakeType.INLINE: 0>, <CakeType.SHA256: 1>,
     <CakeType.PORTAL: 2>, <CakeType.VTREE: 3>,
-    <CakeType.DMOUNT: 4>, <CakeType.CAKEPATH: 5>]
+    <CakeType.DMOUNT: 4>, <CakeType.EVENT: 5>]
 
     >>> short_content = b'The quick brown fox jumps over'
     >>> short_k = Cake.from_bytes(short_content)
@@ -400,17 +404,6 @@ class Cake(utils.Stringable, utils.EnsureIt):
     <CakeType.PORTAL: 2>
     >>> len(str(guid))
     44
-
-    >>> cakepath_cake = Cake.encode_cakepath('a/b')
-    >>> cakepath_cake.type
-    <CakeType.CAKEPATH: 5>
-    >>> str(cakepath_cake)
-    'bMG6m'
-    >>> cakepath_cake.is_cakepath()
-    True
-    >>> cakepath_cake.cakepath()
-    CakePath('a/b')
-
     """
     def __init__(self, s, type=None, role=None):
         if type is not None:
@@ -423,10 +416,31 @@ class Cake(utils.Stringable, utils.EnsureIt):
             self._data = decoded[1:]
             self.type = CakeType(header >> 1)
             self.role = CakeRole(header & 1)
-        if self.type not in \
-                (CakeType.INLINE, CakeType.CAKEPATH):
+        if not(self.has_data()):
             if len(self._data) != 32:
                 raise AssertionError('invalid CAKey: %r ' % s)
+
+    def shard_num(self):
+        """
+        >>> Cake('0').shard_num()
+        0
+        >>> Cake.from_bytes(b' ').shard_num()
+        32
+        >>> Cake('2xgkyws1ZbSlXUvZRCSIrjne73Pv1kmYArYvhOrTtqkX').shard_num()
+        5937
+
+        """
+        l = len(self._data)
+        if l >= 2:
+            return shard_num(self._data)
+        elif l == 1:
+            return self._data[0]
+        else:
+            return 0
+
+    def shard_name(self):
+        return B36._encode_int(self.shard_num())
+
 
     @staticmethod
     def from_digest_and_inline_data(digest, buffer,
@@ -464,12 +478,15 @@ class Cake(utils.Stringable, utils.EnsureIt):
         cake.assert_portal()
         return cake
 
-    def transform_portal(self, type):
+    def transform_portal(self, role=None, type=None):
         self.assert_portal()
-        if type == self.type:
+        if type is None:
+            type = self.type
+        if role is None:
+            role = self.role
+        if type == self.type and role == self.role:
             return self
-        return Cake(self._data, type=type,
-                    role=self.role)
+        return Cake(self._data, type=type, role=role)
 
     def has_data(self):
         return self.type == CakeType.INLINE
@@ -485,13 +502,6 @@ class Cake(utils.Stringable, utils.EnsureIt):
                 self._digest = self._data
         return self._digest
 
-    @staticmethod
-    def encode_cakepath(cake_path, role=CakeRole.SYNAPSE):
-        cake_path = CakePath.ensure_it(cake_path)
-        t_bytes = utils.ensure_bytes(str(cake_path))
-        return Cake(t_bytes, type=CakeType.CAKEPATH,
-                    role= role)
-
     def is_resolved(self):
         return self.type == CakeType.SHA256
 
@@ -500,18 +510,11 @@ class Cake(utils.Stringable, utils.EnsureIt):
 
     def is_portal(self):
         type = self.type
-        return is_key_structure_a_portal(type)
+        return is_cake_type_a_portal(type)
 
     def assert_portal(self):
         if not self.is_portal():
             raise AssertionError('has to be a portal: %r' % self)
-
-    def is_cakepath(self):
-        return self.type == CakeType.CAKEPATH
-
-    def cakepath(self):
-        if self.is_cakepath():
-            return CakePath(utils.ensure_string(self._data))
 
     def hash_bytes(self):
         """
