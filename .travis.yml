@@ -15,8 +15,8 @@ install:
   - conda info -a
   - for e in 6;
     do
-      conda create -q -n py{$e} python=3.${e}
-      source activate py${e};
+      conda create -q -n py$e python=3.$e;
+      source activate py$e;
       pip install -r requirements.txt;
       pip install -r test-requirements.txt;
     done
@@ -27,9 +27,9 @@ script:
   - cd ../../..
   - for e in 6;
     do
-      source activate py${e};
+      source activate py$e;
       coverage run -p -m nose;
-      echo $? > py${e}.status;
+      echo $? > py$e.status;
     done
   - source activate py6
   - coverage combine

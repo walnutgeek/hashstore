@@ -1,12 +1,7 @@
-from hashstore.bakery import Cake
-from croniter import croniter
-import pytz
-import inspect
 import abc
 from six import text_type, add_metaclass
 import attr
 from hashstore.utils import (
-    EnsureIt, Stringable, StrKeyMixin,
     type_optional as optional,
     type_required as required,
     type_list_of as list_of,
@@ -18,10 +13,6 @@ from hashstore.utils.time import CronExp, TimeZone
 @add_metaclass(abc.ABCMeta)
 class HashType(): # HashType ?
     '''
-    To make doctests pass
-    >>> 1
-    1
-
     (Y)=<HL>,detect:M
     '''
     def __repr__(self):
@@ -43,9 +34,6 @@ class HashMethod(object):
     @abc.abstractmethod
     def invoke(self, store, values):
         raise NotImplementedError('subclasses must override')
-
-
-
 
 
 @attr.s
@@ -103,7 +91,6 @@ class HashLogic(object):
     methods = attr.ib(**list_of(Method))
 
 
-
 '''
   CauseEffectVector
     (CEV)=
@@ -142,18 +129,19 @@ class CodeBase:
     '''
     pass
 
+
 class CodeEnv:
     '''
     (E)
     '''
     pass
 
+
 class CodeVersion:
     '''
     (V) - SHA256 for CodeEnv PORTAL
     '''
     pass
-
 
 
 class Lens:
