@@ -13,12 +13,10 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda info -a
-  - conda create -q -n py4 python=3.4
-  - conda create -q -n py5 python=3.5
-  - conda create -q -n py6 python=3.6
-  - for e in py4 py5 py6  ;
+  - for e in 6;
     do
-      source activate $e;
+      conda create -q -n py{$e} python=3.${e}
+      source activate py${e};
       pip install -r requirements.txt;
       pip install -r test-requirements.txt;
     done
@@ -27,15 +25,15 @@ script:
   - cd hashstore/bakery/js
   - npm run build
   - cd ../../..
-  - for e in py4 py5 py6 ;
+  - for e in 6;
     do
-      source activate $e;
+      source activate py${e};
       coverage run -p -m nose;
-      echo $? > $e.status;
+      echo $? > py${e}.status;
     done
-  - source activate py4
+  - source activate py6
   - coverage combine
   - coverage report -m
   - codecov
   - rm .coverage
-  - test $(cat py4.status) == 0 && test $(cat py5.status) == 0 && test $(cat py6.status) == 0
+  - test $(cat py6.status) == 0

@@ -9,7 +9,7 @@ npm run build
 cd -
 . deactivate
 pip install sniffer
-for e in 4 5 6
+for e in 6
 do
     conda remove -n py${e} --all -y|| echo py${e} not here, it is ok!
     conda create -y -n py${e} python=3.${e}
@@ -25,7 +25,7 @@ if [ "$1" == "run_all_tests" ] ; then
   source activate py6
   coverage combine
   coverage report -m
-  test $(cat py4.status) == 0  && test $(cat py5.status) == 0 && test $(cat py6.status) == 0
+  test $(cat py6.status) == 0
 fi
 
 
