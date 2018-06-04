@@ -13,6 +13,10 @@ from hashstore.utils.time import CronExp, TimeZone
 @add_metaclass(abc.ABCMeta)
 class HashType(): # HashType ?
     '''
+    To make doctests pass
+    >>> 1
+    1
+
     (Y)=<HL>,detect:M
     '''
     def __repr__(self):
