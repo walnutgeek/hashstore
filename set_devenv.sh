@@ -9,7 +9,9 @@ npm run build
 cd -
 . deactivate
 pip install sniffer
-for e in 6
+devenv=6
+targets="6"
+for e in $targets
 do
     conda remove -n py${e} --all -y|| echo py${e} not here, it is ok!
     conda create -y -n py${e} python=3.${e}
@@ -22,10 +24,29 @@ do
     fi
 done
 if [ "$1" == "run_all_tests" ] ; then
-  source activate py6
-  coverage combine
-  coverage report -m
-  test $(cat py6.status) == 0
+    source activate py${devenv}
+    coverage combine
+    coverage report -m
+    shift
 fi
+
+for e in $targets
+do
+    if [ $(cat py${e}.status) != 0 ] ; then
+        exit 1
+    fi
+done
+rm dist/hashstore*tar.gz || echo not here - great
+python setup.py sdist
+
+if [ "$1" == "deploy_dev" ] ; then
+    conda remove -n dev${devenv} --all -y|| echo py${e} not here, it is ok!
+    conda create -y -n dev${devenv} python=3.${devenv}
+    pip install dist/hashstore*tar.gz
+fi
+
+
+
+
 
 

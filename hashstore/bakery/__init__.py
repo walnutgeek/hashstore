@@ -27,6 +27,10 @@ B36 = base_x(36)
 MAX_NUM_OF_SHARDS = 8192
 
 
+def shard_name_int(num):
+    return B36._encode_int(num)
+
+
 def is_it_shard(shard_name):
     """
     Test if directory name can represent shard
@@ -59,9 +63,9 @@ def is_it_shard(shard_name):
     return shard_num >= 0 and shard_num < MAX_NUM_OF_SHARDS
 
 
-def shard_num(hash_bytes):
+def shard_num(hash_bytes, base = MAX_NUM_OF_SHARDS):
     b1, b2 = hash_bytes[:2]
-    return (b1 * 256 + b2) % MAX_NUM_OF_SHARDS
+    return (b1 * 256 + b2) % base
 
 
 class ContentAddress(Stringable, EnsureIt):
@@ -100,7 +104,7 @@ class ContentAddress(Stringable, EnsureIt):
         else:
             self._id = hash_or_cake_or_str.lower()
             self.hash_bytes = B36.decode(self._id)
-        self.shard_name = B36._encode_int(shard_num(self.hash_bytes))
+        self.shard_name = shard_name_int(shard_num(self.hash_bytes))
 
     def __str__(self):
         return self._id
@@ -420,7 +424,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
             if len(self._data) != 32:
                 raise AssertionError('invalid CAKey: %r ' % s)
 
-    def shard_num(self):
+    def shard_num(self, base=MAX_NUM_OF_SHARDS):
         """
         >>> Cake('0').shard_num()
         0
@@ -432,14 +436,14 @@ class Cake(utils.Stringable, utils.EnsureIt):
         """
         l = len(self._data)
         if l >= 2:
-            return shard_num(self._data)
+            return shard_num(self._data, base)
         elif l == 1:
             return self._data[0]
         else:
             return 0
 
-    def shard_name(self):
-        return B36._encode_int(self.shard_num())
+    def shard_name(self, base=MAX_NUM_OF_SHARDS):
+        return shard_name_int(self.shard_num(base))
 
 
     @staticmethod

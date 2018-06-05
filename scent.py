@@ -7,7 +7,7 @@ def py_files(filename):
     return filename.endswith('.py') or filename.endswith('.yaml') or filename.endswith('.rst')
 
 
-run_envs = ['py4', 'py5', 'py6']
+run_envs = ['py6']
 
 env_template = '. activate %s; coverage run -p -m nose %s'
 
@@ -36,7 +36,7 @@ def execute_one_test(*args):
     # case += ' hashstore.tests.utils_file_types_tests'
     # case += ' hashstore.tests.utils.base_x_tests'
     # case += ' hashstore.tests.doc_tests'
-    return run(case, ['py6'], html=True)
+    return run(case, run_envs, html=True)
 
 
 # #@runnable

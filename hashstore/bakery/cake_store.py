@@ -5,7 +5,7 @@ import datetime
 from hashstore.bakery import NotAuthorizedError, CredentialsError, \
     Content, Cake, CakeRack, CakePath, SaltedSha, \
     check_bookmark_name, CakeType, assert_key_structure, CakeRole, \
-    PatchAction
+    PatchAction, shard_name_int
 from hashstore.bakery.backend import LiteBackend
 from hashstore.bakery.cake_tree import CakeTree
 from hashstore.ndb import Dbf, MultiSessionContextManager
@@ -652,7 +652,7 @@ class PrivilegedAccess(GuestAccess):
 
 
 class CakeStore:
-    def __init__(self, store_dir):
+    def __init__(self, store_dir, max_shards = 10):
         self.store_dir = store_dir
         self._backend = None
         self.srvcfg_db = Dbf(
@@ -663,15 +663,18 @@ class CakeStore:
             GlueBase.metadata,
             os.path.join(self.store_dir, 'glue.db')
         )
-        self.seed_db = Dbf(
+        self.max_shards = max_shards
+        self.shards_db = [ Dbf(
             CakeShardBase.metadata,
-            os.path.join(self.store_dir, 'cake_shard_seed.db')
-        )
+            os.path.join(self.store_dir,
+                         'shard_'+ shard_name_int(i) + '.db')
+        ) for i in range(max_shards) ]
 
     def cake_shard_db(self, cake):
-        if not(self.seed_db.exists()):
-            self.seed_db.ensure_db()
-        return self.seed_db
+        db = self.shards_db[cake.shard_num(self.max_shards)]
+        if not(db.exists()):
+            db.ensure_db()
+        return db
 
     def backend(self):
         if self._backend is None:
