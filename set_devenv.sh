@@ -27,6 +27,7 @@ if [ "$1" == "run_all_tests" ] ; then
     source activate py${devenv}
     coverage combine
     coverage report -m
+    coverage html
     shift
 fi
 
@@ -42,6 +43,7 @@ python setup.py sdist
 if [ "$1" == "deploy_dev" ] ; then
     conda remove -n dev${devenv} --all -y|| echo py${e} not here, it is ok!
     conda create -y -n dev${devenv} python=3.${devenv}
+    source activate dev6
     pip install dist/hashstore*tar.gz
 fi
 
