@@ -37,14 +37,23 @@ do
         exit 1
     fi
 done
-rm dist/hashstore*tar.gz || echo not here - great
-python setup.py sdist
 
 if [ "$1" == "deploy_dev" ] ; then
+    source activate py${devenv}
+    rm dist/hashstore*tar.gz || echo not here - great
+    python setup.py sdist >& sdist.log
     conda remove -n dev${devenv} --all -y|| echo py${e} not here, it is ok!
     conda create -y -n dev${devenv} python=3.${devenv}
-    source activate dev6
+    source activate dev${devenv}
     pip install dist/hashstore*tar.gz
+    if [ -e test-out/store ] ; then
+        hsd --store-dir test-out/store stop
+        sleep 2
+    fi
+    rm -rf test-out/store
+    cp -a test-out/py6/hashstore.bakery.tests.server_tests/store test-out/
+    hsd --store-dir test-out/store initdb --port 338${devenv}
+    BUILD_ID=doNotKillMe hsd --store-dir test-out/stort start >& start.log &
 fi
 
 
