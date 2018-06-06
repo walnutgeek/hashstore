@@ -47,13 +47,13 @@ if [ "$1" == "deploy_dev" ] ; then
     source activate dev${devenv}
     pip install dist/hashstore*tar.gz
     if [ -e test-out/store ] ; then
-        hsd --store-dir test-out/store stop
+        hsd --store_dir test-out/store stop
         sleep 2
     fi
     rm -rf test-out/store
     cp -a test-out/py6/hashstore.bakery.tests.server_tests/store test-out/
-    hsd --store-dir test-out/store initdb --port 338${devenv}
-    BUILD_ID=doNotKillMe hsd --store-dir test-out/stort start >& start.log &
+    hsd --store_dir test-out/store initdb --port 338${devenv}
+    BUILD_ID=doNotKillMe hsd --store_dir test-out/stort start >& start.log &
 fi
 
 
