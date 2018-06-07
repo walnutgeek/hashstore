@@ -2,8 +2,8 @@ from nose.tools import eq_
 
 from hashstore.bakery import SaltedSha, Cake, CakeRole, CakeType, \
     CakePath
-from hashstore.tests import TestSetup, file_set1, file_set2, \
-    prep_mount, update_mount, fileset1_cake, fileset2_cake
+from hashstore.tests import (sqlite_q, TestSetup, file_set1, file_set2,
+    prep_mount, update_mount, fileset1_cake, fileset2_cake)
 import os
 from time import sleep
 
@@ -32,8 +32,24 @@ class ServerSetup:
 
         test.run_script_and_wait(
             'hsd --store_dir {self.store} initdb '
+            '--port 7623'.format(**locals()),
+            expect_rc=0, expect_read='')
+
+        server_db = os.path.join(self.store, "server.db")
+        server_key = sqlite_q(server_db,'select * from server_key')
+        eq_(len(server_key),1)
+        eq_(server_key[0][3:],(None, 7623))
+        server_id = server_key[0][1]
+
+        test.run_script_and_wait(
+            'hsd --store_dir {self.store} initdb '
             '--port {self.port}'.format(**locals()),
             expect_rc=0, expect_read='')
+
+        server_key = sqlite_q(server_db,'select * from server_key')
+        eq_(len(server_key),1)
+        eq_(server_key[0][3:],(None,8765))
+        eq_(server_id, server_key[0][1])
 
         server_id = self.test.run_script_in_bg(
             'hsd --debug --store_dir {self.store} start'

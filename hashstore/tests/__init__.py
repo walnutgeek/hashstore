@@ -305,6 +305,11 @@ def run_bg(module, args=[], home=None, outfile=None, script_mode = False):
     return subprocess.Popen(command, env=env, stdout=fp, stderr=STDOUT)
 
 
+def sqlite_q(path, select, *params):
+    import sqlite3
+    with sqlite3.connect(path) as conn:
+        return list(conn.execute(select,params))
+
 class Py23DocChecker(OutputChecker):
     def check_output(self, want, got, optionflags):
         if sys.version_info[0] < 3:

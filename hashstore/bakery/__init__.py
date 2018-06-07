@@ -28,8 +28,25 @@ MAX_NUM_OF_SHARDS = 8192
 
 
 def shard_name_int(num):
-    return B36._encode_int(num)
+    """
+    >>> shard_name_int(0)
+    '0'
+    >>> shard_name_int(1)
+    '1'
+    >>> shard_name_int(8000)
+    '668'
+    """
+    return B36.encode_int(num)
 
+
+def decode_shard(name):
+    """
+    >>> decode_shard('0')
+    0
+    >>> decode_shard('668')
+    8000
+    """
+    return B36.decode_int(name)
 
 def is_it_shard(shard_name):
     """
@@ -57,7 +74,7 @@ def is_it_shard(shard_name):
     shard_num = -1
     if len(shard_name) < 4:
         try:
-            shard_num = B36.decode_int(shard_name.lower())
+            shard_num = decode_shard(shard_name.lower())
         except:
             pass
     return shard_num >= 0 and shard_num < MAX_NUM_OF_SHARDS
