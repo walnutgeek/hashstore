@@ -1,7 +1,5 @@
-import functools
 import inspect
 
-import six
 import os
 import json
 import sys
@@ -183,13 +181,12 @@ class EnsureIt:
         return cls.ensure_it(o)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Stringable(object):
+class Stringable(metaclass=abc.ABCMeta):
     '''
     Marker to inform json_encoder to use `str(o)` to
     serialize in json. Also assumes that any implementing
     class has constructor that recreate same object from
-    its string representation as single parameter.
+    it's string representation as single parameter.
     '''
     def __repr__(self):
         return '%s(%r)' % (type(self).__name__, str(self))

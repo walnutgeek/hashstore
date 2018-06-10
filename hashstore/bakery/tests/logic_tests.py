@@ -1,6 +1,4 @@
-import attr
 from nose.tools import eq_,ok_,with_setup
-from six import text_type
 
 from hashstore.utils import to_json, from_json
 from hashstore.tests import TestSetup

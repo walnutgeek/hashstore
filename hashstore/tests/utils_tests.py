@@ -4,10 +4,8 @@ from nose.tools import eq_,ok_,with_setup
 import sys
 from hashstore.tests import TestSetup
 import hashstore.utils as u
-from os import environ
 from hashstore.utils import type_required as required
 import attr
-from six import text_type
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log
@@ -151,7 +149,7 @@ def test_api():
 
 @attr.s
 class Abc(object):
-    name = attr.ib(**required(text_type))
+    name = attr.ib(**required(str))
     val = attr.ib(**required(int))
 
 

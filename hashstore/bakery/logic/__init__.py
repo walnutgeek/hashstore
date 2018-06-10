@@ -1,5 +1,4 @@
 import abc
-from six import text_type, add_metaclass
 import attr
 from hashstore.utils import (
     type_optional as optional,
@@ -10,8 +9,7 @@ from hashstore.utils.file_types import FileType
 from hashstore.utils.time import CronExp, TimeZone
 
 
-@add_metaclass(abc.ABCMeta)
-class HashType(): # HashType ?
+class HashType(metaclass=abc.ABCMeta): # HashType ?
     '''
     To make doctests pass
     >>> 1
@@ -27,8 +25,7 @@ class HashType(): # HashType ?
         raise NotImplementedError('subclasses must override')
 
 
-@add_metaclass(abc.ABCMeta)
-class HashMethod(object):
+class HashMethod(metaclass=abc.ABCMeta):
     '''
     (Y)=<HL>,detect:M
     '''
@@ -42,21 +39,21 @@ class HashMethod(object):
 
 @attr.s
 class Type(object):
-    name=attr.ib(**required(text_type))
+    name=attr.ib(**required(str))
     file_type=attr.ib(**optional(FileType))
     ref=attr.ib(**optional(GlobalRef))
 
 
 @attr.s
 class ValueDescriptor(object):
-    name = attr.ib(**required(text_type))
+    name = attr.ib(**required(str))
     type = attr.ib(**required(GlobalRef))
     #format = attr.ib(**type_optional())
 
 
 @attr.s
 class Method(object):
-    name = attr.ib(**required(text_type))
+    name = attr.ib(**required(str))
     applies_on = attr.ib(**optional(Type))
     in_vars=attr.ib(**list_of(ValueDescriptor))
     out_vars=attr.ib(**list_of(ValueDescriptor))
@@ -65,9 +62,9 @@ class Method(object):
 
 @attr.s
 class Task(object):
-    name = attr.ib(**required(text_type))
-    method_name = attr.ib(**required(text_type))
-    depend_on_tasks = attr.ib(**list_of(text_type))
+    name = attr.ib(**required(str))
+    method_name = attr.ib(**required(str))
+    depend_on_tasks = attr.ib(**list_of(str))
     dag_vars = attr.ib(**list_of(ValueDescriptor))
     in_vars = attr.ib(**list_of(ValueDescriptor))
 
@@ -79,7 +76,7 @@ class Trigger(object):
 
 @attr.s
 class Dag(object):
-    name = attr.ib(**required(text_type))
+    name = attr.ib(**required(str))
     depend_on_prev = attr.ib(**required(bool))
     triggers = attr.ib(**list_of(Trigger))
     tasks = attr.ib(**list_of(Task))
@@ -88,7 +85,7 @@ class Dag(object):
 
 @attr.s
 class HashLogic(object):
-    name = attr.ib(**required(text_type))
+    name = attr.ib(**required(str))
     types = attr.ib(**list_of(Type))
     files=attr.ib(**dict_of(FileType))
     dags = attr.ib(**list_of(Dag))

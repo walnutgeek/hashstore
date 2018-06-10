@@ -1,6 +1,5 @@
 import mimetypes
 import attr
-from six import itervalues, text_type
 from os.path import join, dirname
 from hashstore.utils import (
     ensure_bytes, ensure_string,
@@ -11,8 +10,8 @@ from hashstore.utils import (
 
 @attr.s
 class FileType(DictKey):
-    mime=attr.ib(**required(text_type))
-    ext=attr.ib(**list_of(text_type))
+    mime=attr.ib(**required(str))
+    ext=attr.ib(**list_of(str))
 
 def read_file_types(json_file):
     local = load_json_file(json_file)
@@ -23,13 +22,13 @@ file_types = read_file_types(join(dirname(__file__), 'file_types.json'))
 
 my_mime_dict = dict(
     (cvt(ext),cvt(ft.mime))
-    for ft in itervalues(file_types)
+    for ft in file_types.values()
         for ext in ft.ext
             for cvt in [ensure_string, ensure_bytes])
 
 my_name_dict = dict(
     (cvt(ext),ft._key_)
-    for ft in itervalues(file_types)
+    for ft in file_types.values()
         for ext in ft.ext
             for cvt in [ensure_string, ensure_bytes])
 

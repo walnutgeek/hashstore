@@ -3,10 +3,8 @@
 
 import abc
 
-import six
-
 from hashstore.utils import Stringable, EnsureIt, Jsonable
-from six import BytesIO, string_types, iteritems
+from io import BytesIO
 import hashlib
 import os
 import hashstore.utils as utils
@@ -47,6 +45,7 @@ def decode_shard(name):
     8000
     """
     return B36.decode_int(name)
+
 
 def is_it_shard(shard_name):
     """
@@ -463,7 +462,6 @@ class Cake(utils.Stringable, utils.EnsureIt):
     def shard_name(self, base=MAX_NUM_OF_SHARDS):
         return shard_name_int(self.shard_num(base))
 
-
     @staticmethod
     def from_digest_and_inline_data(digest, buffer,
                                     role=CakeRole.SYNAPSE):
@@ -572,8 +570,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
         return not self.__eq__(other)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class HasCake(object):
+class HasCake(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def cake(self):
@@ -636,7 +633,7 @@ class CakeRack(utils.Jsonable, HasCake):
 
     def inverse(self):
         if self._inverse is None:
-            self._inverse = {v: k for k, v in iteritems(self.store)}
+            self._inverse = {v: k for k, v in self.store.items()}
         return self._inverse
 
     def cake(self):
@@ -673,11 +670,9 @@ class CakeRack(utils.Jsonable, HasCake):
             quick_hash(self._in_bytes),self._in_bytes,
             role=CakeRole.NEURON)
 
-
-
     def parse(self, o):
         self._clear_cached()
-        if isinstance(o, string_types):
+        if isinstance(o, str):
             names, cakes = json.loads(o)
         elif type(o) in [list, tuple] and len(o) == 2:
             names, cakes = o
