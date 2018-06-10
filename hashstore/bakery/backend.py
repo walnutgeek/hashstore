@@ -11,7 +11,7 @@ from sqlalchemy import func,select
 import hashlib
 
 from hashstore.bakery import NotFoundError, Cake, ContentAddress, is_it_shard, Content
-from hashstore.ndb.models.shard import shard_meta, blob
+from hashstore.ndb.models.blob import blob_meta, blob
 from hashstore.ndb.models.incoming import incoming_meta, incoming
 
 import logging
@@ -133,7 +133,7 @@ class LiteBackend:
 
     def blob_dbf(self, shard_name):
         path = os.path.join(self.root, shard_name, 'blob.db')
-        return Dbf(shard_meta, path)
+        return Dbf(blob_meta, path)
 
     @staticmethod
     def cache_lookup_factory(self, file_id):

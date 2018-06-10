@@ -65,18 +65,19 @@ def is_it_shard(shard_name):
     >>> is_it_shard('6BK')
     False
     >>> is_it_shard('')
-    True
+    False
     >>> is_it_shard('.5k')
     False
     >>> is_it_shard('abcd')
     False
     """
     shard_num = -1
-    if len(shard_name) < 4:
-        try:
-            shard_num = decode_shard(shard_name.lower())
-        except:
-            pass
+    if shard_name == '' or len(shard_name) > 3:
+        return False
+    try:
+        shard_num = decode_shard(shard_name.lower())
+    except:
+        pass
     return shard_num >= 0 and shard_num < MAX_NUM_OF_SHARDS
 
 
