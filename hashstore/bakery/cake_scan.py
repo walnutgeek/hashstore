@@ -208,7 +208,7 @@ class DirScan(Scan):
 
         self.path.cake_entries().store_entries(self.new_db_entries)
 
-        log.debug(u'{self.path} -> {self.entry.cake}'.format(**locals()))
+        log.debug('{self.path} -> {self.entry.cake}'.format(**locals()))
 
         if on_each_dir:
             on_each_dir(self)

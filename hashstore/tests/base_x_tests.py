@@ -14,7 +14,7 @@ def test_nulls():
     eq_(b58.decode(''), b'')
     eq_(b58.encode(b''),'')
     try:
-        b58.encode(u'')
+        b58.encode('')
         ok_(False)
     except TypeError:
         pass

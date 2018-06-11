@@ -325,7 +325,7 @@ def quick_hash(data):
 
     >>> quick_hash(b'abc')
     b'\xbax\x16\xbf\x8f\x01\xcf\xeaAA@\xde]\xae"#\xb0\x03a\xa3\x96\x17z\x9c\xb4\x10\xffa\xf2\x00\x15\xad'
-    >>> quick_hash(u'abc')
+    >>> quick_hash('abc')
     b'\xbax\x16\xbf\x8f\x01\xcf\xeaAA@\xde]\xae"#\xb0\x03a\xa3\x96\x17z\x9c\xb4\x10\xffa\xf2\x00\x15\xad'
     >>> quick_hash(5.7656)
     b'\x8e\x19\x10\xddb\xc3)\x84~i>\xbeL\x8a\x08\x96\x96\xa5sR0\x8c\x7f\xd7\xec\x0fa\x12\xfbA\xb9\xa3'
@@ -816,13 +816,13 @@ class CakePath(utils.Stringable, utils.EnsureIt):
     CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF/')
     >>> p2.parent()
     >>> p0.path_join()
-    u'r/f'
+    'r/f'
     >>> p1.path_join()
-    u'r'
+    'r'
     >>> p2.path_join()
-    u''
-    >>> str(CakePath(u'q/x/палка_в/колесе.bin'))
-    u'q/x/палка_в/колесе.bin'
+    ''
+    >>> str(CakePath('q/x/палка_в/колесе.bin'))
+    'q/x/палка_в/колесе.bin'
     """
     def __init__(self, s, _root = None, _path = []):
         if s is  None:
@@ -880,10 +880,10 @@ class CakePath(utils.Stringable, utils.EnsureIt):
         if self.relative():
             return self.path_join()
         else:
-            return u'/%s/%s' % (utils.ensure_string(str(self.root)), utils.ensure_string(self.path_join()))
+            return '/%s/%s' % (utils.ensure_string(str(self.root)), utils.ensure_string(self.path_join()))
 
     def path_join(self):
-        return u'/'.join(self.path)
+        return '/'.join(self.path)
 
     def filename(self):
         l = len(self.path)

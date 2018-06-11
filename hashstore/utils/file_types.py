@@ -6,12 +6,14 @@ from hashstore.utils import (
     DictKey, load_json_file,
     type_required as required,
     type_list_of as list_of,
-    create_dict_converter )
+    create_dict_converter)
+
 
 @attr.s
 class FileType(DictKey):
     mime=attr.ib(**required(str))
     ext=attr.ib(**list_of(str))
+
 
 def read_file_types(json_file):
     local = load_json_file(json_file)
@@ -35,21 +37,22 @@ my_name_dict = dict(
 WDF = 'WDF'
 HSB = 'HSB'
 
+
 def guess_name(filename):
     '''
 
     >>> guess_name('abc.txt')
-    u'TXT'
+    'TXT'
     >>> guess_name('abc.log')
-    u'LOG'
+    'LOG'
     >>> guess_name('abc.wdf')
-    u'WDF'
+    'WDF'
     >>> guess_name('abc.hsb')
-    u'HSB'
+    'HSB'
     >>> guess_name('.wdf')
-    u'BINARY'
+    'BINARY'
     >>> guess_name('abc.html')
-    u'HTML'
+    'HTML'
 
     :param filename: file path
     :return: name from `file_types`
@@ -60,7 +63,7 @@ def guess_name(filename):
             return my_name_dict[extension]
     except:
         pass
-    return u'BINARY'
+    return 'BINARY'
 
 
 def guess_type(filename):

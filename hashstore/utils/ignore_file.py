@@ -11,12 +11,12 @@ log = logging.getLogger(__name__)
 IGNORE_SPECS = ('.gitignore', '.ignore')
 
 
-IGNORE_FILENAMES = (u'.svn', u'.git', u'.DS_Store', u'.vol',
-                    u'.hotfiles.btree', u'.ssh')
+IGNORE_FILENAMES = ('.svn', '.git', '.DS_Store', '.vol',
+                    '.hotfiles.btree', '.ssh')
 
 
-IGNORE_IF_STARTS_WITH = (u'.shamo',  u'.cake', u'.backup',
-                         u'.Spotlight', u'._', u'.Trash')
+IGNORE_IF_STARTS_WITH = ('.shamo',  '.cake', '.backup',
+                         '.Spotlight', '._', '.Trash')
 
 
 def pick_ignore_specs(n):
@@ -83,7 +83,7 @@ def parse_ignore_specs(cur_dir, files, initial_ignore_entries):
             with codecs.open(spec_path, 'r', 'utf-8') as fh:
                 for l in fh.readlines():
                     l = l.strip()
-                    if l != u'' and l[0] != u'#':
+                    if l != '' and l[0] != '#':
                         ignore_entries.append(IgnoreEntry(cur_dir, l))
         return ignore_entries
     else:
