@@ -5,14 +5,14 @@ import abc
 
 from hashstore.utils import Stringable, EnsureIt, Jsonable
 from io import BytesIO
-import hashlib
+from hashlib import sha256, sha1
 import os
 import hashstore.utils as utils
 import base64
-from hashstore.utils.base_x import base_x,iseq
+from hashstore.utils.base_x import base_x
 import json
 import enum
-
+from typing import Union, Optional
 import logging
 from hashstore.utils import path_split_all
 from hashstore.utils.file_types import guess_name, file_types, HSB
@@ -25,7 +25,20 @@ B36 = base_x(36)
 MAX_NUM_OF_SHARDS = 8192
 
 
-def shard_name_int(num):
+class Hasher:
+    def __init__(self, data: Optional[bytes] = None)->None:
+        self.sha = sha256()
+        if data is not None:
+            self.update(data)
+
+    def update(self, b: bytes):
+        self.sha.update(b)
+
+    def digest(self):
+        return self.sha.digest()
+
+
+def shard_name_int(num: int):
     """
     >>> shard_name_int(0)
     '0'
@@ -37,7 +50,7 @@ def shard_name_int(num):
     return B36.encode_int(num)
 
 
-def decode_shard(name):
+def decode_shard(name: str):
     """
     >>> decode_shard('0')
     0
@@ -47,7 +60,7 @@ def decode_shard(name):
     return B36.decode_int(name)
 
 
-def is_it_shard(shard_name):
+def is_it_shard(shard_name: str):
     """
     Test if directory name can represent shard
 
@@ -80,67 +93,9 @@ def is_it_shard(shard_name):
     return shard_num >= 0 and shard_num < MAX_NUM_OF_SHARDS
 
 
-def shard_num(hash_bytes, base = MAX_NUM_OF_SHARDS):
+def shard_num(hash_bytes: bytes, base: int = MAX_NUM_OF_SHARDS):
     b1, b2 = hash_bytes[:2]
     return (b1 * 256 + b2) % base
-
-
-class ContentAddress(Stringable, EnsureIt):
-    """
-    Content Address
-
-    >>> a46 = Cake.from_bytes(b'a' * 46)
-    >>> str(a46)
-    '2lEWHXV2XeYyZnKNyQyGPt4poJhV7VeYCfeszHnLyFtx'
-    >>> from_c = ContentAddress(a46)
-    >>> str(from_c)
-    '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
-    >>> from_id = ContentAddress(str(from_c))
-    >>> str(from_id)
-    '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
-    >>> from_id
-    ContentAddress('2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv')
-    >>> from_id.hash_bytes == from_c.hash_bytes
-    True
-    >>> from_id.match(a46)
-    True
-    >>> a47 = Cake.from_bytes(b'a' * 47)
-    >>> str(a47)
-    '21EUi09ZvZAelgu02ANS9dSpK9oPsERF0uSpfEEZcdMx'
-    >>> from_id.match(a47)
-    False
-    """
-
-    def __init__(self, hash_or_cake_or_str):
-        if hasattr(hash_or_cake_or_str, 'digest'):
-            self.hash_bytes = hash_or_cake_or_str.digest()
-            self._id = B36.encode(self.hash_bytes)
-        elif isinstance(hash_or_cake_or_str, Cake):
-            self.hash_bytes = hash_or_cake_or_str.hash_bytes()
-            self._id = B36.encode(self.hash_bytes)
-        else:
-            self._id = hash_or_cake_or_str.lower()
-            self.hash_bytes = B36.decode(self._id)
-        self.shard_name = shard_name_int(shard_num(self.hash_bytes))
-
-    def __str__(self):
-        return self._id
-
-    def __repr__(self):
-        return "ContentAddress(%r)" % self.__str__()
-
-    def match(self, cake):
-        return cake.hash_bytes() == self.hash_bytes
-
-    def __eq__(self, other):
-        return isinstance(other, ContentAddress) and \
-               self._id == other._id
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __hash__(self):
-        return hash(self._id)
 
 
 class Content(Jsonable):
@@ -336,7 +291,7 @@ def quick_hash(data):
                  and then to byte
     :return: digest
     """
-    return hashlib.sha256(utils.ensure_bytes(data)).digest()
+    return Hasher(utils.ensure_bytes(data)).digest()
 
 
 def process_stream(fd,  process_buffer=NOP_process_buffer, chunk_size=65355):
@@ -350,7 +305,7 @@ def process_stream(fd,  process_buffer=NOP_process_buffer, chunk_size=65355):
     :return:
     """
     inline_data = bytes()
-    digest = hashlib.sha256()
+    digest = Hasher()
     length = 0
     while True:
         read_buffer = fd.read(chunk_size)
@@ -575,6 +530,64 @@ class HasCake(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def cake(self):
         raise NotImplementedError('subclasses must override')
+
+
+class ContentAddress(Stringable, EnsureIt):
+    """
+    Content Address
+
+    >>> a46 = Cake.from_bytes(b'a' * 46)
+    >>> str(a46)
+    '2lEWHXV2XeYyZnKNyQyGPt4poJhV7VeYCfeszHnLyFtx'
+    >>> from_c = ContentAddress(a46)
+    >>> str(from_c)
+    '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
+    >>> from_id = ContentAddress(str(from_c))
+    >>> str(from_id)
+    '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
+    >>> from_id
+    ContentAddress('2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv')
+    >>> from_id.hash_bytes == from_c.hash_bytes
+    True
+    >>> from_id.match(a46)
+    True
+    >>> a47 = Cake.from_bytes(b'a' * 47)
+    >>> str(a47)
+    '21EUi09ZvZAelgu02ANS9dSpK9oPsERF0uSpfEEZcdMx'
+    >>> from_id.match(a47)
+    False
+    """
+
+    def __init__(self, h: Union[Cake, Hasher, str])->None:
+        if isinstance(h, Hasher):
+            self.hash_bytes = h.digest()
+            self._id = B36.encode(self.hash_bytes)
+        elif isinstance(h, Cake):
+            self.hash_bytes = h.hash_bytes()
+            self._id = B36.encode(self.hash_bytes)
+        else:
+            self._id = h.lower()
+            self.hash_bytes = B36.decode(self._id)
+        self.shard_name = shard_name_int(shard_num(self.hash_bytes))
+
+    def __str__(self):
+        return self._id
+
+    def __repr__(self):
+        return "ContentAddress(%r)" % self.__str__()
+
+    def match(self, cake):
+        return cake.hash_bytes() == self.hash_bytes
+
+    def __eq__(self, other):
+        return isinstance(other, ContentAddress) and \
+               self._id == other._id
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(self._id)
 
 
 class PatchAction(Jsonable, enum.Enum):
@@ -950,14 +963,14 @@ class SaltedSha(utils.Stringable, utils.EnsureIt):
     @staticmethod
     def from_secret(secret):
         secret = utils.ensure_bytes(secret)
-        h=hashlib.sha1(secret)
+        h = sha1(secret)
         salt = os.urandom(4)
         h.update(salt)
         return SaltedSha(None, _digest=h.digest(), _salt=salt)
 
     def check_secret(self, secret):
         secret = utils.ensure_bytes(secret)
-        h=hashlib.sha1(secret)
+        h = sha1(secret)
         h.update(self.salt)
         return self.digest == h.digest()
 

@@ -1,20 +1,18 @@
 import os
-
 import datetime
-
-from hashstore.bakery import NotAuthorizedError, CredentialsError, \
-    Content, Cake, CakeRack, CakePath, SaltedSha, \
-    check_bookmark_name, CakeType, assert_key_structure, CakeRole, \
+from hashstore.bakery import (
+    NotAuthorizedError, CredentialsError, Content, Cake, CakeRack,
+    CakePath, SaltedSha, CakeType, assert_key_structure, CakeRole,
     PatchAction, shard_name_int
+)
 from hashstore.bakery.backend import LiteBackend
 from hashstore.bakery.cake_tree import CakeTree
 from hashstore.ndb import Dbf, MultiSessionContextManager
 from hashstore.utils import reraise_with_msg, tuple_mapper, utf8_reader
 import hashstore.bakery.dal as dal
 from sqlalchemy import and_, or_
-from hashstore.ndb.models.server_config import UserSession, \
-    ServerKey, ServerConfigBase
-
+from hashstore.ndb.models.server_config import (
+    UserSession, ServerKey, ServerConfigBase )
 from hashstore.ndb.models.glue import (
     GlueBase, User, UserState, Permission,
     PermissionType as PT, Acl, UserType
@@ -281,15 +279,16 @@ class PrivilegedAccess(GuestAccess):
         dirs_mismatch_input_cake = set()
 
         def store_bundle(dir_cake, dir_contents):
-            lookup = self.backend().lookup(dir_cake)
-            if not lookup.found():
-                w = self.backend().writer()
-                w.write(dir_contents.in_bytes(), done=True)
+            if not(dir_cake.has_data()):
                 lookup = self.backend().lookup(dir_cake)
-                if lookup.found():
-                    dirs_stored.add(dir_cake)
-                else: # pragma: no cover
-                    dirs_mismatch_input_cake.add(dir_cake)
+                if not lookup.found():
+                    w = self.backend().writer()
+                    w.write(dir_contents.in_bytes(), done=True)
+                    lookup = self.backend().lookup(dir_cake)
+                    if lookup.found():
+                        dirs_stored.add(dir_cake)
+                    else: # pragma: no cover
+                        dirs_mismatch_input_cake.add(dir_cake)
             for file_name in dir_contents:
                 self._collect_unseen(dir_contents[file_name],
                                      unseen_cakes)
@@ -297,7 +296,7 @@ class PrivilegedAccess(GuestAccess):
         for cake_path, dir_cake, dir_contents in directories:
             if cake_path is None or cake_path.root is None \
                     or cake_path.root.type == CakeType.PORTAL :
-                store_bundle(dir_cake,dir_contents)
+                store_bundle(dir_cake, dir_contents)
                 if cake_path is not None and cake_path.is_root():
                     self.create_portal(portal_id=cake_path.root,
                                        cake=dir_cake)

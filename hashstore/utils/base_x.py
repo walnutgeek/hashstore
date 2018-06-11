@@ -24,7 +24,7 @@ under Apache and MIT.
 # This module adds shiny packaging and support for python3.
 # ---
 
-
+from typing import Dict
 from hashlib import sha256
 
 alphabets = {
@@ -40,42 +40,6 @@ alphabets = {
 66:	'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~',
 }
 
-
-if bytes == str:  # python2
-    iseq = lambda s: map(ord, s)
-    bseq = lambda s: ''.join(map(chr, s))
-else:  # python3
-    iseq = lambda s: s
-    bseq = bytes
-
-cached_instances = {}
-
-def base_x(alphabet_id):
-    '''
-    lazy initialization for BaseX instance
-
-    >>> base_x(58).encode(b'the quick brown fox jumps over the lazy dog')
-    '9aMVMYHHtr2a2wF61xEqKskeCwxniaf4m7FeCivEGBzLhSEwB6NEdfeySxW'
-    >>> base_x(58).decode('9aMVMYHHtr2a2wF61xEqKskeCwxniaf4m7FeCivEGBzLhSEwB6NEdfeySxW')
-    b'the quick brown fox jumps over the lazy dog'
-
-    >>> base_x(58).encode_check(b'the quick brown fox jumps over the lazy dog')
-    'y7WFhoXCMz3M46XhLVWLAfYXde92zQ8FTnKRxzWNmBYTDa67791CqkFDJgmtRff3'
-    >>> base_x(58).decode_check('y7WFhoXCMz3M46XhLVWLAfYXde92zQ8FTnKRxzWNmBYTDa67791CqkFDJgmtRff3')
-    b'the quick brown fox jumps over the lazy dog'
-    >>> base_x(58).decode_check('9aMVMYHHtr2a2wF61xEqKskeCwxniaf4m7FeCivEGBzLhSEwB6NEdfeySxW')
-    Traceback (most recent call last):
-    ...
-    ValueError: Invalid checksum
-
-
-    :param alphabet_id: reference to predefined alphabet from
-                        `alphabets` dictionary
-    :return: BaseX
-    '''
-    if alphabet_id not in cached_instances:
-        cached_instances[alphabet_id] = BaseX(alphabets[alphabet_id])
-    return cached_instances[alphabet_id]
 
 class BaseX:
     def __init__(self, alphabet):
@@ -108,7 +72,7 @@ class BaseX:
         count_of_nulls = origlen - len(v)
 
         p, acc = 1, 0
-        for c in iseq(reversed(v)):
+        for c in reversed(v):
             acc += p * c
             p <<= 8
 
@@ -142,7 +106,7 @@ class BaseX:
             acc, mod = divmod(acc, 256)
             result.append(mod)
 
-        return (b'\0' * count_of_nulls + bseq(reversed(result)))
+        return (b'\0' * count_of_nulls + bytes(reversed(result)))
 
     def encode_check(self, v):
         '''Encode a string with a 4 character checksum'''
@@ -161,3 +125,33 @@ class BaseX:
             raise ValueError("Invalid checksum")
 
         return result
+
+
+cached_instances : Dict[int,BaseX] = {}
+
+def base_x(alphabet_id):
+    '''
+    lazy initialization for BaseX instance
+
+    >>> base_x(58).encode(b'the quick brown fox jumps over the lazy dog')
+    '9aMVMYHHtr2a2wF61xEqKskeCwxniaf4m7FeCivEGBzLhSEwB6NEdfeySxW'
+    >>> base_x(58).decode('9aMVMYHHtr2a2wF61xEqKskeCwxniaf4m7FeCivEGBzLhSEwB6NEdfeySxW')
+    b'the quick brown fox jumps over the lazy dog'
+
+    >>> base_x(58).encode_check(b'the quick brown fox jumps over the lazy dog')
+    'y7WFhoXCMz3M46XhLVWLAfYXde92zQ8FTnKRxzWNmBYTDa67791CqkFDJgmtRff3'
+    >>> base_x(58).decode_check('y7WFhoXCMz3M46XhLVWLAfYXde92zQ8FTnKRxzWNmBYTDa67791CqkFDJgmtRff3')
+    b'the quick brown fox jumps over the lazy dog'
+    >>> base_x(58).decode_check('9aMVMYHHtr2a2wF61xEqKskeCwxniaf4m7FeCivEGBzLhSEwB6NEdfeySxW')
+    Traceback (most recent call last):
+    ...
+    ValueError: Invalid checksum
+
+
+    :param alphabet_id: reference to predefined alphabet from
+                        `alphabets` dictionary
+    :return: BaseX
+    '''
+    if alphabet_id not in cached_instances:
+        cached_instances[alphabet_id] = BaseX(alphabets[alphabet_id])
+    return cached_instances[alphabet_id]

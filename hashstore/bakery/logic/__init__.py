@@ -9,7 +9,7 @@ from hashstore.utils.file_types import FileType
 from hashstore.utils.time import CronExp, TimeZone
 
 
-class HashType(metaclass=abc.ABCMeta): # HashType ?
+class HashType(metaclass=abc.ABCMeta):
     '''
     To make doctests pass
     >>> 1

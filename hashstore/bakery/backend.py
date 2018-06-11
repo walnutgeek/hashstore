@@ -8,9 +8,9 @@ from hashstore.utils import ensure_bytes,ensure_directory
 
 from sqlalchemy import func,select
 
-import hashlib
 
-from hashstore.bakery import NotFoundError, Cake, ContentAddress, is_it_shard, Content
+from hashstore.bakery import (
+    NotFoundError, Cake, ContentAddress, is_it_shard, Content, Hasher )
 from hashstore.ndb.models.blob import blob_meta, blob
 from hashstore.ndb.models.incoming import incoming_meta, incoming
 
@@ -206,7 +206,7 @@ class ContentWriter:
         self.backend = backend
         self.buffer = bytes()
         self.incoming_file = None
-        self.digest = hashlib.sha256()
+        self.hasher = Hasher()
         self.file_id = None
 
     def write(self, content, done=False):
@@ -214,7 +214,7 @@ class ContentWriter:
             raise AssertionError('expecting bytes, got: %s %r' %
                                  (type(content),content))
         content = ensure_bytes(content)
-        self.digest.update(content)
+        self.hasher.update(content)
         if self.buffer is not None:
             if MAX_DB_BLOB_SIZE > (len(self.buffer) + len(content)):
                 self.buffer += content
@@ -230,7 +230,7 @@ class ContentWriter:
 
     def done(self):
         if self.file_id is None:
-            self.file_id = ContentAddress(self.digest)
+            self.file_id = ContentAddress(self.hasher)
             if self.buffer is not None:
                 lookup = DbLookup(self.backend, self.file_id)
                 lookup.save_content(self.buffer)
