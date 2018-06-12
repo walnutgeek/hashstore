@@ -2,11 +2,12 @@ from collections import namedtuple
 import argparse
 import inspect
 
-getargspec = inspect.getargspec if bytes == str else inspect.getfullargspec
+getargspec = inspect.getfullargspec
 
-_Opt = namedtuple("_Opt", 'name help has_default default type choices'.split())
+_Opt = namedtuple("_Opt", ['name', 'help', 'has_default', 'default',
+                           'type', 'choices'])
 
-Cmd = namedtuple("Cmd", 'name help options'.split())
+Cmd = namedtuple("Cmd", ['name', 'help', 'options'])
 
 
 class Opt(_Opt):

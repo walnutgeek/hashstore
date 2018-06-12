@@ -42,18 +42,18 @@ alphabets = {
 
 
 class BaseX:
-    def __init__(self, alphabet):
+    def __init__(self, alphabet:str)->None:
         self.alphabet = alphabet
         self.size = len(alphabet)
         self.index = { alphabet[i]:i for i in range(self.size)}
 
-    def encode_int(self, i):
+    def encode_int(self, i:int)->str:
         '''Encode an integer'''
         if i < 0:
             raise AssertionError('uint expected: %r' % i)
         return self.alphabet[0] if i == 0 else self._encode_int(i)
 
-    def _encode_int(self, i):
+    def _encode_int(self, i:int)->str:
         '''unsafe encode_int'''
         string = ""
         while i:
@@ -61,7 +61,7 @@ class BaseX:
             string = self.alphabet[idx] + string
         return string
 
-    def encode(self, v):
+    def encode(self, v:bytes)->str:
         '''Encode a string'''
         if not isinstance(v, bytes):
             raise TypeError("a bytes-like object is required, not '%s'" %
@@ -80,7 +80,7 @@ class BaseX:
 
         return (self.alphabet[0] * count_of_nulls + result)
 
-    def decode_int(self, v):
+    def decode_int(self, v:str)->int:
         '''Decode a string into integer'''
 
         decimal = 0
@@ -88,7 +88,7 @@ class BaseX:
             decimal = decimal * self.size + self.index[char]
         return decimal
 
-    def decode(self, v):
+    def decode(self, v:str) -> bytes:
         '''Decode string'''
 
         if not isinstance(v, str):
@@ -108,13 +108,13 @@ class BaseX:
 
         return (b'\0' * count_of_nulls + bytes(reversed(result)))
 
-    def encode_check(self, v):
+    def encode_check(self, v:bytes)->str:
         '''Encode a string with a 4 character checksum'''
 
         digest = sha256(sha256(v).digest()).digest()
         return self.encode(v + digest[:4])
 
-    def decode_check(self, v):
+    def decode_check(self, v:str)->bytes:
         '''Decode and verify the checksum '''
 
         result = self.decode(v)
@@ -129,7 +129,8 @@ class BaseX:
 
 cached_instances : Dict[int,BaseX] = {}
 
-def base_x(alphabet_id):
+
+def base_x(alphabet_id:int)->BaseX:
     '''
     lazy initialization for BaseX instance
 

@@ -6,6 +6,8 @@ import sys
 import uuid
 import abc
 import enum
+from typing import Union, Callable, Type, Any
+
 import attr
 from collections import Mapping
 from datetime import date, datetime
@@ -41,33 +43,6 @@ def failback(fn, default):
     return failback_fn
 
 
-class LazyVars(Mapping):
-    def __init__(self, **kw ):
-        self.values = kw
-
-    def __len__(self):
-        return len(self.values)
-
-    def __iter__(self):
-        return iter(self.values)
-
-    def __getitem__(self, key):
-        value = self.values[key]
-        if callable(value):
-            value = value()
-            self.values[key] = value
-        return value
-
-    def __contains__(self, key):
-        return key in self.values
-
-    def __str__(self):
-        return str(self.values)
-
-    def __repr__(self):
-        return "LazyVars({0})".format(repr(self.values))
-
-
 def exception_message(e = None):
     if e is None:
         e = sys.exc_info()[1]
@@ -86,17 +61,9 @@ def reraise_with_msg(msg, exception=None):
     raise new_exception.with_traceback(traceback)
 
 
-def ensure_directory(directory):
+def ensure_directory(directory: str):
     if not (os.path.isdir(directory)):
         os.makedirs(directory)
-
-
-def get_if_defined(o, k):
-    return getattr(o, k) if hasattr(o, k) else None
-
-
-def call_if_defined(o, k, *args):
-    return getattr(o,k)(*args) if hasattr(o,k) else None
 
 
 ensure_bytes = lambda s: s if isinstance(s, bytes)\
@@ -107,26 +74,8 @@ ensure_string = lambda s: s if isinstance(s, str)\
 
 utf8_reader = codecs.getreader("utf-8")
 
-def v2s(vars_dict, *var_keys):
-    '''
-    Selectively convert variable dictionary to string
 
-    >>> v2s({'a':'b','c':'d'},'a')
-    'a=b'
-    >>> x=5
-    >>> q=True
-    >>> v2s(locals(),'x','q')
-    'x=5 q=True'
-
-    :param vars_dict:
-    :param var_keys:
-    :return:
-    '''
-    s = ' '.join(k + '={' + k + '}' for k in var_keys)
-    return s.format(**vars_dict)
-
-
-def path_split_all(path, ensure_trailing_slash = None):
+def path_split_all(path: str, ensure_trailing_slash: bool = None):
     '''
     >>> path_split_all('/a/b/c')
     ['/', 'a', 'b', 'c']
@@ -193,10 +142,16 @@ class Stringable(metaclass=abc.ABCMeta):
 
 Stringable.register(uuid.UUID)
 
+
 class StrKeyMixin:
     '''
     mixin for immutable objects to implement
-    `__hash__()`, `__eq__()`, `__ne__()`
+    `__hash__()`, `__eq__()`, `__ne__()`.
+
+    Implementation of methods expect super calss to implement
+    `__str__()` and object itself to be immutable (`str(obj)`
+    expected to return same value thru the life of object)
+
 
     >>> class X(StrKeyMixin):
     ...     def __init__(self, x):
@@ -221,7 +176,7 @@ class StrKeyMixin:
     >>> hash(a) != hash(X('B'))
     True
     '''
-    def __cached_str(self):
+    def __cached_str(self) -> str:
         if not(hasattr(self, '_str')):
             self._str = str(self)
         return self._str
@@ -245,8 +200,8 @@ class DictKey(object):
     Marker interface
     ----------------
     if there is dict, mapping name to object object content,
-    then `_key_` attribute in object will be set
-    with dict's key value.
+    then `_key_` attribute or property in object will be set
+    to provide dict's key value.
     '''
     pass
 
@@ -266,6 +221,8 @@ class Jsonable(EnsureIt):
     def __eq__(self, other):
         return str(self) == str(other)
 
+    def __ne__(self, other):
+        return not(self.__eq__(other))
 
 class JsonWrap(Jsonable,Stringable):
     '''
@@ -277,7 +234,7 @@ class JsonWrap(Jsonable,Stringable):
     >>> str(jw)
     '{"a": 5, "b": 3}'
     '''
-    def __init__(self,s):
+    def __init__(self, s:str) -> None:
         self.json = json_decode(s)
 
     def to_json(self):
@@ -302,17 +259,17 @@ json_encoder = StringableEncoder()
 
 json_encode = json_encoder.encode
 
-def load_json_file(file_path):
+
+def load_json_file(file_path: str):
     return json.load(open(file_path))
 
-def json_decode(text):
+
+def json_decode(text: str):
     try:
         return json.loads(text)
     except:
         reraise_with_msg('text={text}'
                          ''.format(**locals()))
-
-
 
 
 def read_in_chunks(fp, chunk_size=65535):
@@ -453,17 +410,6 @@ def tuple_mapper(*mappers):
         return tuple(map_fn(i)(v) for i, v in enumerate(in_tuple))
     return _mapper
 
-
-def map_dict(key_fn, val_fn, in_dict):
-    """
-    >>> m = { 'a': 5, 'x': 10 }
-    >>> sorted(map_dict(lambda x: x+'q', None, m).items())
-    [('aq', 5), ('xq', 10)]
-    >>> sorted(map_dict(None, lambda x: x*3, m).items())
-    [('a', 15), ('x', 30)]
-    """
-    mapper = tuple_mapper(key_fn,val_fn)
-    return dict(mapper(t) for t in in_dict.items())
 
 def normalize_url(url):
     '''
@@ -620,6 +566,8 @@ class GlobalRef(Stringable, EnsureIt, StrKeyMixin):
     'GlobalRef'
     >>> GlobalRef(GlobalRef)
     GlobalRef('hashstore.utils:GlobalRef')
+    >>> GlobalRef(GlobalRef).get_instance()
+    <class 'hashstore.utils.GlobalRef'>
     '''
     def __init__(self, s):
         if inspect.isclass(s) or inspect.isfunction(s):
@@ -630,8 +578,8 @@ class GlobalRef(Stringable, EnsureIt, StrKeyMixin):
     def __str__(self):
         return '%s:%s' %(self.module, self.name)
 
-    def get_instance(self):
-        mod = __import__(self.module, fromlist=('',))
+    def get_instance(self)->Any:
+        mod = __import__(self.module, fromlist=['',])
         return getattr(mod, self.name)
 
 

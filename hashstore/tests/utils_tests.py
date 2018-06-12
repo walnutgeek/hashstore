@@ -61,25 +61,6 @@ def test_reraise():
             ok_('bye' in msg)
 
 
-def test_LazyVars():
-    def val_a():
-        global read_count
-        read_count += 1
-        return 'v=a'
-    lv = u.LazyVars( a = val_a, b = 'b')
-    eq_(True, 'a' in lv)
-    eq_(True, 'b' in lv)
-    eq_(False, 'c' in lv)
-    eq_(0, read_count)
-    eq_('v=a', lv['a'])
-    eq_(1, read_count)
-    eq_('v=a', lv['a'])
-    eq_(1, read_count)
-    eq_('b', lv['b'])
-    eq_( sorted(lv.items()), [("a", "v=a"), ("b", "b")] )
-    lv = u.LazyVars( a = val_a, b = 'b')
-    eq_('{a} -- {b}'.format(**lv),'v=a -- b')
-
 def test_json_encoder_force_default_call():
     class q:
         pass
@@ -88,20 +69,6 @@ def test_json_encoder_force_default_call():
         ok_(False)
     except:
         ok_('is not JSON serializable' in u.exception_message())
-
-
-def test_if_defined():
-    class O:
-        def __init__(self):
-            self.x = 5
-
-        def y(self):
-            return -5
-    o = O()
-    eq_(u.get_if_defined( o, 'x'), 5)
-    eq_(u.get_if_defined( o, 'z'), None)
-    eq_(u.call_if_defined( o, 'y'), -5)
-    eq_(u.call_if_defined( o, 'z'), None)
 
 
 def test_api():

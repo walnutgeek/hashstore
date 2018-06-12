@@ -12,7 +12,8 @@ import base64
 from hashstore.utils.base_x import base_x
 import json
 import enum
-from typing import Union, Optional
+from typing import Union, Optional, Any
+import typing.io as tIO
 import logging
 from hashstore.utils import path_split_all
 from hashstore.utils.file_types import guess_name, file_types, HSB
@@ -381,9 +382,17 @@ class Cake(utils.Stringable, utils.EnsureIt):
     >>> len(str(guid))
     44
     """
-    def __init__(self, s, type=None, role=None):
+    def __init__(self,
+                 s:Optional[str],
+                 data:Optional[bytes]=None,
+                 type:Optional[CakeType]=None,
+                 role:Optional[CakeRole]=None
+                 )->None:
         if type is not None:
-            self._data = s
+            if data is None or role is None:
+                raise AssertionError(f'data={data} and role={role} '
+                                     f'has to be defined')
+            self._data = data
             self.type = type
             self.role = role
         else:
@@ -396,7 +405,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
             if len(self._data) != 32:
                 raise AssertionError('invalid CAKey: %r ' % s)
 
-    def shard_num(self, base=MAX_NUM_OF_SHARDS):
+    def shard_num(self, base=MAX_NUM_OF_SHARDS)->int:
         """
         >>> Cake('0').shard_num()
         0
@@ -414,42 +423,44 @@ class Cake(utils.Stringable, utils.EnsureIt):
         else:
             return 0
 
-    def shard_name(self, base=MAX_NUM_OF_SHARDS):
+    def shard_name(self, base: int=MAX_NUM_OF_SHARDS)->str:
         return shard_name_int(self.shard_num(base))
 
     @staticmethod
-    def from_digest_and_inline_data(digest, buffer,
-                                    role=CakeRole.SYNAPSE):
+    def from_digest_and_inline_data(digest: bytes,
+                                    buffer: bytes,
+                                    role: CakeRole=CakeRole.SYNAPSE
+                                    )->'Cake':
         if buffer is not None and len(buffer) <= inline_max_bytes:
-            return Cake(buffer, type=CakeType.INLINE,
+            return Cake(None, data=buffer, type=CakeType.INLINE,
                         role=role)
         else:
-            return Cake(digest, type=CakeType.SHA256,
+            return Cake(None, data=digest, type=CakeType.SHA256,
                         role=role)
 
     @staticmethod
-    def from_stream(fd, role=CakeRole.SYNAPSE):
+    def from_stream(fd: tIO.BinaryIO,
+                    role: CakeRole=CakeRole.SYNAPSE
+                    )->'Cake':
         digest, _, inline_data = process_stream(fd)
         return Cake.from_digest_and_inline_data(digest, inline_data,
                                                 role=role)
 
     @staticmethod
-    def from_bytes(s, role=CakeRole.SYNAPSE):
-        return Cake.from_stream(BytesIO(s),
-                                role=role)
+    def from_bytes(s, role: CakeRole=CakeRole.SYNAPSE)->'Cake':
+        return Cake.from_stream(BytesIO(s), role=role)
 
     @staticmethod
-    def from_file(file, role=CakeRole.SYNAPSE):
+    def from_file(file, role:CakeRole=CakeRole.SYNAPSE)->'Cake':
         return Cake.from_stream(open(file, 'rb'), role=role)
 
     @staticmethod
-    def new_portal(role=None, type=None):
+    def new_portal(role:CakeRole=None, type:CakeType=None)->'Cake':
         if role is None:
             role = CakeRole.SYNAPSE
         if type is None:
             type = CakeType.PORTAL
-        cake = Cake(os.urandom(32), type=type,
-                    role=role)
+        cake = Cake(None, data=os.urandom(32), type=type, role=role)
         cake.assert_portal()
         return cake
 
@@ -461,7 +472,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
             role = self.role
         if type == self.type and role == self.role:
             return self
-        return Cake(self._data, type=type, role=role)
+        return Cake(None, data=self._data, type=type, role=role)
 
     def has_data(self):
         return self.type == CakeType.INLINE
@@ -947,7 +958,10 @@ class SaltedSha(utils.Stringable, utils.EnsureIt):
     SaltedSha('{SSHA}5wRHUQxypw7C4AVd4yZRW/8pXy2Gwvh/')
 
     """
-    def __init__(self, s, _digest=None, _salt=None):
+    def __init__( self,
+                  s:Optional[str],
+                  _digest: bytes=None,
+                  _salt: bytes=None)->None:
         if s is None:
             self.digest = _digest
             self.salt = _salt
