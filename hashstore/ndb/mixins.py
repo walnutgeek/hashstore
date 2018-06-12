@@ -1,5 +1,8 @@
+from typing import Any, Type
+
 from hashstore.ndb import StringCast
-from hashstore.bakery import Cake, SaltedSha, CakeRole, CakeType as KS
+from hashstore.bakery import Cake, SaltedSha, CakeRole, CakeType as KS, \
+    CakeType
 import datetime
 from sqlalchemy import Column, DateTime, String, Integer
 from sqlalchemy.ext.declarative import declared_attr
@@ -26,12 +29,15 @@ class GuidPk:
     id = Column(StringCast(Cake), primary_key=True)
 
 
-def GuidPkWithDefault(role=None, type=None):
+def GuidPkWithDefault(role:CakeRole=None, type:CakeType=None):
     class GuidPk:
         id = Column(
             StringCast(Cake), primary_key=True,
             default=lambda : Cake.new_portal(role, type))
     return GuidPk
+
+GuidPkWithSynapsePortalDefault:Any =GuidPkWithDefault(
+    CakeRole.SYNAPSE, CakeType.PORTAL)
 
 class Cdt:
     created_dt = Column(DateTime, nullable=False,

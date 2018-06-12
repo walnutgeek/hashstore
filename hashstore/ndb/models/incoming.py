@@ -1,10 +1,13 @@
+from typing import Any
+
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Integer, Column, Boolean
 from hashstore.bakery import ContentAddress
 from hashstore.ndb import StringCast
 from hashstore.ndb.mixins import ReprIt, NameIt, Cdt, Udt
 
-Base = IncomingBase = declarative_base(name='IncomingBase')
+Base:Any = declarative_base(name='IncomingBase')
+IncomingBase:Any = Base
 
 
 class Incoming(NameIt, ReprIt, Cdt, Udt, IncomingBase):

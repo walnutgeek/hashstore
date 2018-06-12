@@ -1,12 +1,15 @@
+from typing import Any
+
 from hashstore.ndb.mixins import ReprIt, NameIt, Cdt, Udt, \
-    GuidPk, Singleton, GuidPkWithDefault
+    GuidPk, Singleton, GuidPkWithSynapsePortalDefault
 from hashstore.bakery import Cake, SaltedSha, InetAddress
 from hashstore.ndb import StringCast
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Boolean, Column, String, Integer
 
-Base = ServerConfigBase = declarative_base(name='ServerConfigBase')
+Base:Any = declarative_base(name='ServerConfigBase')
+ServerConfigBase:Any = Base
 
 
 class ServerKey(Singleton, ServerConfigBase):
@@ -15,7 +18,8 @@ class ServerKey(Singleton, ServerConfigBase):
     port = Column(Integer, nullable=False)
 
 
-class UserSession(GuidPkWithDefault(), NameIt, Cdt, Udt, ReprIt, ServerConfigBase):
+class UserSession(GuidPkWithSynapsePortalDefault, NameIt, Cdt, Udt,
+                  ReprIt, ServerConfigBase):
     user = Column(StringCast(Cake), nullable=False)
     client = Column(StringCast(SaltedSha), nullable= True)
     remote_host = Column(String, nullable=True)

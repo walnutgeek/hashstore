@@ -1,6 +1,7 @@
 import enum
 
 import datetime
+from typing import Any
 
 from hashstore.bakery import ContentAddress, Cake
 from hashstore.ndb import StringCast, IntCast
@@ -12,7 +13,8 @@ from sqlalchemy import and_, Column, String, Boolean, \
 
 from hashstore.utils import JsonWrap
 
-Base = CakeShardBase = declarative_base(name='CakeShardBase')
+Base:Any = declarative_base(name='CakeShardBase')
+CakeShardBase:Any = Base
 
 
 class Event(NameIt, ReprIt, Cdt, Udt, CakeShardBase):

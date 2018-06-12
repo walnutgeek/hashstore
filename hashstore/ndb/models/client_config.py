@@ -1,10 +1,12 @@
+from typing import Any
+
 from hashstore.ndb.mixins import Cdt, Udt, ServersMixin, Singleton, \
     GuidPk, NameIt
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, String, ForeignKey, Boolean
 
-Base = ClientConfigBase = declarative_base(name='ClientConfigBase')
-
+Base:Any = declarative_base(name='ClientConfigBase')
+ClientConfigBase:Any = Base
 
 class ClientKey(Singleton, Cdt, Udt, ClientConfigBase):
     pass

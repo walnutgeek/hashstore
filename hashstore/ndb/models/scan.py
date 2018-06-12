@@ -1,3 +1,5 @@
+from typing import Any
+
 from hashstore.ndb.mixins import ReprIt, NameIt, Singleton, DirSingleton
 from hashstore.bakery import Cake, CakePath
 from hashstore.ndb import IntCast,StringCast
@@ -6,7 +8,8 @@ import enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, String, Integer
 
-Base = ScanBase = declarative_base(name='ScanBase')
+Base:Any = declarative_base(name='ScanBase')
+ScanBase:Any = Base
 
 
 class FileType(enum.Enum):

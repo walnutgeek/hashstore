@@ -17,11 +17,14 @@ configuration.
 `Server` store server network address and identity.
 
 '''
+from typing import Tuple, Set, Any
+
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy import and_, ForeignKey, Column, String
 from hashstore.ndb.mixins import ReprIt, GuidPk, Cdt, Udt, \
-    NameIt, ServersMixin, GuidPkWithDefault
+    NameIt, ServersMixin, GuidPkWithDefault, \
+    GuidPkWithSynapsePortalDefault
 from hashstore.ndb import StringCast, IntCast
 from hashstore.bakery import Cake, SaltedSha, CakeRole
 from hashstore.utils import Stringable, EnsureIt
@@ -30,7 +33,8 @@ import enum
 
 doctest=True
 
-Base = GlueBase = declarative_base(name='GlueBase')
+GlueBase: Any = declarative_base(name='GlueBase')
+Base = GlueBase
 
 
 class PermissionType(enum.Enum):
@@ -79,53 +83,40 @@ class PermissionType(enum.Enum):
         can read, write create portals and grant rights to anything
 
     '''
-    Read_ = 0
-    Read_Any_Data = 1
-    Write_Any_Data = 2
-    Edit_Portal_ = 3
-    Create_Portals = 4
-    Own_Portal_ = 5
-    Read_Any_Portal = 6
-    Admin = 42
+    Read_ = (0,())
+    Read_Any_Data = (1,())
+    Write_Any_Data = (2,('Read_Any_Data',))
+    Edit_Portal_ = (3,('Read_','Write_Any_Data'))
+    Create_Portals = (4,('Write_Any_Data',))
+    Own_Portal_ = (5,('Edit_Portal_','Write_Any_Data'))
+    Read_Any_Portal = (6,())
+    Admin = (42,('Write_Any_Data','Read_Any_Portal','Create_Portals'))
 
-    def expand(self):
+    def __init__(self, code: int, implies: Tuple[str])->None:
+        self.code = code
+        self.implies = implies
+        self.expands: Set[PermissionType] = set()
+
+    def _expand(self)->Set['PermissionType']:
         expands = set()
         expands.add(self)
-        if hasattr(self, 'expand_to'):
-            for e in self.expand_to:
-                if e not in expands:
-                    expands.update( e.expand() )
+        for n in self.implies:
+            pt = PermissionType[n]
+            if pt not in expands:
+                expands.update(pt._expand() )
         return expands
 
     def needs_cake(self):
         return self.name[-1] == '_'
 
     def info(self):
-        expands = ','.join(sorted(map(lambda e: e.name, self.expand())))
+        expands = ','.join(sorted(map(lambda e: e.name, self.expands)))
         needs_cake = 'needs_cake' if self.needs_cake() else ''
-        return "code:%d %s expands->%s" % (
-            self.value, needs_cake, expands)
+        return f'code:{self.code} {needs_cake} expands->{expands}'
 
 
-PermissionType.Write_Any_Data.expand_to = (
-    PermissionType.Read_Any_Data,
-    )
-PermissionType.Edit_Portal_.expand_to = (
-    PermissionType.Read_,
-    PermissionType.Write_Any_Data,
-    )
-PermissionType.Create_Portals.expand_to = (
-    PermissionType.Write_Any_Data,
-    )
-PermissionType.Own_Portal_.expand_to = (
-    PermissionType.Edit_Portal_,
-    PermissionType.Write_Any_Data,
-    )
-PermissionType.Admin.expand_to = (
-    PermissionType.Write_Any_Data,
-    PermissionType.Create_Portals,
-    PermissionType.Read_Any_Portal,
-    )
+for pt in PermissionType:
+    pt.expands = pt._expand()
 
 
 class UserState(enum.Enum):
@@ -140,7 +131,8 @@ class UserType(enum.Enum):
     system = 999
 
 
-class User(GuidPkWithDefault(), NameIt, Cdt, Udt, ReprIt, GlueBase):
+class User(GuidPkWithSynapsePortalDefault, NameIt, Cdt, Udt, ReprIt,
+           GlueBase):
     email = Column(String, nullable=False)
     user_state = Column(IntCast(UserState), nullable=False)
     user_type = Column(IntCast(UserType), nullable=False,
@@ -158,14 +150,16 @@ class User(GuidPkWithDefault(), NameIt, Cdt, Udt, ReprIt, GlueBase):
         return self._acls
 
 
-class Permission(GuidPkWithDefault(), NameIt, Cdt, Udt, GlueBase):
+class Permission(GuidPkWithSynapsePortalDefault, NameIt, Cdt, Udt,
+                 GlueBase):
     user_id = Column(None, ForeignKey('user.id'))
     cake = Column(StringCast(Cake), nullable=True)
-    permission_type = Column(IntCast(PermissionType), nullable=False)
+    permission_type = Column(IntCast(PermissionType,lambda pt: pt.code),
+                             nullable=False)
     user = relationship("User", back_populates="permissions")
 
     def expanded_acls(self):
-        for pt in self.permission_type.expand():
+        for pt in self.permission_type.expands:
             yield Acl(None, pt, self.cake)
 
 

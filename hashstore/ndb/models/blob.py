@@ -1,6 +1,7 @@
 import enum
 
 import datetime
+from typing import Any
 
 from hashstore.bakery import ContentAddress
 from hashstore.ndb import StringCast
@@ -8,8 +9,8 @@ from hashstore.ndb.mixins import ReprIt, NameIt, Cdt
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import LargeBinary, Column, Integer
 
-Base = BlobBase = declarative_base(name='ShardBase')
-
+Base:Any = declarative_base(name='BlobBase')
+BlobBase:Any = Base
 
 class Blob(NameIt, ReprIt, Cdt, BlobBase):
     blob_id = Column(Integer, primary_key=True, autoincrement=True)
