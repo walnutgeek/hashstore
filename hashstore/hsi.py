@@ -182,9 +182,7 @@ class ClientApp:
     def update_vtree(self, cake_path, cake=None, file=None, dir=None):
         self._check_cu_session(dir or file or '.')
         if cake is None:
-            digest, _, buff = process_stream(
-                open(file, 'rb')
-            )
+            digest, buff = process_stream(open(file, 'rb'))
             cake = Cake.from_digest_and_inline_data(digest, buff)
 
         unseen = self.remote().edit_portal_tree(

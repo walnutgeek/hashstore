@@ -2,10 +2,12 @@ import json
 
 from nose.tools import eq_,ok_,with_setup
 import sys
-from hashstore.tests import TestSetup
+from hashstore.tests import TestSetup, assert_text
 import hashstore.utils as u
 from hashstore.utils import type_required as required
 import attr
+
+from hashstore.utils.args import CommandArgs
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log
@@ -127,3 +129,30 @@ def test_implementation():
         '{"classRef": "hashstore.tests.utils_tests:Abc", '
         '"config": {"name": "n", "val": 555}}')
     eq_(u.from_json(u.Implementation, u.to_json(impl)).create(), Abc('n',555))
+
+
+def test_args():
+    ca = CommandArgs()
+    v = {}
+    @ca.app('test cli')
+    class ClientApp:
+        @ca.command('do something')
+        def do(self, test1):
+            v['do']=test1
+
+    format_help = ca.get_parser().format_help()
+    assert_text(format_help, """
+    usage: python -m nose [-h] {do} ...
+    
+    test cli
+    
+    positional arguments:
+      {do}
+        do       do something
+    
+    optional arguments:
+      -h, --help  show this help message and exit
+    """)
+
+    ca.run(ca.parse_args(('do', '--test1', 'abc')))
+    eq_(v['do'], 'abc')

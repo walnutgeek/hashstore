@@ -12,8 +12,9 @@ import base64
 from hashstore.utils.base_x import base_x
 import json
 import enum
-from typing import Union, Optional, Any
-import typing.io as tIO
+from typing import (
+    Union, Optional, Any, BinaryIO, Callable, Tuple,
+    List, Iterable, Dict)
 import logging
 from hashstore.utils import path_split_all
 from hashstore.utils.file_types import guess_name, file_types, HSB
@@ -243,14 +244,14 @@ def assert_key_structure(expected, type):
 inline_max_bytes=32
 
 
-def NOP_process_buffer(read_buffer):
+def nop_on_chunk(chunk:bytes):
     """
     Does noting
 
-    >>> NOP_process_buffer(b'')
+    >>> nop_on_chunk(b'')
 
-    :param read_buffer: take bytes
-    :return: nothing
+    :param read_buffer: takes bytes
+    :return: does nothing
     """
     pass
 
@@ -295,32 +296,34 @@ def quick_hash(data):
     return Hasher(utils.ensure_bytes(data)).digest()
 
 
-def process_stream(fd,  process_buffer=NOP_process_buffer, chunk_size=65355):
+def process_stream(fd:BinaryIO,
+                   on_chunk:Callable[[bytes], None]=nop_on_chunk,
+                   chunk_size:int=65355
+                   )->Tuple[bytes,Optional[bytes]]:
     """
     process stream to calculate hash, length of data,
     and if it is smaller then hash size, holds on to stream
     content to use it instead of hash.
     It allows
     :param fd: stream
-    :param process_buffer: function  called on every chan
+    :param on_chunk: function  called on every chan
     :return:
     """
     inline_data = bytes()
-    digest = Hasher()
+    hasher = Hasher()
     length = 0
     while True:
-        read_buffer = fd.read(chunk_size)
-        if len(read_buffer) <= 0:
+        chunk = fd.read(chunk_size)
+        if len(chunk) <= 0:
             break
-        length += len(read_buffer)
-        digest.update(read_buffer)
-        process_buffer(read_buffer)
+        length += len(chunk)
+        hasher.update(chunk)
+        on_chunk(chunk)
         if length <= inline_max_bytes:
-            inline_data += read_buffer
+            inline_data += chunk
     fd.close()
-    if length > inline_max_bytes:
-        inline_data = None
-    return digest.digest(), length, inline_data
+    return (hasher.digest(),
+            None if length > inline_max_bytes else inline_data)
 
 
 class Cake(utils.Stringable, utils.EnsureIt):
@@ -428,7 +431,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
 
     @staticmethod
     def from_digest_and_inline_data(digest: bytes,
-                                    buffer: bytes,
+                                    buffer: Optional[bytes],
                                     role: CakeRole=CakeRole.SYNAPSE
                                     )->'Cake':
         if buffer is not None and len(buffer) <= inline_max_bytes:
@@ -439,10 +442,10 @@ class Cake(utils.Stringable, utils.EnsureIt):
                         role=role)
 
     @staticmethod
-    def from_stream(fd: tIO.BinaryIO,
+    def from_stream(fd: BinaryIO,
                     role: CakeRole=CakeRole.SYNAPSE
                     )->'Cake':
-        digest, _, inline_data = process_stream(fd)
+        digest, inline_data = process_stream(fd)
         return Cake.from_digest_and_inline_data(digest, inline_data,
                                                 role=role)
 
@@ -464,7 +467,10 @@ class Cake(utils.Stringable, utils.EnsureIt):
         cake.assert_portal()
         return cake
 
-    def transform_portal(self, role=None, type=None):
+    def transform_portal(self,
+                         role:CakeRole=None,
+                         type:CakeType=None
+                         )->'Cake':
         self.assert_portal()
         if type is None:
             type = self.type
@@ -474,13 +480,13 @@ class Cake(utils.Stringable, utils.EnsureIt):
             return self
         return Cake(None, data=self._data, type=type, role=role)
 
-    def has_data(self):
+    def has_data(self)->bool:
         return self.type == CakeType.INLINE
 
-    def data(self):
+    def data(self)->Optional[bytes]:
         return self._data if self.has_data() else None
 
-    def digest(self):
+    def digest(self)->bytes:
         if not(hasattr(self, '_digest')):
             if self.has_data():
                 self._digest = quick_hash(self._data)
@@ -488,21 +494,21 @@ class Cake(utils.Stringable, utils.EnsureIt):
                 self._digest = self._data
         return self._digest
 
-    def is_resolved(self):
+    def is_resolved(self)->bool:
         return self.type == CakeType.SHA256
 
-    def is_immutable(self):
+    def is_immutable(self)->bool:
         return self.has_data() or self.is_resolved()
 
-    def is_portal(self):
+    def is_portal(self)->bool:
         type = self.type
         return is_cake_type_a_portal(type)
 
-    def assert_portal(self):
+    def assert_portal(self)->None:
         if not self.is_portal():
             raise AssertionError('has to be a portal: %r' % self)
 
-    def hash_bytes(self):
+    def hash_bytes(self)->bytes:
         """
         :raise AssertionError when Cake is not hash based
         :return: hash in bytes
@@ -512,34 +518,34 @@ class Cake(utils.Stringable, utils.EnsureIt):
                                  (self.type, self))
         return self._data
 
-    def __str__(self):
+    def __str__(self)->str:
         in_bytes = pack_in_bytes(self.type, self.role,
                                  self._data)
         return B62.encode(in_bytes)
 
-    def __repr__(self):
-        return "Cake(%r)" % self.__str__()
+    def __repr__(self)->str:
+        return f"Cake({str(self)!r})"
 
-    def __hash__(self):
+    def __hash__(self)->int:
         if not(hasattr(self, '_hash')):
             self._hash = hash(self.digest())
         return self._hash
 
-    def __eq__(self, other):
+    def __eq__(self, other)->bool:
         if not isinstance(other, Cake):
             return False
         return self._data == other._data and \
                self.type == other.type and \
                self.role == other.role
 
-    def __ne__(self, other):
+    def __ne__(self, other)->bool:
         return not self.__eq__(other)
 
 
 class HasCake(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
-    def cake(self):
+    def cake(self)->Cake:
         raise NotImplementedError('subclasses must override')
 
 
@@ -616,7 +622,6 @@ class PatchAction(Jsonable, enum.Enum):
         return str(self)
 
 
-
 class CakeRack(utils.Jsonable, HasCake):
     """
     sorted dictionary of names and corresponding Cakes
@@ -641,60 +646,55 @@ class CakeRack(utils.Jsonable, HasCake):
     >>> cakes.get_name_by_cake("2xgkyws1ZbSlXUvZRCSIrjne73Pv1kmYArYvhOrTtqkX")
     'longer'
     """
-    def __init__(self,o=None):
-        self.store = {}
+    def __init__(self,o:Any=None)->None:
+        self.store: Dict[str,Optional[Cake]] = {}
         self._clear_cached()
         if o is not None:
             self.parse(o)
 
     def _clear_cached(self):
-        self._inverse = None
-        self._cake = None
-        self._content = None
-        self._size = None
-        self._in_bytes = None
-        self._defined = None
+        self._inverse: Any = None
+        self._cake: Any = None
+        self._content: Any = None
+        self._size: Any = None
+        self._in_bytes: Any = None
+        self._defined: Any = None
 
-    def inverse(self):
+    def inverse(self)->Dict[Optional[Cake],str]:
         if self._inverse is None:
             self._inverse = {v: k for k, v in self.store.items()}
         return self._inverse
 
-    def cake(self):
+    def cake(self)->Cake:
         if self._cake is None:
-            self._build_content()
+            in_bytes = self.in_bytes()
+            self._cake = Cake.from_digest_and_inline_data(
+                quick_hash(in_bytes), in_bytes,
+                role=CakeRole.NEURON)
         return self._cake
 
-    def content(self):
+    def content(self)->str:
         if self._content is None:
-            self._build_content()
+            self._content = str(self)
         return self._content
 
-    def in_bytes(self):
-        if self._content is None:
-            self._build_content()
+    def in_bytes(self)->bytes:
+        if self._in_bytes is None:
+            self._in_bytes = utils.ensure_bytes(self.content())
         return self._in_bytes
 
-    def size(self):
+    def size(self)->int:
         if self._size is None:
-            self._build_content()
+            self._size = len(self.in_bytes())
         return self._size
 
-    def is_defined(self):
+    def is_defined(self)->bool:
         if self._defined is None:
-            self._build_content()
+            self._defined = all(
+                v is not None for v in self.store.values())
         return self._defined
 
-    def _build_content(self):
-        self._content = str(self)
-        self._defined = all(v is not None for v in self.store.values())
-        self._in_bytes = utils.ensure_bytes(self._content)
-        self._size = len(self._in_bytes)
-        self._cake = Cake.from_digest_and_inline_data(
-            quick_hash(self._in_bytes),self._in_bytes,
-            role=CakeRole.NEURON)
-
-    def parse(self, o):
+    def parse(self, o:Any)->'CakeRack':
         self._clear_cached()
         if isinstance(o, str):
             names, cakes = json.loads(o)
@@ -705,7 +705,9 @@ class CakeRack(utils.Jsonable, HasCake):
         self.store.update(zip(names, map(Cake.ensure_it_or_none, cakes)))
         return self
 
-    def merge(self, previous):
+    def merge(self,
+              previous:'CakeRack'
+              )->Iterable[Tuple[PatchAction,str,Optional[Cake]]]:
         """
         >>> o1 = Cake.from_bytes(b'The quick brown fox jumps over')
         >>> o2v1 = Cake.from_bytes(b'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.')
@@ -762,46 +764,46 @@ class CakeRack(utils.Jsonable, HasCake):
                             yield PatchAction.delete, k, None
                             yield PatchAction.update, k, v
 
-    def is_neuron(self, k):
+    def is_neuron(self, k)->Optional[bool]:
         v = self.store[k]
         return v is None or v.role == CakeRole.NEURON
 
-    def __iter__(self):
+    def __iter__(self)->Iterable[str]:
         return iter(self.keys())
 
-    def __setitem__(self, k, v):
+    def __setitem__(self, k:str, v:Union[Cake,str,None])->None:
         self._clear_cached()
         self.store[k] = Cake.ensure_it_or_none(v)
 
-    def __delitem__(self, k):
+    def __delitem__(self, k:str):
         self._clear_cached()
         del self.store[k]
 
-    def __getitem__(self, k):
+    def __getitem__(self, k:str)->Cake:
         return self.store[k]
 
-    def __len__(self):
+    def __len__(self)->int:
         return len(self.store)
 
-    def __contains__(self, k):
+    def __contains__(self, k:str)->bool:
         return k in self.store
 
-    def get_name_by_cake(self, k):
+    def get_name_by_cake(self, k:Union[Cake,str]):
         return self.inverse()[Cake.ensure_it(k)]
 
-    def keys(self):
+    def keys(self)->List[str]:
         names = list(self.store.keys())
         names.sort()
         return names
 
-    def get_cakes(self, names=None):
+    def get_cakes(self, names=None)->List[Optional[Cake]]:
         if names is None:
             names = self.keys()
         return [self.store[k] for k in names]
 
-    def to_json(self):
+    def to_json(self)->Tuple[List[str],List[Optional[Cake]]]:
         keys = self.keys()
-        return [keys, self.get_cakes(keys)]
+        return (keys, self.get_cakes(keys))
 
 
 class CakePath(utils.Stringable, utils.EnsureIt):

@@ -34,10 +34,7 @@ class IntCast(TypeDecorator):
 
     def __init__(self, values, extract_key=None, *arg, **kw):
         TypeDecorator.__init__(self, *arg, **kw)
-        if isinstance(values, KeyMapper):
-            self.mapper = values
-        else:
-            self.mapper = KeyMapper(values, extract_key=extract_key)
+        self.mapper = KeyMapper(values, extract_key=extract_key)
 
     def process_bind_param(self, value, dialect):
         return self.mapper.to_key(value)

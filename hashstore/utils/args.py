@@ -91,7 +91,7 @@ class CommandArgs:
             return fn
         return decorate
 
-    def get_parser(self, args=None, namespace=None):
+    def get_parser(self):
         self.parser = argparse.ArgumentParser(description=self.app_help)
         global_cmd = [c for c in self.commands if c.name == '__init__']
         self.parser.set_defaults(command='')
@@ -117,10 +117,13 @@ class CommandArgs:
         return self.get_parser().parse_args(args, namespace)
 
     def main(self):
-        args = self.parse_args()
+        self.run(self.parse_args())
+
+    def run(self, args):
         def extract_values(opts):
-            return {o.name : getattr(args, o.name) for o in opts}
-        constructor_args=extract_values(self.global_opts)
+            return {o.name: getattr(args, o.name) for o in opts}
+
+        constructor_args = extract_values(self.global_opts)
         instance = self.app_cls(**constructor_args)
         for c in self.commands:
             if args.command == c.name:

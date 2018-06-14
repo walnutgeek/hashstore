@@ -134,9 +134,9 @@ class FileScan(Scan):
         if stats.force_rehash or from_db is None \
                 or self.entry.modtime > from_db.modtime:
             self.stats.increment_count()
-            digest, _, inline_data = process_stream(
+            digest, inline_data = process_stream(
                 open(self.path.fs_path, 'rb'),
-                process_buffer=self.stats.count_bytes
+                on_chunk=self.stats.count_bytes
             )
             self.entry.cake = Cake.from_digest_and_inline_data(
                 digest, inline_data)
