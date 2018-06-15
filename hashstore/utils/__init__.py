@@ -1,5 +1,5 @@
 import inspect
-
+from types import ModuleType
 import os
 import json
 import sys
