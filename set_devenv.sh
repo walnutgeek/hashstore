@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 # script assume that you have miniconda3 instaled in path
 # it will create python v2 and v3 virtual environments. and install
 # dependencies in both of them
@@ -29,14 +29,15 @@ if [ "$1" == "run_all_tests" ] ; then
     coverage report -m
     coverage html
     shift
-fi
 
-for e in $targets
-do
-    if [ $(cat py${e}.status) != 0 ] ; then
-        exit 1
-    fi
-done
+    for e in $targets
+    do
+        if [ $(cat py${e}.status) != 0 ] ; then
+            echo FAILED
+            exit 1
+        fi
+    done
+fi
 
 if [ "$1" == "deploy_dev" ] ; then
     source activate py${devenv}

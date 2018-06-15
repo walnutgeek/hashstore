@@ -564,23 +564,53 @@ class GlobalRef(Stringable, EnsureIt, StrKeyMixin):
     GlobalRef('hashstore.utils:GlobalRef')
     >>> ref.get_instance().__name__
     'GlobalRef'
+    >>> ref.module_only()
+    False
+    >>> ref.get_module().__name__
+    'hashstore.utils'
     >>> GlobalRef(GlobalRef)
     GlobalRef('hashstore.utils:GlobalRef')
     >>> GlobalRef(GlobalRef).get_instance()
     <class 'hashstore.utils.GlobalRef'>
+    >>> uref = GlobalRef('hashstore.utils:')
+    >>> uref.module_only()
+    True
+    >>> uref.get_module().__name__
+    'hashstore.utils'
+    >>> uref = GlobalRef('hashstore.utils')
+    >>> uref.module_only()
+    True
+    >>> uref.get_module().__name__
+    'hashstore.utils'
     '''
-    def __init__(self, s):
-        if inspect.isclass(s) or inspect.isfunction(s):
+    def __init__(self, s: Any)->None:
+        if inspect.ismodule(s):
+            self.module,self.name = s.__name__,''
+        elif inspect.isclass(s) or inspect.isfunction(s):
             self.module, self.name = s.__module__, s.__name__
         else:
-            self.module, self.name = s.split(':')
+            split = s.split(':')
+            if len(split) == 1:
+                if not(split[0]):
+                    raise AssertionError(f'is {repr(s)} empty?')
+                split.append('')
+            elif len(split) != 2:
+                raise AssertionError(f"too many ':' in: {repr(s)}")
+            self.module, self.name = split
 
     def __str__(self):
         return '%s:%s' %(self.module, self.name)
 
+    def get_module(self)->ModuleType:
+        return __import__(self.module, fromlist=['', ])
+
+    def module_only(self)->bool:
+        return not(self.name)
+
     def get_instance(self)->Any:
-        mod = __import__(self.module, fromlist=['',])
-        return getattr(mod, self.name)
+        if self.module_only():
+            raise AssertionError(f'{repr(self)}.get_module() only')
+        return getattr(self.get_module(), self.name)
 
 
 @attr.s
