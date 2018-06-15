@@ -4,3 +4,4 @@ sniffer
 coverage
 codecov
 numpy
+mypy
