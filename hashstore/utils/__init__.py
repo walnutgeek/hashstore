@@ -213,7 +213,7 @@ class Jsonable(EnsureIt):
     '''
 
     def __str__(self):
-        return json_encoder.encode(self.to_json())
+        return json_encode(self.to_json())
 
     def __hash__(self):
         return hash(str(self))
@@ -237,7 +237,7 @@ class JsonWrap(Jsonable,Stringable):
     def __init__(self, s:str) -> None:
         self.json = json_decode(s)
 
-    def to_json(self):
+    def to_json(self)->Any:
         return self.json
 
 

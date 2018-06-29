@@ -29,8 +29,8 @@ my_mime_dict = dict(
             for cvt in [ensure_string, ensure_bytes])
 
 my_name_dict = dict(
-    (cvt(ext),ft._key_)
-    for ft in file_types.values()
+    (cvt(ext),k)
+    for k, ft in file_types.items()
         for ext in ft.ext
             for cvt in [ensure_string, ensure_bytes])
 
