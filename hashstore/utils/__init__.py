@@ -241,18 +241,26 @@ class JsonWrap(Jsonable,Stringable):
         return self.json
 
 
+def adjust_for_json(v:Any, default:Any = None)->Any:
+    if isinstance(v, (datetime, date)):
+        return v.isoformat()
+    if isinstance(v, Stringable):
+        return str(v)
+    if isinstance(v, Jsonable):
+        return v.to_json()
+    return default
+
+
 class StringableEncoder(json.JSONEncoder):
     def __init__(self):
         json.JSONEncoder.__init__(self, sort_keys=True)
 
     def default(self, o):
-        if isinstance(o, (datetime, date)):
-            return o.isoformat()
-        if isinstance(o, Stringable):
-            return str(o)
-        if isinstance(o, Jsonable):
-            return o.to_json()
-        return json.JSONEncoder.default(self,o)
+        adjusted = adjust_for_json(o)
+        if adjusted is None:
+            return json.JSONEncoder.default(self, o)
+        else:
+            return adjusted
 
 
 json_encoder = StringableEncoder()
