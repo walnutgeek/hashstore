@@ -1,44 +1,38 @@
-import abc
 import inspect
-from typing import Union, Callable, Dict, Any
+from typing import Union, Callable, Dict, Any, List, Optional
 
-import attr
-from hashstore.utils import (
-    type_optional as optional,
-    type_required as required,
-    type_list_of as list_of,
-    type_dict_of as dict_of, GlobalRef)
+from hashstore.utils import (GlobalRef)
+from hashstore.utils.smattr import SmAttr
 from hashstore.utils.time import CronExp, TimeZone
 
 
 
 
-@attr.s
-class ValueDescriptor(object):
-    name = attr.ib(**required(str))
-    type = attr.ib(**required(GlobalRef))
-    #format = attr.ib(**type_optional())
+class ValueDescriptor(SmAttr):
+    name: str
+    type:GlobalRef
+    #format:Optional
 
 
-
-@attr.s
-class Function(object):
-    ref = attr.ib(**required(GlobalRef))
-    in_vars=attr.ib(**list_of(ValueDescriptor))
-    out_vars=attr.ib(**list_of(ValueDescriptor))
+class Function(SmAttr):
+    ref: GlobalRef
+    in_vars: List[ValueDescriptor]
+    out_vars: List[ValueDescriptor]
 
     @classmethod
     def parse(cls, fn, ref=None):
         if ref is None:
             ref = GlobalRef(fn)
-        inst = cls(ref)
+        inst = cls({"ref":ref})
         return_type = fn.__annotations__['return']
         in_keys = list(fn.__annotations__.keys())[:-1]
 
         def append_only(val_descs, annotations, keys):
             for k in keys:
-                val_descs.append(ValueDescriptor(
-                    k, GlobalRef(annotations[k])))
+                val_descs.append(ValueDescriptor({
+                    "name": k,
+                    "type": GlobalRef(annotations[k])
+                }))
 
         def append_all(val_descs, annotations):
             append_only(val_descs, annotations, annotations.keys())
@@ -48,8 +42,10 @@ class Function(object):
             try:
                 append_all(inst.out_vars, return_type.__annotations__)
             except AttributeError:
-                inst.out_vars.append(ValueDescriptor(
-                    'return', GlobalRef(return_type)))
+                inst.out_vars.append(ValueDescriptor({
+                    "name": 'return',
+                    "type": GlobalRef(return_type)
+                }))
         return inst
 
 
@@ -74,13 +70,13 @@ class Task:
             raise AttributeError(f'Unknown attr: {item}')
 
 
-class ValueRef(object):
-    name = attr.ib(**optional(str))
+class ValueRef(SmAttr):
+    name:Optional[str]
 
-@attr.s
+
 class TaskVar(ValueRef):
-    task = attr.ib(**required(Task))
-    vd = attr.ib(**required(ValueDescriptor))
+    task: Task
+    vd: ValueDescriptor
     # value_ref = attr.ib(**required(default=None))
 
 
@@ -95,28 +91,26 @@ class TaskVar(ValueRef):
 #     in_vars = attr.ib(**list_of(ValueDescriptor))
 
 
-@attr.s
-class Trigger(object):
-    cron = attr.ib(**required(CronExp))
-    tz = attr.ib(**optional(TimeZone, TimeZone('UTC')))
-
-@attr.s
-class Dag(object):
-    name = attr.ib(**required(str))
-    depend_on_prev = attr.ib(**required(bool))
-    triggers = attr.ib(**list_of(Trigger))
-    tasks = attr.ib(**list_of(Task))
-    in_vars=attr.ib(**list_of(ValueDescriptor))
+class Trigger(SmAttr):
+    cron: CronExp
+    tz: Optional[TimeZone] = TimeZone('UTC')
 
 
-@attr.s
-class HashLogic(object):
-    name = attr.ib(**required(str))
-    methods = attr.ib(**list_of(Function))
+class Dag(SmAttr):
+    name: str
+    depend_on_prev: bool
+    triggers: List[Trigger]
+    tasks: List[Task]
+    in_vars: List[ValueDescriptor]
+
+
+class HashLogic(SmAttr):
+    name: str
+    methods: List[Function]
 
     @classmethod
     def from_module(cls, module):
-        logic = cls(module.__name__)
+        logic = cls({"name":module.__name__})
         for n in dir(module):
             if n[:1] != '_' :
                 fn = getattr(module, n)

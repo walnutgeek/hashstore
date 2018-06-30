@@ -1,15 +1,7 @@
 from nose.tools import eq_,ok_,with_setup
 
-from hashstore.bakery import Cake
-from hashstore.utils import to_json, from_json
 from hashstore.tests import TestSetup
 import hashstore.bakery.logic as logic
-from hashstore.utils import (
-    EnsureIt, Stringable, StrKeyMixin,
-    type_optional as optional,
-    type_required as required,
-    type_list_of as list_of,
-    type_dict_of as dict_of)
 
 import hashstore.bakery.tests.logic_test_module as plugin
 
@@ -31,7 +23,7 @@ log = test.log
 
 def test_json():
     hl = logic.HashLogic.from_module(plugin)
-    json = to_json(hl)
+    json = str(hl)
     match = \
         '{"methods": [{' \
         '"in_vars": [{"name": "n", "type": "hashstore.bakery:Cake"}, ' \
@@ -46,6 +38,6 @@ def test_json():
         '"name": "hashstore.bakery.tests.logic_test_module"}'
 
     eq_(json, match)
-    hl2 = from_json(logic.HashLogic, json)
-    eq_(to_json(hl2), match)
+    hl2 = logic.HashLogic(hl.to_json())
+    eq_(str(hl2), match)
 

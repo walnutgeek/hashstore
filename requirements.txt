@@ -1,5 +1,4 @@
 pylru
-attrs
 croniter
 pytz
 pyyaml

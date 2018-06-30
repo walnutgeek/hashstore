@@ -4,8 +4,6 @@ from nose.tools import eq_,ok_,with_setup
 import sys
 from hashstore.tests import TestSetup, assert_text
 import hashstore.utils as u
-from hashstore.utils import type_required as required
-import attr
 
 from hashstore.utils.args import CommandArgs
 from hashstore.utils.smattr import SmAttr, Implementation

@@ -8,10 +8,7 @@ import abc
 import enum
 from typing import Any
 
-import attr
-from collections import Mapping
 from datetime import date, datetime
-from dateutil.parser import parse as dt_parse
 import codecs
 
 def quict(**kwargs):
@@ -432,123 +429,6 @@ def _build_if_not_yet(cls, factory):
     return lambda v: v if issubclass(type(v), cls) else factory(v)
 
 
-def create_list_converter(cls):
-    def converter(in_list):
-        builder = _build_if_not_yet(cls, lambda v: cls(**v))
-        return [builder(v) for v in in_list]
-    return converter
-
-
-def create_dict_converter(cls):
-    def converter(in_dict):
-        def build_v(v, k):
-            v = _build_if_not_yet(cls, lambda v: cls(**v))(v)
-            return v
-        return {k: build_v(in_dict[k],k) for k in in_dict}
-    return converter
-
-
-def create_converter(cls):
-    '''
-    >>> import attr
-    >>> class X:
-    ...     def __init__(self,s):
-    ...         self.x = int(s)
-    ...
-    ...     def __repr__(self):
-    ...         return 'X(x=%d)' % self.x
-    ...
-    >>> c = create_converter(X)
-    >>> c("5")
-    X(x=5)
-    >>> @attr.s
-    ... class Y(object):
-    ...    x = attr.ib(type=X,converter=create_converter(X))
-    ...
-    >>> create_converter(Y)({'x': '3'})
-    Y(x=X(x=3))
-
-    >>> @attr.s
-    ... class Q(object):
-    ...    d = attr.ib(converter=create_converter(date))
-    ...
-
-    >>> create_converter(Q)({'d': '2018-04-23'})
-    Q(d=datetime.date(2018, 4, 23))
-
-    >>> @attr.s
-    ... class Q2(object):
-    ...    d = attr.ib(converter=create_converter(datetime))
-    ...
-
-    >>> create_converter(Q2)({'d': '2018-04-23'})
-    Q2(d=datetime.datetime(2018, 4, 23, 0, 0))
-
-    :return: converter for particular type
-    '''
-    if hasattr(cls, '__attrs_attrs__'):
-        def val_converter(v):
-            if isinstance(v, Mapping):
-                return cls(**v)
-            return v
-        return val_converter
-    elif cls is None:
-        return lambda v: v
-    else:
-        if cls is date:
-            return _build_if_not_yet(cls, lambda v: dt_parse(v).date())
-        elif cls is datetime:
-            return _build_if_not_yet(cls, lambda v: dt_parse(v))
-        else:
-            return _build_if_not_yet(cls, cls)
-
-
-def type_list_of(cls):
-    return quict(default=attr.Factory(list),
-                 converter=create_list_converter(cls))
-
-
-def type_dict_of(cls):
-    return quict(default=attr.Factory(dict),
-                 converter=create_dict_converter(cls))
-
-
-def type_required(cls=None):
-    return quict(type=cls, converter=create_converter(cls))
-
-
-def type_optional(cls=None, default=None):
-    '''
-    >>> import attr
-    >>> @attr.s
-    ... class Y(object):
-    ...    i = attr.ib(type=int)
-    ...
-    >>> @attr.s
-    ... class Z(object):
-    ...    x = attr.ib(**type_required(float))
-    ...    y = attr.ib(**type_optional(Y))
-    ...
-    >>> create_converter(Z)({'x': '3.5'})
-    Z(x=3.5, y=None)
-    >>> create_converter(Z)({'x': '3', 'y': { 'i': 5}})
-    Z(x=3.0, y=Y(i=5))
-    >>> create_converter(Z)({'x': '3', 'y': Y(5)})
-    Z(x=3.0, y=Y(i=5))
-    '''
-    return quict(
-        type=cls,
-        default=attr.Factory(lambda : default),
-        converter=attr.converters.optional(create_converter(cls))
-    )
-
-
-def to_json(o):
-    return json_encode(attr.asdict(o))
-
-
-def from_json(cls, s):
-    return create_converter(cls)(json_decode(s))
 
 
 class GlobalRef(Stringable, EnsureIt, StrKeyMixin):
