@@ -10,7 +10,7 @@ cd -
 . deactivate
 pip install sniffer
 devenv=6
-targets="6"
+targets="6 7"
 for e in $targets
 do
     conda remove -n py${e} --all -y|| echo py${e} not here, it is ok!
