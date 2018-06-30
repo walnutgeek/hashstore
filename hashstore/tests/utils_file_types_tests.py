@@ -11,6 +11,5 @@ def test_mymime():
 def test_dict():
     from hashstore.utils.file_types import file_types
     html_ = file_types["HTML"]
-    eq_(html_._key_,"HTML")
     eq_(html_.mime,'text/html')
     eq_(html_.ext,['htm', 'html'])

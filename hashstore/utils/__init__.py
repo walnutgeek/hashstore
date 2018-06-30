@@ -6,14 +6,13 @@ import sys
 import uuid
 import abc
 import enum
-from typing import Union, Callable, Type, Any
+from typing import Any
 
 import attr
 from collections import Mapping
 from datetime import date, datetime
 from dateutil.parser import parse as dt_parse
 import codecs
-
 
 def quict(**kwargs):
     r = {}
@@ -193,17 +192,6 @@ class StrKeyMixin:
 
     def __ne__(self, other):
         return not self.__eq__(other)
-
-
-class DictKey(object):
-    '''
-    Marker interface
-    ----------------
-    if there is dict, mapping name to object object content,
-    then `_key_` attribute or property in object will be set
-    to provide dict's key value.
-    '''
-    pass
 
 
 class Jsonable(EnsureIt):
@@ -455,8 +443,6 @@ def create_dict_converter(cls):
     def converter(in_dict):
         def build_v(v, k):
             v = _build_if_not_yet(cls, lambda v: cls(**v))(v)
-            if issubclass(cls, DictKey):
-                v._key_ = k
             return v
         return {k: build_v(in_dict[k],k) for k in in_dict}
     return converter
@@ -621,11 +607,5 @@ class GlobalRef(Stringable, EnsureIt, StrKeyMixin):
         return getattr(self.get_module(), self.name)
 
 
-@attr.s
-class Implementation(object):
-    classRef = attr.ib(**type_required(GlobalRef))
-    config = attr.ib(**type_optional())
 
-    def create(self):
-        return self.classRef.get_instance()(**self.config)
 

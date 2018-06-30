@@ -1,11 +1,9 @@
-import inspect
 from datetime import date, datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, NamedTuple
 
-from hashstore.bakery import Cake
 from hashstore.utils import quict, adjust_for_json, Jsonable, \
-    _build_if_not_yet
+    _build_if_not_yet, GlobalRef
 from dateutil.parser import parse as dt_parse
 
 
@@ -19,14 +17,6 @@ def get_annotations(cls, default=None):
     if hasattr(cls, '__annotations__'):
         return cls.__annotations__
     return default
-
-
-def is_smattr(cls:type):
-    '''
-    hack: needed because chicken-n-egg problem
-    need to refer `SmAttr` before it is defined
-    '''
-    return issubclass(cls, SmAttr)
 
 
 class Modifier(Enum):
@@ -65,43 +55,17 @@ class Modifier(Enum):
         return f'{self.__class__.__name__}:{self.name}'
 
 
-
-class DataType(Enum):
-    INT=quict(detect=int,)
-    FLOAT=quict(detect=float)
-    BOOLEAN=quict(detect=bool)
-    STR=quict(detect=str)
-    DATE=quict(detect=date)
-    DATETIME=quict(detect=datetime)
-    CAKE=quict(detect=Cake)
-    SM_ATTR=quict(detect=is_smattr)
-
-
-    def match_type(self,cls):
-        detector = self.value['detect']
-        if inspect.isfunction(detector):
-            return detector(cls)
-        return issubclass(detector, cls)
-
-    def __repr__(self):
-        return f'{self.__class__.__name__}:{self.name}'
-
-
 class AttrType:
-    def __init__(self, cls:type, data_type:DataType)->None:
+    def __init__(self, cls:type)->None:
         self.cls = cls
-        self.data_type = data_type
-        if self.cls is date:
+        if self.cls == Any:
+            self._from_json = lambda v:v
+        elif self.cls is date:
             self._from_json = _build_if_not_yet(self.cls, lambda v: dt_parse(v).date())
         elif self.cls is datetime:
             self._from_json = _build_if_not_yet(self.cls, lambda v: dt_parse(v))
         else:
             self._from_json = _build_if_not_yet(self.cls, self.cls)
-
-    def detect(cls:type) -> Optional['AttrType']:
-        for t in DataType: # pragma: no branch
-            if t.match_type(cls):
-                return AttrType(cls, t)
 
     def json(self, v:Any, direction:bool) -> Any:
         return self.from_json(v) if direction else self.to_json(v)
@@ -113,7 +77,7 @@ class AttrType:
         return adjust_for_json(v, v)
 
     def __repr__(self):
-        return f'AttrType(cls={self.cls}, data_type={self.data_type})'
+        return f'AttrType(cls={self.cls})'
 
 
 class AttrEntry(NamedTuple):
@@ -125,9 +89,8 @@ class AttrEntry(NamedTuple):
     @classmethod
     def build(cls, var_name, annotation_cls):
         modifier, val_cls, key_cls = Modifier.detect(annotation_cls)
-        val_type = AttrType.detect(val_cls)
-        key_type = None if key_cls is None else \
-            AttrType.detect(key_cls)
+        val_type = AttrType(val_cls)
+        key_type = None if key_cls is None else AttrType(key_cls)
         return cls(var_name, modifier, val_type, key_type)
 
     def from_json(self, v):
@@ -158,17 +121,17 @@ class SmAttr(Jsonable,metaclass=AnnotationsProcessor):
       a:Optional[X]
       x:datetime
       x:date
-
+    >>> from hashstore.bakery import Cake
     >>> class A(SmAttr):
     ...     x:int
     ...     z:bool
     ...
     >>> A.__smattr__ #doctest: +NORMALIZE_WHITESPACE
     {'x': AttrEntry(name='x', modifier=Modifier:REQUIRED,
-          val_type=AttrType(cls=<class 'int'>, data_type=DataType.INT),
+          val_type=AttrType(cls=<class 'int'>),
           key_type=None),
      'z': AttrEntry(name='z', modifier=Modifier:REQUIRED,
-          val_type=AttrType(cls=<class 'bool'>, data_type=DataType.BOOLEAN),
+          val_type=AttrType(cls=<class 'bool'>),
           key_type=None)}
     >>> A({"x":3})
     Traceback (most recent call last):
@@ -252,3 +215,9 @@ class SmAttr(Jsonable,metaclass=AnnotationsProcessor):
 
 
 
+class Implementation(SmAttr):
+    classRef:GlobalRef
+    config:Optional[Any]
+
+    def create(self):
+        return self.classRef.get_instance()(self.config)

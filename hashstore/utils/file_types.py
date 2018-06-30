@@ -1,23 +1,19 @@
 import mimetypes
-import attr
+from typing import List
 from os.path import join, dirname
-from hashstore.utils import (
-    ensure_bytes, ensure_string,
-    DictKey, load_json_file,
-    type_required as required,
-    type_list_of as list_of,
-    create_dict_converter)
+from hashstore.utils import (ensure_bytes, ensure_string,
+    load_json_file)
+from hashstore.utils.smattr import SmAttr
 
 
-@attr.s
-class FileType(DictKey):
-    mime=attr.ib(**required(str))
-    ext=attr.ib(**list_of(str))
+class FileType(SmAttr):
+    mime:str
+    ext:List[str]
 
 
 def read_file_types(json_file):
-    local = load_json_file(json_file)
-    return create_dict_converter(FileType)(local)
+    load_json = load_json_file(json_file)
+    return {n: FileType(v) for n,v in load_json.items()}
 
 
 file_types = read_file_types(join(dirname(__file__), 'file_types.json'))

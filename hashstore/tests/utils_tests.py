@@ -8,6 +8,7 @@ from hashstore.utils import type_required as required
 import attr
 
 from hashstore.utils.args import CommandArgs
+from hashstore.utils.smattr import SmAttr, Implementation
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log
@@ -117,19 +118,21 @@ def test_api():
     eq_({'error': '4'}, methods.run(a, 'error', {'x': 2}))
     eq_({'result': None}, methods.run(a, 'none', {}))
 
-@attr.s
-class Abc(object):
-    name = attr.ib(**required(str))
-    val = attr.ib(**required(int))
+
+class Abc(SmAttr):
+    name:str
+    val:str
 
 
 def test_implementation():
-    impl = u.Implementation(u.GlobalRef(Abc),{'name':'n', 'val': 555})
-    eq_(impl.create(), Abc('n',555))
-    eq_(u.to_json(impl),
+    impl = Implementation({"classRef": u.GlobalRef(Abc),
+                           "config":{'name':'n', 'val': 555}})
+    s = str(Abc({'name': 'n', 'val': 555}))
+    eq_(str(impl.create()), s)
+    eq_(str(impl),
         '{"classRef": "hashstore.tests.utils_tests:Abc", '
         '"config": {"name": "n", "val": 555}}')
-    eq_(u.from_json(u.Implementation, u.to_json(impl)).create(), Abc('n',555))
+    eq_(str(Implementation(impl.to_json()).create()), s)
 
 
 def test_args():
