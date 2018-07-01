@@ -13,7 +13,7 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda info -a
-  - for e in 6;
+  - for e in 6 7;
     do
       conda create -q -n py$e python=3.$e;
       source activate py$e;
@@ -25,7 +25,7 @@ script:
   - cd hashstore/bakery/js
   - npm run build
   - cd ../../..
-  - for e in 6;
+  - for e in 6 7;
     do
       source activate py$e;
       coverage run -p -m nose;
@@ -36,4 +36,4 @@ script:
   - coverage report -m
   - codecov
   - rm .coverage
-  - test $(cat py6.status) == 0
+  - test $(cat py6.status) == 0 && test $(cat py7.status) == 0
