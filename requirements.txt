@@ -1,7 +1,6 @@
 pylru
 croniter
 pytz
-pyyaml
 requests
 tornado
 argparse
