@@ -1,8 +1,7 @@
 import mimetypes
 from typing import List
 from os.path import join, dirname
-from hashstore.utils import (ensure_bytes, ensure_string,
-    load_json_file)
+from hashstore.utils import load_json_file
 from hashstore.utils.smattr import SmAttr
 
 
@@ -19,16 +18,14 @@ def read_file_types(json_file):
 file_types = read_file_types(join(dirname(__file__), 'file_types.json'))
 
 my_mime_dict = dict(
-    (cvt(ext),cvt(ft.mime))
+    (ext,ft.mime)
     for ft in file_types.values()
-        for ext in ft.ext
-            for cvt in [ensure_string, ensure_bytes])
+        for ext in ft.ext)
 
 my_name_dict = dict(
-    (cvt(ext),k)
+    (ext,k)
     for k, ft in file_types.items()
-        for ext in ft.ext
-            for cvt in [ensure_string, ensure_bytes])
+        for ext in ft.ext )
 
 WDF = 'WDF'
 HSB = 'HSB'

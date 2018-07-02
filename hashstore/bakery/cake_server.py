@@ -6,8 +6,6 @@ import os
 import time
 import signal
 
-import sys
-
 from hashstore.bakery.cake_store import StoreContext, GuestAccess, \
     FROM_COOKIE
 from hashstore.bakery import Content, cake_or_path, SaltedSha, \
