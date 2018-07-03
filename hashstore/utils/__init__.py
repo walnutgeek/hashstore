@@ -261,8 +261,7 @@ def json_decode(text: str):
     try:
         return json.loads(text)
     except:
-        reraise_with_msg('text={text}'
-                         ''.format(**locals()))
+        reraise_with_msg(f'text={text}')
 
 
 def read_in_chunks(fp, chunk_size=65535):

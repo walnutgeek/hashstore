@@ -46,6 +46,8 @@ def guess_name(filename):
     'BINARY'
     >>> guess_name('abc.html')
     'HTML'
+    >>> guess_name('abc.exe')
+    'BINARY'
 
     :param filename: file path
     :return: name from `file_types`
@@ -74,6 +76,8 @@ def guess_type(filename):
     >>> guess_type('.wdf')
     >>> guess_type('abc.html')
     'text/html'
+    >>> guess_type('abc.exe')
+    'application/x-msdownload'
 
     :param filename: file path
     :return: mime type

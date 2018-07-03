@@ -183,7 +183,14 @@ class SmAttr(Jsonable,metaclass=AnnotationsProcessor):
     '{"aa": [{"x": 777, "z": null}, {"x": 3, "z": null}],
     "dt": {"2018-06-30T16:18:27.267515": {"x": 747, "z": false}},
     "x": "3X8X3D7svYk0rD1ncTDRTnJ81538A6ZdSPcJVsptDNYt"}'
-
+    >>> class O(SmAttr):
+    ...     x:int
+    ...     z:bool = False
+    ...
+    >>> str(O({"x":5}))
+    '{"x": 5, "z": false}'
+    >>> str(O({"x":5, "z": True}))
+    '{"x": 5, "z": true}'
     """
 
     def __init__(self, values:Optional[Dict[str, Any]] = None)->None:
@@ -191,6 +198,11 @@ class SmAttr(Jsonable,metaclass=AnnotationsProcessor):
             values = {}
         else:
             values = {k:v for k,v in values.items() if v is not None}
+        #add defaults
+        cls = self.__class__
+        for attr_name in self.__smattr__:
+            if attr_name not in values and hasattr(cls, attr_name):
+                values[attr_name]=getattr(cls, attr_name)
         # sort out error conditions
         missing = set(
             ae.name for ae in self.__smattr__.values()

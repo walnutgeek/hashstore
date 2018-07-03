@@ -7,7 +7,7 @@ def py_files(filename):
     return filename.endswith('.py') or filename.endswith('.yaml') or filename.endswith('.rst')
 
 
-run_envs = ['py6']
+run_envs = ['py6', 'py7']
 
 env_template = '. activate %s; coverage run -p -m nose %s'
 

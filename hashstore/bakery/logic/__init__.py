@@ -80,20 +80,17 @@ class TaskVar(ValueRef):
     # value_ref = attr.ib(**required(default=None))
 
 
-
-
-# @attr.s
-# class Task(object):
-#     name = attr.ib(**required(str))
-#     method_name = attr.ib(**required(str))
-#     depend_on_tasks = attr.ib(**list_of(str))
-#     dag_vars = attr.ib(**list_of(ValueDescriptor))
-#     in_vars = attr.ib(**list_of(ValueDescriptor))
+# class Task(SmAttr):
+#     name: str
+#     method_name: str
+#     depend_on_tasks:List[str]
+#     dag_vars :List[ValueDescriptor]
+#     in_vars :List[ValueDescriptor]
 
 
 class Trigger(SmAttr):
     cron: CronExp
-    tz: Optional[TimeZone] = TimeZone('UTC')
+    tz: TimeZone = TimeZone('UTC')
 
 
 class Dag(SmAttr):
