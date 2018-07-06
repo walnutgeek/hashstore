@@ -6,8 +6,6 @@ from hashstore.utils.smattr import SmAttr
 from hashstore.utils.time import CronExp, TimeZone
 
 
-
-
 class ValueDescriptor(SmAttr):
     name: str
     type:GlobalRef

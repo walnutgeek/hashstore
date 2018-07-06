@@ -2,7 +2,7 @@ from hashstore.utils import ensure_string, failback, read_in_chunks, \
     reraise_with_msg, ensure_directory, utf8_reader
 from hashstore.utils.ignore_file import ignore_files, \
     parse_ignore_specs, check_if_path_should_be_ignored
-from hashstore.bakery import Cake, process_stream, CakeRack, CakeRole, \
+from hashstore.bakery import Cake, process_stream, CakeRack, \
     CakePath
 from hashstore.ndb.models.scan import ScanBase, DirEntry, DirKey, \
     FileType
@@ -58,7 +58,7 @@ class CakeEntries:
 
     def directory_usage(self):
         if not(self.dbf.exists()):
-            raise ValueError('%r was not scanned' % self.path)
+            raise ValueError(f'{self.path} was not scanned')
         with self.dbf.session_scope() as session:
             return session.query(DirEntry)\
                 .order_by(desc(DirEntry.size), DirEntry.name).all()
@@ -79,7 +79,7 @@ class CakeEntries:
         except:
             from traceback import print_exc
             print_exc()
-            log.warning('cannot store: ' + self.dbf.path)
+            log.warning(f'cannot store: {self.dbf.path}')
 
 
 class ScanPath:
@@ -189,7 +189,7 @@ class DirScan(Scan):
                                      old_db_entries.get(f, None),
                                      self.stats)
             except (OSError,IOError):
-                log.warning('cannot read: %s/%s', self.path, f)
+                log.warning(f'cannot read: {self.path}/{f}')
             else:
                 child_entries.append(entry)
 
@@ -208,7 +208,7 @@ class DirScan(Scan):
 
         self.path.cake_entries().store_entries(self.new_db_entries)
 
-        log.debug('{self.path} -> {self.entry.cake}'.format(**locals()))
+        log.debug(f'{self.path} -> {self.entry.cake}')
 
         if on_each_dir:
             on_each_dir(self)
@@ -234,7 +234,7 @@ class Progress:
             directory = directory[:look(look(look(0)))]
         except:
             pass
-        output = '%s %s ' % (self.pct_value(), directory)
+        output = f'{self.pct_value()} {directory}'
         if self._value != output:
             self._value = output
             diff = self.pad_to - len(output)

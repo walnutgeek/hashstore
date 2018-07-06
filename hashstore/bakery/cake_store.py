@@ -697,16 +697,18 @@ class CakeStore:
             skey.external_ip = external_ip
             srv_session.merge(skey)
         with self.glue_db.session_scope() as glue_session:
-            make_user = lambda n: User(email='%s@' % n,
-                                       user_type=UserType[n],
-                                       user_state=UserState.active,
-                                       passwd=SaltedSha.from_secret('*'),
-                                       full_name='%s user' % n)
+            make_system_user = lambda n: User(
+                email=f'{n}@' ,
+                user_type=UserType[n],
+                user_state=UserState.active,
+                passwd=SaltedSha.from_secret('*'),
+                full_name=f'{n} user'
+            )
             #ensure guest
             guest = dal.query_users_by_type(
                 glue_session,UserType.guest).one_or_none()
             if guest is None:
-                guest = make_user('guest')
+                guest = make_system_user('guest')
                 glue_session.add(guest)
                 glue_session.flush()
                 index_portal = guest.id.transform_portal(
@@ -719,7 +721,7 @@ class CakeStore:
             system = dal.query_users_by_type(
                 glue_session, UserType.system).one_or_none()
             if system is None:
-                system = make_user('system')
+                system = make_system_user('system')
                 glue_session.add(system)
                 glue_session.add(
                     Permission(permission_type=PT.Admin,

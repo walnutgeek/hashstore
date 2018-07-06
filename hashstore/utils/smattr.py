@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, NamedTuple
+from typing import Any, Dict, List, Optional, NamedTuple, get_type_hints
 
 from hashstore.utils import quict, adjust_for_json, Jsonable, \
     _build_if_not_yet, GlobalRef
@@ -10,12 +10,6 @@ from dateutil.parser import parse as dt_parse
 def get_args(cls, default=None):
     if hasattr(cls, '__args__'):
         return cls.__args__
-    return default
-
-
-def get_annotations(cls, default=None):
-    if hasattr(cls, '__annotations__'):
-        return cls.__annotations__
     return default
 
 
@@ -109,7 +103,7 @@ class AnnotationsProcessor(type):
     def __init__(cls, name, bases, dct):
         cls.__smattr__ = {var_name: AttrEntry.build(var_name, var_cls)
                           for var_name, var_cls in
-                          get_annotations(cls,{}).items()}
+                          get_type_hints(cls).items()}
 
 
 class SmAttr(Jsonable,metaclass=AnnotationsProcessor):
@@ -191,6 +185,11 @@ class SmAttr(Jsonable,metaclass=AnnotationsProcessor):
     '{"x": 5, "z": false}'
     >>> str(O({"x":5, "z": True}))
     '{"x": 5, "z": true}'
+    >>> class P(O):
+    ...    a: float
+    ...
+    >>> str(P({'x':5,'a':1.03e-5}))
+    '{"a": 1.03e-05, "x": 5, "z": false}'
     """
 
     def __init__(self, values:Optional[Dict[str, Any]] = None)->None:

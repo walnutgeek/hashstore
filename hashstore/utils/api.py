@@ -59,10 +59,6 @@ class ApiCallRegistry:
     def __init__(self):
         self.calls = {}
 
-    def get_calls_by_type(self, call_type):
-        return [self.calls[n] for n in self.calls
-                if self.calls[n].call_type == call_type]
-
     def query(self):
         return self.call(call_type=ApiCallType.query)
 

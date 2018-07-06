@@ -14,7 +14,6 @@ IGNORE_SPECS = ('.gitignore', '.ignore')
 IGNORE_FILENAMES = ('.svn', '.git', '.DS_Store', '.vol',
                     '.hotfiles.btree', '.ssh')
 
-
 IGNORE_IF_STARTS_WITH = ('.shamo',  '.cake', '.backup',
                          '.Spotlight', '._', '.Trash')
 
@@ -28,9 +27,11 @@ def pick_ignore_specs(n):
     '''
     return n in IGNORE_SPECS
 
+
 def ignore_files(n):
     return not(n in IGNORE_FILENAMES or
                any(n.startswith(t) for t in IGNORE_IF_STARTS_WITH))
+
 
 class IgnoreEntry:
     '''

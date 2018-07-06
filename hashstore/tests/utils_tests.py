@@ -47,20 +47,24 @@ def test_split_all():
 read_count = 0
 
 def test_reraise():
-    for i in range(2):
-        try:
+    for e_type in range(2):
+        for i in range(2):
             try:
-                raise ValueError("hello")
+                try:
+                    if e_type == 0 :
+                        raise ValueError("EOF")
+                    else:
+                        eval('hello(')
+                except:
+                    if i == 0 :
+                        u.reraise_with_msg('bye')
+                    else:
+                        u.reraise_with_msg('bye', sys.exc_info()[1])
             except:
-                if i == 0 :
-                    u.reraise_with_msg('bye')
-                else:
-                    u.reraise_with_msg('bye', sys.exc_info()[1])
-        except:
-            e = sys.exc_info()[1]
-            msg = u.exception_message(e)
-            ok_('hello' in msg)
-            ok_('bye' in msg)
+                e = sys.exc_info()[1]
+                msg = u.exception_message(e)
+                ok_('EOF' in msg)
+                ok_('bye' in msg)
 
 
 def test_json_encoder_force_default_call():

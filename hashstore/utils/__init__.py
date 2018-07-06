@@ -144,7 +144,7 @@ class StrKeyMixin:
     mixin for immutable objects to implement
     `__hash__()`, `__eq__()`, `__ne__()`.
 
-    Implementation of methods expect super calss to implement
+    Implementation of methods expect super class to implement
     `__str__()` and object itself to be immutable (`str(obj)`
     expected to return same value thru the life of object)
 
@@ -426,8 +426,6 @@ def normalize_url(url):
 
 def _build_if_not_yet(cls, factory):
     return lambda v: v if issubclass(type(v), cls) else factory(v)
-
-
 
 
 class GlobalRef(Stringable, EnsureIt, StrKeyMixin):
