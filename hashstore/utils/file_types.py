@@ -77,7 +77,7 @@ def guess_type(filename):
     >>> guess_type('abc.html')
     'text/html'
     >>> guess_type('abc.exe')
-    'application/x-msdownload'
+    'application/x-msdos-program'
 
     :param filename: file path
     :return: mime type
