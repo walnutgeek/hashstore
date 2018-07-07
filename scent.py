@@ -1,25 +1,34 @@
 import os
 
-from sniffer.api import *
+from sniffer.api import file_validator, runnable
+
 
 @file_validator
 def py_files(filename):
-    return filename.endswith('.py') or filename.endswith('.yaml') or filename.endswith('.rst')
+    return filename.endswith('.py') or filename.endswith(
+        '.yaml') or filename.endswith('.rst')
 
 
 run_envs = ['py6', 'py7']
 
-env_template = '. activate %s; coverage run -p -m nose %s'
-
-combine_cmd = '. activate py6; coverage combine; coverage report -m; {html} rm .coverage'
-
 
 def run(case, envs=run_envs, html=False):
     html = 'coverage html;' if html else ''
-    env_states = [0 == os.system(env_template % (e, case)) for e in envs]
-    print(dict(zip(run_envs,env_states)))
-    os.system(combine_cmd.format(**locals()))
-    return all(env_states)
+    env_states = [
+        0 == os.system(
+            f'. activate {e}; coverage run -p -m nose {case}')
+        for e in envs
+    ]
+    print(dict(zip(run_envs, env_states)))
+    mypy = 0 == os.system(
+        f'. activate {run_envs[0]}; mypy -m hashstore.hsi '
+        f'-m hashstore.hsd --ignore-missing-imports'
+    )
+    os.system(
+        f'. activate {run_envs[0]}; coverage combine; '
+        f'coverage report -m; {html} rm .coverage')
+    return all(env_states) and mypy
+
 
 @runnable
 def execute_one_test(*args):

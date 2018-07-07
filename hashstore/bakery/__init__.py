@@ -779,7 +779,7 @@ class CakeRack(utils.Jsonable, HasCake):
         self._clear_cached()
         del self.store[k]
 
-    def __getitem__(self, k:str)->Cake:
+    def __getitem__(self, k:str)->Optional[Cake]:
         return self.store[k]
 
     def __len__(self)->int:

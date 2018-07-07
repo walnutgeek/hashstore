@@ -1,6 +1,9 @@
 from datetime import date, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, NamedTuple, get_type_hints
+from typing import (
+    Any, Dict, List, Optional, NamedTuple,
+    get_type_hints, ClassVar
+)
 
 from hashstore.utils import quict, adjust_for_json, Jsonable, \
     _build_if_not_yet, GlobalRef
@@ -18,13 +21,13 @@ class Modifier(Enum):
                    new_v=lambda ae, in_v, direction: ae.val_type.json(
                        in_v,direction),
                    default=lambda: None, idx=[0,None])
-    LIST=quict(detect=lambda cls,args: cls == List[args[0]],
+    LIST=quict(detect=lambda cls,args: cls == List[args[0]], # type: ignore
                new_v=lambda ae, in_v, direction: [
                    ae.val_type.json(v,direction) for v in in_v],
                default=lambda:[], idx=[0,None])
-    DICT=quict(detect=lambda cls,args: cls == Dict[args[0],args[1]],
+    DICT=quict(detect=lambda cls,args: cls == Dict[args[0],args[1]], # type: ignore
                new_v=lambda ae, in_v, direction: {
-                   ae.key_type.json(k,direction): ae.val_type.from_json(v)
+                   ae.key_type.json(k,direction): ae.val_type.json(v,direction)
                    for k, v in in_v.items()},
                default=lambda: {}, idx=[1,0])
     REQUIRED=quict(new_v=lambda ae, in_v, direction: ae.val_type.json(
@@ -100,13 +103,15 @@ class AttrEntry(NamedTuple):
 
 
 class AnnotationsProcessor(type):
+
     def __init__(cls, name, bases, dct):
-        cls.__smattr__ = {var_name: AttrEntry.build(var_name, var_cls)
-                          for var_name, var_cls in
-                          get_type_hints(cls).items()}
+        cls.__smattr__: Dict[str,AttrEntry] = {
+            var_name: AttrEntry.build(var_name, var_cls)
+            for var_name, var_cls in get_type_hints(cls).items()
+        }
 
 
-class SmAttr(Jsonable,metaclass=AnnotationsProcessor):
+class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
     """
     Mixin - supports annotations:
       a:X
@@ -198,22 +203,23 @@ class SmAttr(Jsonable,metaclass=AnnotationsProcessor):
         else:
             values = {k:v for k,v in values.items() if v is not None}
         #add defaults
-        cls = self.__class__
-        for attr_name in self.__smattr__:
+        cls:AnnotationsProcessor = self.__class__ # type: ignore
+        smattrs:Dict[str, AttrEntry] = cls.__smattr__
+        for attr_name in smattrs:
             if attr_name not in values and hasattr(cls, attr_name):
                 values[attr_name]=getattr(cls, attr_name)
         # sort out error conditions
         missing = set(
-            ae.name for ae in self.__smattr__.values()
+            ae.name for ae in smattrs.values()
             if ae.modifier == Modifier.REQUIRED
         ) - values.keys()
         if len(missing) > 0 :
             raise AttributeError(f'Required : {missing}')
-        not_known = set(values.keys()) - set(self.__smattr__.keys())
+        not_known = set(values.keys()) - set(smattrs.keys())
         if len(not_known) > 0 :
             raise AttributeError(f'Not known: {not_known}')
         # populate attributes
-        for attr_name, attr_entry in self.__smattr__.items():
+        for attr_name, attr_entry in smattrs.items():
             v = values.get(attr_name, None)
             setattr(self, attr_name, attr_entry.from_json(v))
 

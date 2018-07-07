@@ -197,6 +197,9 @@ class Jsonable(EnsureIt):
     serialize in json
     '''
 
+    def to_json(self):
+        raise AssertionError('need to be implemented')
+
     def __str__(self):
         return json_encode(self.to_json())
 

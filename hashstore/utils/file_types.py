@@ -76,7 +76,7 @@ def guess_type(filename):
     >>> guess_type('.wdf')
     >>> guess_type('abc.html')
     'text/html'
-    >>> guess_type('abc.bmp') in ('image/x-ms-bmp','image/bmp')
+    >>> guess_type('abc.bmp') in ('image/x-ms-bmp', 'image/bmp')
     True
 
     :param filename: file path
