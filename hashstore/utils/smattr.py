@@ -1,9 +1,6 @@
 from datetime import date, datetime
 from enum import Enum
-from typing import (
-    Any, Dict, List, Optional, NamedTuple,
-    get_type_hints, ClassVar
-)
+from typing import (Any, Dict, List, Optional, get_type_hints)
 
 from hashstore.utils import quict, adjust_for_json, Jsonable, \
     _build_if_not_yet, GlobalRef
@@ -16,37 +13,28 @@ def get_args(cls, default=None):
     return default
 
 
-class Modifier(Enum):
-    OPTIONAL=quict(detect=lambda cls,args: cls == Optional[args[0]],
-                   new_v=lambda ae, in_v, direction: ae.val_type.json(
-                       in_v,direction),
-                   default=lambda: None, idx=[0,None])
-    LIST=quict(detect=lambda cls,args: cls == List[args[0]], # type: ignore
-               new_v=lambda ae, in_v, direction: [
-                   ae.val_type.json(v,direction) for v in in_v],
-               default=lambda:[], idx=[0,None])
-    DICT=quict(detect=lambda cls,args: cls == Dict[args[0],args[1]], # type: ignore
-               new_v=lambda ae, in_v, direction: {
-                   ae.key_type.json(k,direction): ae.val_type.json(v,direction)
-                   for k, v in in_v.items()},
-               default=lambda: {}, idx=[1,0])
-    REQUIRED=quict(new_v=lambda ae, in_v, direction: ae.val_type.json(
-                       in_v,direction))
+def convert_value(attr_entry:'AttrEntry', v:Any,
+                  direction:bool)->Any:
+    return attr_entry.val_type.json(v, direction)
 
-    @classmethod
-    def detect(cls, detect_it):
-        """
-        :param detect_it:
-        :return: modifier, value_class, key_class
-        """
-        args = get_args(detect_it)
-        if args is None or len(args) == 0:
-            return (cls.REQUIRED , detect_it, None )
-        for mod in cls: # pragma: no branch
-            if mod.value['detect'](detect_it, args):
-                val_cls, key_cls = [ None if i is None else args[i]
-                                     for i in mod.value['idx']]
-                return (mod, val_cls, key_cls)
+
+def convert_list(attr_entry:'AttrEntry', in_v:Any,
+                 direction:bool)->List[Any]:
+    return [convert_value(attr_entry,v,direction) for v in in_v]
+
+
+def convert_dict(attr_entry:'AttrEntry', in_v:Any,
+                 direction:bool)->Dict[Any,Any]:
+    return {attr_entry.key_type.json(k,direction):
+                attr_entry.val_type.json(v,direction)
+            for k,v in in_v.items()}
+
+
+class Modifier(Enum):
+    OPTIONAL=quict(convert=convert_value, default=lambda: None)
+    LIST=quict(convert=convert_list, default=lambda:[])
+    DICT=quict(convert=convert_dict, default=lambda:{})
+    REQUIRED=quict(convert=convert_value)
 
     def __repr__(self):
         return f'{self.__class__.__name__}:{self.name}'
@@ -77,29 +65,46 @@ class AttrType:
         return f'AttrType(cls={self.cls})'
 
 
-class AttrEntry(NamedTuple):
-    name:str
-    modifier:Modifier
-    val_type:AttrType
-    key_type:Optional[AttrType]
+class AttrEntry:
+    def __init__(self, name, modifier, val_cls, key_cls=None):
+        self.name = name
+        self.modifier = modifier
+        self.key_type = self.val_type = AttrType(val_cls)
+        if key_cls is not None:
+            self.key_type = AttrType(key_cls)
 
     @classmethod
     def build(cls, var_name, annotation_cls):
-        modifier, val_cls, key_cls = Modifier.detect(annotation_cls)
-        val_type = AttrType(val_cls)
-        key_type = None if key_cls is None else AttrType(key_cls)
-        return cls(var_name, modifier, val_type, key_type)
+        args = get_args(annotation_cls,[])
+        if len(args) == 0:
+            return cls(var_name, Modifier.REQUIRED, annotation_cls)
+        elif Optional[args[0]] == annotation_cls:
+            return cls(var_name, Modifier.OPTIONAL, args[0])
+        elif List[args[0]] == annotation_cls:
+            return cls(var_name, Modifier.LIST, args[0])
+        elif Dict[args[0],args[1]] == annotation_cls:
+            return cls(var_name, Modifier.DICT, args[1], args[0])
+        else:
+            raise AssertionError(
+                f'Unknown annotation: {var_name}:{annotation_cls}')
 
     def from_json(self, v):
         if v is None:
             return self.modifier.value['default']()
         else:
-            return self.modifier.value['new_v'](self, v, True)
+            return self.modifier.value['convert'](self, v, True)
 
     def to_json(self, o):
         v = getattr(o, self.name)
-        return None if v is None else self.modifier.value['new_v'](
+        return None if v is None else self.modifier.value['convert'](
             self, v, False)
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(' \
+               f'name={repr(self.name)}, ' \
+               f'modifier={repr(self.modifier)}, ' \
+               f'val_type={repr(self.val_type)}, ' \
+               f'key_type={repr(self.key_type)})'
 
 
 class AnnotationsProcessor(type):
@@ -128,10 +133,10 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
     >>> A.__smattr__ #doctest: +NORMALIZE_WHITESPACE
     {'x': AttrEntry(name='x', modifier=Modifier:REQUIRED,
           val_type=AttrType(cls=<class 'int'>),
-          key_type=None),
+          key_type=AttrType(cls=<class 'int'>)),
      'z': AttrEntry(name='z', modifier=Modifier:REQUIRED,
           val_type=AttrType(cls=<class 'bool'>),
-          key_type=None)}
+          key_type=AttrType(cls=<class 'bool'>))}
     >>> A({"x":3})
     Traceback (most recent call last):
     ...
@@ -228,8 +233,6 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
             attr_name: attr_entry.to_json(self)
             for attr_name, attr_entry in self.__smattr__.items()
         }
-
-
 
 
 class Implementation(SmAttr):
