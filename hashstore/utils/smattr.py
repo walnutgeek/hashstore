@@ -8,6 +8,8 @@ from hashstore.utils import (adjust_for_json, Jsonable,
                              json_encode)
 from dateutil.parser import parse as dt_parse
 
+__ATTRS__ = "__attrs__"
+
 
 def get_args(cls, default=None):
     if hasattr(cls, '__args__'):
@@ -112,7 +114,6 @@ class ListTyping(Typing):
         return []
 
 
-
 class AttrEntry(EnsureIt,Stringable):
     """
     >>> AttrEntry('x:Required[hashstore.bakery:Cake]')
@@ -210,8 +211,8 @@ class Mold(Jsonable):
         self.attrs: Dict[str, AttrEntry] = {}
         if o is not None:
             if isinstance(o, dict):
-                if len(o) == 1 and '__attrs__' in o :
-                    json_attrs = o['__attrs__']
+                if len(o) == 1 and __ATTRS__ in o :
+                    json_attrs = o[__ATTRS__]
                     if isinstance(json_attrs, list):
                         try:
                             self.attrs.update({
@@ -238,7 +239,6 @@ class Mold(Jsonable):
                 if def_v is not None:
                     self.attrs[k].default = def_v
 
-
     def get_defaults_from_cls(self, cls):
         return {
             attr_name: getattr(cls, attr_name)
@@ -257,7 +257,7 @@ class Mold(Jsonable):
         self.attrs[entry.name] = entry
 
     def to_json(self):
-        return {"__attrs__": [str(ae) for k, ae in self.attrs.items()]}
+        return {__ATTRS__: [str(ae) for k, ae in self.attrs.items()]}
 
     def check_overlaps(self, values):
         # sort out error conditions
@@ -272,15 +272,16 @@ class Mold(Jsonable):
         if len(not_known) > 0:
             raise AttributeError(f'Not known: {not_known}')
 
-    def populate_attrs(self, values, target):
-        # populate attributes
-        for attr_name, attr_entry in self.attrs.items():
-            v = values.get(attr_name, None)
-            setattr(target, attr_name, attr_entry.from_json(v))
-
-    def mold_it(self, values, it):
+    def mold_dict(self, values):
         self.check_overlaps(values)
-        self.populate_attrs(values, it)
+        return {
+            attr_name:
+                attr_entry.from_json(values.get(attr_name, None))
+            for attr_name, attr_entry in self.attrs.items()}
+
+    def mold_attrs(self, values, target):
+        for k, v in self.mold_dict(values).items():
+            setattr(target, k, v)
 
 
 class AnnotationsProcessor(type):
@@ -387,7 +388,7 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
         if _vals_ is None:
             _vals_ = dict(kwargs)
         values = {k: v for k, v in _vals_.items() if v is not None}
-        type(self).__mold__.mold_it(values, self)
+        type(self).__mold__.mold_attrs(values, self)
 
     def to_json(self):
         return {
