@@ -1,71 +1,124 @@
 import inspect
-from typing import Union, Callable, Dict, Any, List, Optional
+from typing import Union, Callable, Dict, Any, List, Optional, \
+    get_type_hints
 
-from hashstore.utils import (GlobalRef)
-from hashstore.utils.smattr import SmAttr
+from hashstore.utils import GlobalRef
+from hashstore.utils.smattr import SmAttr, Mold, AttrEntry, \
+    typing_factory
 from hashstore.utils.time import CronExp, TimeZone
 
 
-class ValueDescriptor(SmAttr):
-    name: str
-    type:GlobalRef
-    #format:Optional
+class DagVariable(object):
+    def __init__(self, typing,
+                 _path_:Optional[List[str]]=None,
+                 _wired_:Optional['DagVariable']=None
+                 )->None:
+        self.typing = typing_factory(typing)
+        self.path = _path_
+        self.wired = _wired_
 
 
 class Function(SmAttr):
     ref: GlobalRef
-    in_vars: List[ValueDescriptor]
-    out_vars: List[ValueDescriptor]
+    in_mold: Mold
+    out_mold: Mold
 
     @classmethod
     def parse(cls, fn, ref=None):
         if ref is None:
             ref = GlobalRef(fn)
-        inst = cls({"ref":ref})
-        return_type = fn.__annotations__['return']
-        in_keys = list(fn.__annotations__.keys())[:-1]
-
-        def append_only(val_descs, annotations, keys):
-            for k in keys:
-                val_descs.append(ValueDescriptor({
-                    "name": k,
-                    "type": GlobalRef(annotations[k])
-                }))
-
-        def append_all(val_descs, annotations):
-            append_only(val_descs, annotations, annotations.keys())
-
-        append_only(inst.in_vars, fn.__annotations__, in_keys)
+        annotations=dict(get_type_hints(fn))
+        return_type = annotations['return']
+        del annotations['return']
+        in_mold = Mold(annotations)
+        in_mold.set_defaults(in_mold.get_defaults_from_fn(fn))
+        out_mold = Mold()
         if return_type is not None:
-            try:
-                append_all(inst.out_vars, return_type.__annotations__)
-            except AttributeError:
-                inst.out_vars.append(ValueDescriptor({
-                    "name": 'return',
-                    "type": GlobalRef(return_type)
-                }))
-        return inst
+            out_hints = get_type_hints(return_type)
+            if len(out_hints) > 0:
+                out_mold.add_hints(out_hints)
+            else:
+                out_mold.add_entry(AttrEntry("return", return_type))
+        return cls({"ref":ref, "in_mold":in_mold, "out_mold":out_mold})
+
+
+class DagVarMold:
+    def __init__(self,
+                 mold: Mold,
+                 path: List[str],
+                 variables: List[DagVariable]
+                 )->None:
+        for k,attr in mold.attrs.items():
+            variable = DagVariable(attr, [*path, k])
+            variables.append(variable)
+            setattr(self, k, variable)
+
+    def __getattr__(self, k:str)->DagVariable: ...
 
 
 class Task:
     def __init__(self,
-                 fn: Union[Function,Callable],
-                 **in_vars_values: Dict[str,Any]) -> None:
-        self.fn = fn if isinstance(fn, Function) else Function.parse(fn)
-        self.out_taskvars = {
-            vd.name: TaskVar(self,vd)
-            for vd in self.fn.out_vars
-        }
-        self.in_taskvars = {
-            vd.name: TaskVar(self, vd, in_vars_values[vd.name])
-            for vd in self.fn.in_vars
-        }
+                 _fn_: Union[Function,Callable],
+                 _name_: Optional[str] = None,
+                 **in_vars_values) -> None:
+        self.name = _name_
+        self.fn = _fn_ if isinstance(_fn_, Function) else Function.parse(_fn_)
+        self.variables:List[DagVariable] = []
+        self.output = DagVarMold(
+            self.fn.out_mold, ['output'], self.variables)
+        self.input = DagVarMold(
+            self.fn.in_mold, ['input'], self.variables)
+        for k ,v in in_vars_values.items():
+            if v is None:
+                raise AssertionError(f'{k}={v}')
+            else:
+                getattr(self.input, k).wired = v
 
-    def __getattr__(self, item):
-        if item in self.out_taskvars:
-            return self.out_taskvars[item]
-        else:
-            raise AttributeError(f'Unknown attr: {item}')
+    def validate(self, unresolved_variables):
+        for var in self.variables:
+            var.path.insert(0,self.name)
+            if var.path[1] == 'input':
+                if var.wired is None:
+                    unresolved_variables.append(var)
+
+    # def __getattr__(self, item):
+    #     if item in self.out_taskvars:
+    #         return self.out_taskvars[item]
+    #     else:
+    #         raise AttributeError(f'Unknown attr: {item}')
+
+
+class DagInitializer(type):
+    def __init__(cls, name, bases, dct):
+        tasks = []
+        variables = []
+        for k, v in dct.items():
+            if isinstance(v, Task):
+                v.name = k
+                tasks.append(v)
+            if isinstance(v, DagVariable):
+                v.name = k
+                variables.append(v)
+
+        if '_tasks_' in dct:
+            for task in dct['_tasks_']:
+                if task.name is None:
+                    raise AssertionError(
+                        f'task.name undefined: {task}')
+                dict[task.name] = task
+                tasks.append(task)
+        unresolved_variables = []
+        for task in tasks:
+            task.validate(unresolved_variables)
+            variables.extend(task.variables)
+        if len(unresolved_variables):
+            raise AssertionError(f'{unresolved_variables}')
+        dct['_tasks_'] = tasks
+        dct['_variables_'] = variables
+
+
+class Dag(metaclass=DagInitializer):
+    pass
 
 
 class ValueRef(SmAttr):
@@ -74,7 +127,7 @@ class ValueRef(SmAttr):
 
 class TaskVar(ValueRef):
     task: Task
-    vd: ValueDescriptor
+    # vd: ValueDescriptor
     # value_ref = attr.ib(**required(default=None))
 
 
@@ -86,17 +139,21 @@ class TaskVar(ValueRef):
 #     in_vars :List[ValueDescriptor]
 
 
+class Context(SmAttr):
+    pass
+
+
 class Trigger(SmAttr):
     cron: CronExp
     tz: TimeZone = TimeZone('UTC')
 
 
-class Dag(SmAttr):
-    name: str
-    depend_on_prev: bool
-    triggers: List[Trigger]
-    tasks: List[Task]
-    in_vars: List[ValueDescriptor]
+# class Dag(SmAttr):
+#     depend_on_prev: bool
+#     triggers: List[Trigger]
+#     tasks: List[Task]
+#     ctx: Optional[SmAttr]
+#     # in_vars: List[ValueDescriptor]
 
 
 class HashLogic(SmAttr):

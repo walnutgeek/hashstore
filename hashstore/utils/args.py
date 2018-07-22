@@ -1,8 +1,8 @@
 from collections import namedtuple
 import argparse
-import inspect
+from inspect import getfullargspec
 
-getargspec = inspect.getfullargspec
+
 
 _Opt = namedtuple("_Opt", ['name', 'help', 'has_default', 'default',
                            'type', 'choices'])
@@ -58,7 +58,7 @@ class CommandArgs:
     def command(self, command_help='', **opthelp_kw):
         def decorate(fn):
             options = []
-            opt_names, _, _, opt_defaults = getargspec(fn)[:4]
+            opt_names, _, _, opt_defaults = getfullargspec(fn)[:4]
             if opt_defaults is None:
                 opt_defaults = []
             def_offset = len(opt_names) - len(opt_defaults)

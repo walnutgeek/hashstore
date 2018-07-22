@@ -1,9 +1,11 @@
 import re
 from datetime import date, datetime
 from typing import (Any, Dict, List, Optional, get_type_hints, Union)
-
+from inspect import getfullargspec
 from hashstore.utils import (adjust_for_json, Jsonable,
-    _build_if_not_yet, GlobalRef, Stringable, StrKeyMixin, EnsureIt)
+                             _build_if_not_yet, GlobalRef, Stringable,
+                             StrKeyMixin, EnsureIt, json_decode,
+                             json_encode)
 from dateutil.parser import parse as dt_parse
 
 
@@ -16,6 +18,8 @@ def get_args(cls, default=None):
 class ClassRef(Stringable,StrKeyMixin,EnsureIt):
     """
     >>> crint=ClassRef('builtins:int')
+    >>> str(crint)
+    'builtins:int'
     >>> crint.to_json(5)
     5
     >>> crint.from_json('3')
@@ -64,7 +68,7 @@ class Typing(Stringable,EnsureIt):
         return self.val_cref.json(v, direction)
 
     def default(self):
-        raise AssertionError(f'no default for {self.__class__}')
+        raise AssertionError(f'no default for {type(self)}')
 
     @classmethod
     def name(cls):
@@ -107,6 +111,55 @@ class ListTyping(Typing):
     def default(self):
         return []
 
+
+
+class AttrEntry(EnsureIt,Stringable):
+    """
+    >>> AttrEntry('x:Required[hashstore.bakery:Cake]')
+    AttrEntry('x:Required[hashstore.bakery:Cake]')
+    >>> e = AttrEntry('x:Required[hashstore.bakery:Cake]="0"')
+    >>> e.default
+    Cake('0')
+    >>> e
+    AttrEntry('x:Required[hashstore.bakery:Cake]="0"')
+    """
+    def __init__(self, name, typing=None, default=None):
+        self.default = None
+        default_s = None
+        if typing is None:
+            split = name.split('=', 1)
+            if len(split) == 2:
+                name, default_s = split
+            name, typing = name.split(':', 1)
+        else:
+            self.default = default
+        self.name = name
+        self.typing = typing_factory(typing)
+        if default_s is not None:
+            self.default = self.typing.convert(
+                json_decode(default_s), True)
+
+    def from_json(self, v):
+        if v is None:
+            if self.default is not None:
+                return self.default
+            else:
+                return self.typing.default()
+        else:
+            return self.typing.convert(v, True)
+
+    def to_json(self, o):
+        v = getattr(o, self.name)
+        return None if v is None else self.typing.convert(v, False)
+
+    def __str__(self):
+        def_s = ''
+        if self.default is not None:
+            v = json_encode(self.typing.convert(self.default, False))
+            def_s =f'={v}'
+        return f'{self.name}:{self.typing}{def_s}'
+
+
 def typing_factory(o):
     """
     >>> req = typing_factory('Required[hashstore.bakery:Cake]')
@@ -122,6 +175,8 @@ def typing_factory(o):
 
     if isinstance(o, Typing):
         return o
+    if isinstance(o, AttrEntry):
+        return o.typing
     if isinstance(o, str):
         m = re.match(r'^(\w+)\[([\w\.\:]+),?([\w\.\:]*)\]$', o)
         if m is None:
@@ -149,43 +204,96 @@ def typing_factory(o):
                 f'Unknown annotation: {o}')
 
 
-class AttrEntry(EnsureIt,Stringable):
-    """
-    >>> AttrEntry('x:Required[hashstore.bakery:Cake]')
-    AttrEntry('x:Required[hashstore.bakery:Cake]')
-    """
-    def __init__(self, name, typing=None):
-        if typing is None:
-            name, typing = name.split(':', 1)
-        self.name = name
-        self.typing = typing_factory(typing)
+class Mold(Jsonable):
 
-    def from_json(self, v):
-        if v is None:
-            return self.typing.default()
-        else:
-            return self.typing.convert(v, True)
+    def __init__(self, o=None):
+        self.attrs: Dict[str, AttrEntry] = {}
+        if o is not None:
+            if isinstance(o, dict):
+                if len(o) == 1 and '__attrs__' in o :
+                    json_attrs = o['__attrs__']
+                    if isinstance(json_attrs, list):
+                        try:
+                            self.attrs.update({
+                                ae.name: ae
+                                for ae in map(AttrEntry, json_attrs)
+                            })
+                            return
+                        except:
+                            pass
+                self.add_hints(o)
+            else:
+                self.add_hints(get_type_hints(o))
 
-    def to_json(self, o):
-        v = getattr(o, self.name)
-        return None if v is None else self.typing.convert(v, False)
-
-    def __str__(self):
-        return f'{self.name}:{self.typing}'
-
-
-class Mold(object):
-    def __init__(self, cls):
-        self.attrs: Dict[str,AttrEntry] = {
+    def add_hints(self, hints):
+        self.attrs.update({
             var_name: AttrEntry(var_name, var_cls)
-            for var_name, var_cls in get_type_hints(cls).items()
-        }
+            for var_name, var_cls in hints.items()
+        })
+
+    def set_defaults(self, defaults):
+        for k in self.attrs:
+            if k in defaults:
+                def_v = defaults[k]
+                if def_v is not None:
+                    self.attrs[k].default = def_v
+
+
+    def get_defaults_from_cls(self, cls):
+        return {
+            attr_name: getattr(cls, attr_name)
+            for attr_name in self.attrs if hasattr(cls, attr_name)}
+
+    def get_defaults_from_fn(self, fn):
+        names, _, _, defaults = getfullargspec(fn)[:4]
+        if defaults is None:
+            defaults = []
+        def_offset = len(names) - len(defaults)
+        return {k: v
+                for k,v in zip(names[def_offset:],defaults)
+                if k in self.attrs}
+
+    def add_entry(self, entry:AttrEntry):
+        self.attrs[entry.name] = entry
+
+    def to_json(self):
+        return {"__attrs__": [str(ae) for k, ae in self.attrs.items()]}
+
+    # def augment_with_defaults(self, values):
+    #     for k, ae in self.attrs.items():
+    #         if ae.default is not None and k not in values:
+    #             values[k] = ae.default
+
+    def check_overlaps(self, values):
+        # sort out error conditions
+        missing = set(
+            ae.name for ae in self.attrs.values()
+            if isinstance(ae.typing, RequiredTyping)
+            and ae.default is None
+        ) - values.keys()
+        if len(missing) > 0:
+            raise AttributeError(f'Required : {missing}')
+        not_known = set(values.keys()) - set(self.attrs.keys())
+        if len(not_known) > 0:
+            raise AttributeError(f'Not known: {not_known}')
+
+    def populate_attrs(self, values, target):
+        # populate attributes
+        for attr_name, attr_entry in self.attrs.items():
+            v = values.get(attr_name, None)
+            setattr(target, attr_name, attr_entry.from_json(v))
+
+    def mold_it(self, values, it):
+        # self.augment_with_defaults(values)
+        self.check_overlaps(values)
+        self.populate_attrs(values, it)
+
 
 class AnnotationsProcessor(type):
     def __init__(cls, name, bases, dct):
-        cls.__mold__ = Mold(cls)
-
-
+        mold = Mold(cls)
+        mold.set_defaults(mold.get_defaults_from_cls(cls))
+        cls.__mold__ = mold
 
 
 class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
@@ -246,6 +354,9 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
     >>> a2m = A2({"x":777})
     >>> str(a2m)
     '{"x": 777, "z": null}'
+    >>> a2m = A2(x=777)
+    >>> str(a2m)
+    '{"x": 777, "z": null}'
     >>> A2()
     Traceback (most recent call last):
     ...
@@ -277,31 +388,12 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
     '{"a": 1.03e-05, "x": 5, "z": false}'
     """
 
-    def __init__(self, values:Optional[Dict[str, Any]] = None)->None:
-        if values is None:
-            values = {}
-        else:
-            values = {k:v for k,v in values.items() if v is not None}
-        #add defaults
-        cls = type(self) # type: ignore
-        smattrs:Dict[str, AttrEntry] = cls.__mold__.attrs
-        for attr_name in smattrs:
-            if attr_name not in values and hasattr(cls, attr_name):
-                values[attr_name]=getattr(cls, attr_name)
-        # sort out error conditions
-        missing = set(
-            ae.name for ae in smattrs.values()
-            if isinstance(ae.typing, RequiredTyping)
-        ) - values.keys()
-        if len(missing) > 0 :
-            raise AttributeError(f'Required : {missing}')
-        not_known = set(values.keys()) - set(smattrs.keys())
-        if len(not_known) > 0 :
-            raise AttributeError(f'Not known: {not_known}')
-        # populate attributes
-        for attr_name, attr_entry in smattrs.items():
-            v = values.get(attr_name, None)
-            setattr(self, attr_name, attr_entry.from_json(v))
+    def __init__(self, _vals_:Optional[Dict[str, Any]] = None,
+                 **kwargs) ->None:
+        if _vals_ is None:
+            _vals_ = dict(kwargs)
+        values = {k: v for k, v in _vals_.items() if v is not None}
+        type(self).__mold__.mold_it(values, self)
 
     def to_json(self):
         return {

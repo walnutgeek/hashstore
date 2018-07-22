@@ -1,7 +1,7 @@
 import enum
+from inspect import getfullargspec
 
 from hashstore.utils import exception_message
-from hashstore.utils.args import getargspec
 
 import logging
 log = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ class ApiCallRegistry:
              coerce_error_fn=_identity,
              call_type = ApiCallType.generic_call, **params_metadata):
         def decorate(fn):
-            opt_names, _, _, opt_defaults = getargspec(fn)[:4]
+            opt_names, _, _, opt_defaults = getfullargspec(fn)[:4]
             if opt_defaults is None:
                 opt_defaults = []
             ApiCall(fn,

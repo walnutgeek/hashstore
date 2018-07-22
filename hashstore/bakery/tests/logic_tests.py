@@ -25,17 +25,26 @@ def test_json():
     hl = logic.HashLogic.from_module(plugin)
     json = str(hl)
     match = \
-        '{"methods": [{' \
-        '"in_vars": [{"name": "n", "type": "hashstore.bakery:Cake"}, ' \
-                    '{"name": "i", "type": "builtins:int"}], ' \
-        '"out_vars": [{"name": "return", "type": "hashstore.bakery:Cake"}], ' \
-        '"ref": "hashstore.bakery.tests.logic_test_module:fn"}, ' \
-        '{"in_vars": [], ' \
-        '"out_vars": [{"name": "name", "type": "builtins:str"}, ' \
-                    '{"name": "id", "type": "builtins:int"}, ' \
-                    '{"name": "x", "type": "hashstore.bakery:Cake"}], ' \
-        '"ref": "hashstore.bakery.tests.logic_test_module:fn2"}], ' \
-        '"name": "hashstore.bakery.tests.logic_test_module"}'
+        '{"methods": [' \
+            '{"in_mold": {"__attrs__": [' \
+                '"n:Required[hashstore.bakery:Cake]", ' \
+                '"i:Required[builtins:int]"]}, ' \
+            '"out_mold": {"__attrs__": [' \
+                '"return:Required[hashstore.bakery:Cake]"]}, ' \
+            '"ref": "hashstore.bakery.tests.logic_test_module:fn"}, ' \
+            '{"in_mold": {"__attrs__": []}, ' \
+            '"out_mold": {"__attrs__": [' \
+                '"name:Required[builtins:str]", ' \
+                '"id:Required[builtins:int]", ' \
+                '"x:Required[hashstore.bakery:Cake]"]}, ' \
+            '"ref": "hashstore.bakery.tests.logic_test_module:fn2"}, ' \
+            '{"in_mold": {"__attrs__": [' \
+                '"n:Required[hashstore.bakery:Cake]", ' \
+                '"i:Required[builtins:int]=5"]}, ' \
+            '"out_mold": {"__attrs__": [' \
+                '"return:Required[hashstore.bakery:Cake]"]}, ' \
+            '"ref": "hashstore.bakery.tests.logic_test_module:fn3"}], ' \
+        '"name": "hashstore.bakery.tests.logic_test_module"}' \
 
     eq_(json, match)
     hl2 = logic.HashLogic(hl.to_json())

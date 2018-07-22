@@ -10,7 +10,8 @@ def py_files(filename):
 
 
 run_envs = ['py6', 'py7']
-
+mypy_modules = ['hashstore.bakery.tests.logic_test_module',
+                'hashstore.hsi', 'hashstore.hsd']
 
 def run(case, envs=run_envs, html=False):
     html = 'coverage html;' if html else ''
@@ -20,9 +21,10 @@ def run(case, envs=run_envs, html=False):
         for e in envs
     ]
     print(dict(zip(run_envs, env_states)))
+    modules = ' '.join( f'-m {m}' for m in mypy_modules )
     mypy = 0 == os.system(
-        f'. activate {run_envs[0]}; mypy -m hashstore.hsi '
-        f'-m hashstore.hsd --ignore-missing-imports'
+        f'. activate {run_envs[0]}; '
+        f'mypy {modules} --ignore-missing-imports'
     )
     os.system(
         f'. activate {run_envs[0]}; coverage combine; '

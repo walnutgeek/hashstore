@@ -6,10 +6,15 @@ import sys
 import uuid
 import abc
 import enum
-from typing import Any
+from typing import Any, Dict, Optional, Callable
 
 from datetime import date, datetime
 import codecs
+
+
+def identity(v):
+    return v
+
 
 def quict(**kwargs):
     r = {}
@@ -473,7 +478,7 @@ class GlobalRef(Stringable, EnsureIt, StrKeyMixin):
             self.module, self.name = split
 
     def __str__(self):
-        return '%s:%s' %(self.module, self.name)
+        return f'{self.module}:{self.name}'
 
     def get_module(self)->ModuleType:
         return __import__(self.module, fromlist=['', ])
