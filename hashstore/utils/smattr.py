@@ -259,11 +259,6 @@ class Mold(Jsonable):
     def to_json(self):
         return {"__attrs__": [str(ae) for k, ae in self.attrs.items()]}
 
-    # def augment_with_defaults(self, values):
-    #     for k, ae in self.attrs.items():
-    #         if ae.default is not None and k not in values:
-    #             values[k] = ae.default
-
     def check_overlaps(self, values):
         # sort out error conditions
         missing = set(
@@ -284,7 +279,6 @@ class Mold(Jsonable):
             setattr(target, attr_name, attr_entry.from_json(v))
 
     def mold_it(self, values, it):
-        # self.augment_with_defaults(values)
         self.check_overlaps(values)
         self.populate_attrs(values, it)
 
