@@ -16,6 +16,7 @@ class ServerKey(Singleton, ServerConfigBase):
     secret = Column(StringCast(Cake), default=Cake.new_portal())
     external_ip = Column(StringCast(InetAddress), nullable=True)
     port = Column(Integer, nullable=False)
+    num_cake_shards = Column(Integer, nullable=False)
 
 
 class UserSession(GuidPkWithSynapsePortalDefault, NameIt, Cdt, Udt,

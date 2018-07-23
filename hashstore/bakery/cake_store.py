@@ -651,7 +651,7 @@ class PrivilegedAccess(GuestAccess):
 
 
 class CakeStore:
-    def __init__(self, store_dir, max_shards = 10):
+    def __init__(self, store_dir):
         self.store_dir = store_dir
         self._backend = None
         self.srvcfg_db = Dbf(
@@ -662,14 +662,17 @@ class CakeStore:
             GlueBase.metadata,
             os.path.join(self.store_dir, 'glue.db')
         )
-        self.max_shards = max_shards
-        self.shards_db = [ Dbf(
-            CakeShardBase.metadata,
-            os.path.join(self.store_dir,
-                         'shard_'+ shard_name_int(i) + '.db')
-        ) for i in range(max_shards) ]
+        self.max_shards = None
+        self.shards_db = None
 
     def cake_shard_db(self, cake):
+        if self.max_shards is None:
+            self.max_shards = self.server_config().num_cake_shards
+            self.shards_db = [Dbf(
+                CakeShardBase.metadata,
+                os.path.join(self.store_dir,
+                             'shard_' + shard_name_int(i) + '.db')
+            ) for i in range(self.max_shards)]
         db = self.shards_db[cake.shard_num(self.max_shards)]
         if not(db.exists()):
             db.ensure_db()
@@ -682,7 +685,7 @@ class CakeStore:
             )
         return self._backend
 
-    def initdb(self, external_ip, port):
+    def initdb(self, external_ip, port, num_cake_shards=10):
         if not os.path.exists(self.store_dir):
             os.makedirs(self.store_dir)
         self.srvcfg_db.ensure_db()
@@ -693,6 +696,11 @@ class CakeStore:
             skey = srv_session.query(ServerKey).one_or_none()
             if skey is None:
                 skey = ServerKey()
+                skey.num_cake_shards = num_cake_shards
+            elif skey.num_cake_shards != num_cake_shards:
+                raise ValueError(
+                    f'reshard required: '
+                    f'{skey.num_cake_shards} != {num_cake_shards}')
             skey.port = port
             skey.external_ip = external_ip
             srv_session.merge(skey)

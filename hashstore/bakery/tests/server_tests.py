@@ -38,7 +38,7 @@ class ServerSetup:
         server_db = os.path.join(self.store, "server.db")
         server_key = sqlite_q(server_db,'select * from server_key')
         eq_(len(server_key),1)
-        eq_(server_key[0][3:],(None, 7623))
+        eq_(server_key[0][3:],(None, 7623, 10))
         server_id = server_key[0][1]
 
         test.run_script_and_wait(
@@ -48,7 +48,7 @@ class ServerSetup:
 
         server_key = sqlite_q(server_db,'select * from server_key')
         eq_(len(server_key),1)
-        eq_(server_key[0][3:],(None,8765))
+        eq_(server_key[0][3:],(None, 8765, 10))
         eq_(server_id, server_key[0][1])
 
         server_id = self.test.run_script_in_bg(
