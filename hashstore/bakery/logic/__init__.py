@@ -1,21 +1,12 @@
 import inspect
+from enum import Enum, auto
 from typing import Union, Callable, Dict, Any, List, Optional, \
     get_type_hints
 
-from hashstore.utils import GlobalRef
+from hashstore.utils import GlobalRef, StringEnum
 from hashstore.utils.smattr import SmAttr, Mold, AttrEntry, \
     typing_factory
 from hashstore.utils.time import CronExp, TimeZone
-
-
-class DagVariable(object):
-    def __init__(self, typing,
-                 _path_:Optional[List[str]]=None,
-                 _wired_:Optional['DagVariable']=None
-                 )->None:
-        self.typing = typing_factory(typing)
-        self.path = _path_
-        self.wired = _wired_
 
 
 class Function(SmAttr):
@@ -40,6 +31,15 @@ class Function(SmAttr):
             else:
                 out_mold.add_entry(AttrEntry("return", return_type))
         return cls({"ref":ref, "in_mold":in_mold, "out_mold":out_mold})
+
+class DagVariable(object):
+    def __init__(self, typing,
+                 _path_:Optional[List[str]]=None,
+                 _wired_:Optional['DagVariable']=None
+                 )->None:
+        self.typing = typing_factory(typing)
+        self.path = _path_
+        self.wired = _wired_
 
 
 class DagVarMold:
@@ -81,12 +81,38 @@ class Task:
                 if var.wired is None:
                     unresolved_variables.append(var)
 
-    # def __getattr__(self, item):
-    #     if item in self.out_taskvars:
-    #         return self.out_taskvars[item]
-    #     else:
-    #         raise AttributeError(f'Unknown attr: {item}')
 
+class EventState(StringEnum):
+    NEW = auto()
+    IN_PROCESS = auto()
+    SUCCESS = auto()
+    FAIL = auto()
+
+
+class Event(SmAttr):
+    '''
+    >>> EventState.NEW
+    EventState('NEW')
+    >>> EventState("IN_PROCESS")
+    EventState('IN_PROCESS')
+    >>> EventState("Q")
+    Traceback (most recent call last):
+    ...
+    ValueError: 'Q' is not a valid EventState
+    >>> e = Event()
+    >>> e.to_json()
+    {'state': 'NEW', 'input': {}, 'output': {}, 'codebase': None, 'additional_data': None}
+    >>> q = Event(e.to_json())
+    >>> q.state
+    EventState('NEW')
+    >>> str(q)
+    '{"additional_data": null, "codebase": null, "input": {}, "output": {}, "state": "NEW"}'
+    '''
+    state: EventState = EventState.NEW
+    input: Dict[str,Any]
+    output: Dict [str,Any]
+    codebase: Optional[str]
+    additional_data: Optional[str]
 
 class DagInitializer(type):
     def __init__(cls, name, bases, dct):
@@ -118,28 +144,6 @@ class DagInitializer(type):
 
 
 class Dag(metaclass=DagInitializer):
-    pass
-
-
-class ValueRef(SmAttr):
-    name:Optional[str]
-
-
-class TaskVar(ValueRef):
-    task: Task
-    # vd: ValueDescriptor
-    # value_ref = attr.ib(**required(default=None))
-
-
-# class Task(SmAttr):
-#     name: str
-#     method_name: str
-#     depend_on_tasks:List[str]
-#     dag_vars :List[ValueDescriptor]
-#     in_vars :List[ValueDescriptor]
-
-
-class Context(SmAttr):
     pass
 
 

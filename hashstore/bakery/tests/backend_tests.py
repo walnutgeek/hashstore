@@ -1,4 +1,3 @@
-import uuid
 import os
 
 from hashstore.bakery import NotFoundError

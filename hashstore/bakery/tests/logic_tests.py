@@ -9,11 +9,11 @@ test = TestSetup(__name__,ensure_empty=True)
 log = test.log
 
 
-# def test_docs():
-#     import doctest
-#     r = doctest.testmod(logic)
-#     ok_(r.attempted > 0, 'There is not doctests in module')
-#     eq_(r.failed,0)
+def test_docs():
+    import doctest
+    r = doctest.testmod(logic)
+    ok_(r.attempted > 0, 'There is not doctests in module')
+    eq_(r.failed,0)
 
 # class Dag(logic.Task):
 #     v:int

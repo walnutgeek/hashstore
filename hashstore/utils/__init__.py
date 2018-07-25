@@ -3,10 +3,8 @@ from types import ModuleType
 import os
 import json
 import sys
-import uuid
-import abc
 import enum
-from typing import Any, Dict, Optional, Callable
+from typing import Any
 
 from datetime import date, datetime
 import codecs
@@ -131,7 +129,7 @@ class EnsureIt:
         return cls.ensure_it(o)
 
 
-class Stringable(metaclass=abc.ABCMeta):
+class Stringable:
     '''
     Marker to inform json_encoder to use `str(o)` to
     serialize in json. Also assumes that any implementing
@@ -140,8 +138,6 @@ class Stringable(metaclass=abc.ABCMeta):
     '''
     def __repr__(self):
         return '%s(%r)' % (type(self).__name__, str(self))
-
-Stringable.register(uuid.UUID)
 
 
 class StrKeyMixin:
@@ -492,5 +488,14 @@ class GlobalRef(Stringable, EnsureIt, StrKeyMixin):
         return getattr(self.get_module(), self.name)
 
 
+class StringEnum(Stringable, enum.Enum):
 
+    def _generate_next_value_(name, start, count, last_values):
+        return name
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return f'{type(self).__name__}({repr(self.name)})'
 
