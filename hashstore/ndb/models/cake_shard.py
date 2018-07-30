@@ -1,17 +1,12 @@
-import enum
-
 import datetime
 from typing import Any
 
-from hashstore.bakery import ContentAddress, Cake
-from hashstore.ndb import StringCast, IntCast
+from hashstore.bakery import Cake
+from hashstore.ndb import StringCast
 from hashstore.ndb.mixins import ReprIt, NameIt, Cdt, GuidPk, Udt
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Integer, Column, LargeBinary, ForeignKey
-from sqlalchemy import and_, Column, String, Boolean, \
-    DateTime, Index, Integer
-
-from hashstore.utils import JsonWrap
+from sqlalchemy import (ForeignKey, Column, String, Boolean, DateTime,
+                        Index)
 
 Base:Any = declarative_base(name='CakeShardBase')
 CakeShardBase:Any = Base

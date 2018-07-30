@@ -3,9 +3,9 @@ import logging
 import os
 import sys
 from hashstore.bakery.cake_client import ClientUserSession, CakeClient
-from hashstore.bakery import Cake, PORTAL_TYPES, \
-    portal_from_name, CakeRole, CakePath, process_stream, CakeType, \
-    PatchAction, ensure_cakepath
+from hashstore.bakery import (Cake, portal_from_name, CakeRole,
+                              CakePath, process_stream, CakeType,
+                              ensure_cakepath, PatchAction)
 from hashstore.ndb.models.scan import FileType
 from hashstore.utils.args import CommandArgs, Switch
 from hashstore.utils import print_pad, exception_message
@@ -149,7 +149,8 @@ class ClientApp:
     @ca.command('Create portal',
                 portal_type=('Type of portal. Only needed if portal_id '
                              'is not provided. ',
-                             portal_from_name, PORTAL_TYPES),
+                             portal_from_name,
+                             [ct for ct in CakeType if ct.is_portal]),
                 portal_role=('CakeRole of portal. Only needed if portal_id '
                              'is not provided. ',
                              CakeRole.from_name, list(CakeRole)),

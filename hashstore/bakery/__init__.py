@@ -19,6 +19,7 @@ import logging
 from hashstore.utils import path_split_all
 from hashstore.utils.file_types import guess_name, file_types, HSB
 
+
 log = logging.getLogger(__name__)
 
 B62 = base_x(62)
@@ -190,22 +191,41 @@ class CakeRole(enum.IntEnum):
         raise ValueError('unknown role:' + s)
 
 
-class CakeType(enum.IntEnum):
-    INLINE = 0
-    SHA256 = 1
-    PORTAL = 2
-    VTREE = 3
-    DMOUNT = 4
-    EVENT = 5
+IS_PORTAL = "is_portal"
+IS_VTREE = "is_vtree"
+
+
+class CakeType(enum.Enum):
+    INLINE = (0, None)
+    SHA256 = (1, None)
+    PORTAL = (2, None,IS_PORTAL)
+    VTREE = (3, None, IS_VTREE)
+    DMOUNT = (4, None, IS_PORTAL)
+    EVENT = (5, CakeRole.SYNAPSE)
+    DAG_STATE = (6, CakeRole.NEURON, IS_VTREE)
+    JSON_WRAP = (7, CakeRole.SYNAPSE)
+
+    def __init__(self,
+                 key:int,
+                 implied_role:Optional[CakeRole],
+                 *modifiers:str) -> None:
+        self.key = key
+        self.implied_role = implied_role
+        self.is_vtree = IS_VTREE in modifiers
+        self.is_portal = self.is_vtree or IS_PORTAL in modifiers
+
+    @classmethod
+    def by_key(cls, key:int) -> 'CakeType':
+        for ct in cls:
+            if ct.key == key:
+                return ct
+        raise AttributeError(f'unknown key={key}')
+
+    def __repr__(self):
+        return f'<{type(self).__name__}.{self.name}: {self.key}>'
 
     def __str__(self):
         return self.name
-
-
-PORTAL_TYPES = (CakeType.PORTAL,
-                CakeType.DMOUNT,
-                CakeType.VTREE,
-                CakeType.EVENT)
 
 
 def portal_from_name(n):
@@ -224,15 +244,11 @@ def portal_from_name(n):
     ValueError: unknown portal type:INLINE
     """
     if n is None or n == '':
-        return PORTAL_TYPES[0]
+        return CakeType.PORTAL
     ct = CakeType[n]
-    if ct in PORTAL_TYPES:
+    if ct.is_portal :
         return ct
     raise ValueError('unknown portal type:'+n)
-
-
-def is_cake_type_a_portal(type):
-    return type in PORTAL_TYPES
 
 
 def assert_key_structure(expected, type):
@@ -263,7 +279,7 @@ def _header(type, role):
     >>> _header(CakeType.SHA256,CakeRole.NEURON)
     3
     """
-    return (type.value << 1)|role.value
+    return (type.key << 1)|role.value
 
 
 def pack_in_bytes(type, role, data_bytes):
@@ -340,9 +356,9 @@ class Cake(utils.Stringable, utils.EnsureIt):
     Currently we have 4 `CakeType` defined, leaving 12 more for
     future extension.
     >>> list(CakeType) #doctest: +NORMALIZE_WHITESPACE
-    [<CakeType.INLINE: 0>, <CakeType.SHA256: 1>,
-    <CakeType.PORTAL: 2>, <CakeType.VTREE: 3>,
-    <CakeType.DMOUNT: 4>, <CakeType.EVENT: 5>]
+    [<CakeType.INLINE: 0>, <CakeType.SHA256: 1>, <CakeType.PORTAL: 2>,
+     <CakeType.VTREE: 3>, <CakeType.DMOUNT: 4>, <CakeType.EVENT: 5>,
+     <CakeType.DAG_STATE: 6>, <CakeType.JSON_WRAP: 7>]
 
     >>> short_content = b'The quick brown fox jumps over'
     >>> short_k = Cake.from_bytes(short_content)
@@ -402,7 +418,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
             decoded = B62.decode(utils.ensure_string(s))
             header = decoded[0]
             self._data = decoded[1:]
-            self.type = CakeType(header >> 1)
+            self.type = CakeType.by_key(header >> 1)
             self.role = CakeRole(header & 1)
         if not(self.has_data()):
             if len(self._data) != 32:
@@ -500,12 +516,8 @@ class Cake(utils.Stringable, utils.EnsureIt):
     def is_immutable(self)->bool:
         return self.has_data() or self.is_resolved()
 
-    def is_portal(self)->bool:
-        type = self.type
-        return is_cake_type_a_portal(type)
-
     def assert_portal(self)->None:
-        if not self.is_portal():
+        if not self.type.is_portal:
             raise AssertionError('has to be a portal: %r' % self)
 
     def hash_bytes(self)->bytes:

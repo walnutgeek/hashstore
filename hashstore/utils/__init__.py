@@ -213,24 +213,8 @@ class Jsonable(EnsureIt):
     def __ne__(self, other):
         return not(self.__eq__(other))
 
-class JsonWrap(Jsonable,Stringable):
-    '''
-    >>> jw = JsonWrap('{"b": 3, "a": 5}')
-    >>> jw.json["a"]
-    5
-    >>> jw.json["b"]
-    3
-    >>> str(jw)
-    '{"a": 5, "b": 3}'
-    '''
-    def __init__(self, s:str) -> None:
-        self.json = json_decode(s)
 
-    def to_json(self)->Any:
-        return self.json
-
-
-def adjust_for_json(v:Any, default:Any = None)->Any:
+def adjust_for_json(v: Any, default: Any = None)->Any:
     if isinstance(v, (datetime, date)):
         return v.isoformat()
     if isinstance(v, Stringable):
@@ -428,7 +412,7 @@ def normalize_url(url):
     return url
 
 
-def _build_if_not_yet(cls, factory):
+def lazy_factory(cls, factory):
     return lambda v: v if issubclass(type(v), cls) else factory(v)
 
 

@@ -6,7 +6,7 @@ from hashstore.tests import TestSetup, assert_text
 import hashstore.utils as u
 
 from hashstore.utils.args import CommandArgs
-from hashstore.utils.smattr import SmAttr, Implementation
+from hashstore.utils.smattr import SmAttr, JsonWrap
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log
@@ -123,18 +123,21 @@ def test_api():
 
 class Abc(SmAttr):
     name:str
-    val:str
+    val:int
 
 
-def test_implementation():
-    impl = Implementation({"classRef": u.GlobalRef(Abc),
-                           "config":{'name':'n', 'val': 555}})
-    s = str(Abc({'name': 'n', 'val': 555}))
-    eq_(str(impl.create()), s)
-    eq_(str(impl),
-        '{"classRef": "hashstore.tests.utils_tests:Abc", '
-        '"config": {"name": "n", "val": 555}}')
-    eq_(str(Implementation(impl.to_json()).create()), s)
+def test_wrap():
+    abc = Abc({'name': 'n', 'val': 555})
+    s = str(abc)
+    def do_check(w):
+        eq_(str(w.unwrap()), s)
+        eq_(str(w),
+            '{"classRef": "hashstore.tests.utils_tests:Abc", '
+            '"json": {"name": "n", "val": 555}}')
+        eq_(str(JsonWrap(w.to_json()).unwrap()), s)
+    do_check(JsonWrap({"classRef": u.GlobalRef(Abc),
+                       "json":{'name':'n', 'val': 555}}))
+    do_check(JsonWrap.wrap(abc))
 
 
 def test_args():

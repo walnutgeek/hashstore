@@ -3,9 +3,9 @@ from datetime import date, datetime
 from typing import (Any, Dict, List, Optional, get_type_hints, Union)
 from inspect import getfullargspec
 from hashstore.utils import (adjust_for_json, Jsonable,
-                             _build_if_not_yet, GlobalRef, Stringable,
+                             lazy_factory, GlobalRef, Stringable,
                              StrKeyMixin, EnsureIt, json_decode,
-                             json_encode)
+                             json_encode, identity)
 from dateutil.parser import parse as dt_parse
 
 __ATTRS__ = "__attrs__"
@@ -17,7 +17,7 @@ def get_args(cls, default=None):
     return default
 
 
-class ClassRef(Stringable,StrKeyMixin,EnsureIt):
+class ClassRef(Stringable, StrKeyMixin, EnsureIt):
     """
     >>> crint=ClassRef('builtins:int')
     >>> str(crint)
@@ -32,41 +32,43 @@ class ClassRef(Stringable,StrKeyMixin,EnsureIt):
     >>> crint.from_json('3')
     3
     """
-    def __init__(self, cls_or_str:Union[type,str])->None:
-        if isinstance(cls_or_str,str):
+    def __init__(self, cls_or_str: Union[type, str])->None:
+        if isinstance(cls_or_str, str):
             cls_or_str = GlobalRef(cls_or_str).get_instance()
         self.cls = cls_or_str
         if self.cls == Any:
-            self._from_json = lambda v:v
+            self._from_json = identity
         elif self.cls is date:
-            self._from_json = _build_if_not_yet(self.cls, lambda v: dt_parse(v).date())
+            self._from_json = lazy_factory(
+                self.cls, lambda v: dt_parse(v).date())
         elif self.cls is datetime:
-            self._from_json = _build_if_not_yet(self.cls, lambda v: dt_parse(v))
+            self._from_json = lazy_factory(
+                self.cls, lambda v: dt_parse(v))
         else:
-            self._from_json = _build_if_not_yet(self.cls, self.cls)
+            self._from_json = lazy_factory(self.cls, self.cls)
 
-    def json(self, v:Any, direction:bool) -> Any:
+    def json(self, v: Any, direction: bool)->Any:
         return self.from_json(v) if direction else self.to_json(v)
 
-    def from_json(self, v:Any)->Any:
+    def from_json(self, v: Any)->Any:
         return self._from_json(v)
 
-    def to_json(self, v:Any)->Any:
+    def to_json(self, v: Any)->Any:
         return adjust_for_json(v, v)
 
     def __str__(self):
         return str(GlobalRef(self.cls))
 
 
-class Typing(Stringable,EnsureIt):
+class Typing(Stringable, EnsureIt):
     @classmethod
-    def factory(self):
+    def factory(cls):
         return typing_factory
 
     def __init__(self, val_cref):
         self.val_cref = ClassRef.ensure_it(val_cref)
 
-    def convert(self, v:Any, direction:bool)->Any:
+    def convert(self, v: Any, direction: bool)->Any:
         return self.val_cref.json(v, direction)
 
     def default(self):
@@ -94,10 +96,10 @@ class DictTyping(Typing):
         Typing.__init__(self, val_cref)
         self.key_cref = ClassRef.ensure_it(key_cref)
 
-    def convert(self, in_v: Any, direction: bool) ->Dict[Any,Any]:
-        return {self.key_cref.json(k,direction):
-                self.val_cref.json(v,direction)
-            for k,v in in_v.items()}
+    def convert(self, in_v: Any, direction: bool)->Dict[Any, Any]:
+        return {self.key_cref.json(k, direction):
+                self.val_cref.json(v, direction)
+                for k, v in in_v.items()}
 
     def __str__(self):
         return f'{self.name()}[{self.key_cref},{self.val_cref}]'
@@ -107,14 +109,14 @@ class DictTyping(Typing):
 
 
 class ListTyping(Typing):
-    def convert(self, in_v:Any, direction:bool)->List[Any]:
-        return [self.val_cref.json(v,direction) for v in in_v]
+    def convert(self, in_v: Any, direction: bool)->List[Any]:
+        return [self.val_cref.json(v, direction) for v in in_v]
 
     def default(self):
         return []
 
 
-class AttrEntry(EnsureIt,Stringable):
+class AttrEntry(EnsureIt, Stringable):
     """
     >>> AttrEntry('x:Required[hashstore.bakery:Cake]')
     AttrEntry('x:Required[hashstore.bakery:Cake]')
@@ -123,6 +125,23 @@ class AttrEntry(EnsureIt,Stringable):
     Cake('0')
     >>> e
     AttrEntry('x:Required[hashstore.bakery:Cake]="0"')
+    >>> AttrEntry(None)
+    Traceback (most recent call last):
+    ...
+    AttributeError: 'NoneType' object has no attribute 'split'
+    >>> AttrEntry('a')
+    Traceback (most recent call last):
+    ...
+    ValueError: not enough values to unpack (expected 2, got 1)
+    >>> AttrEntry('a:x')
+    Traceback (most recent call last):
+    ...
+    AttributeError: Unrecognized typing: x
+    >>> AttrEntry(5)
+    Traceback (most recent call last):
+    ...
+    AttributeError: 'int' object has no attribute 'split'
+
     """
     def __init__(self, name, typing=None, default=None):
         self.default = None
@@ -157,7 +176,7 @@ class AttrEntry(EnsureIt,Stringable):
         def_s = ''
         if self.default is not None:
             v = json_encode(self.typing.convert(self.default, False))
-            def_s =f'={v}'
+            def_s = f'={v}'
         return f'{self.name}:{self.typing}{def_s}'
 
 
@@ -179,12 +198,12 @@ def typing_factory(o):
     if isinstance(o, AttrEntry):
         return o.typing
     if isinstance(o, str):
-        m = re.match(r'^(\w+)\[([\w\.\:]+),?([\w\.\:]*)\]$', o)
+        m = re.match(r'^(\w+)\[([\w.:]+),?([\w.:]*)\]$', o)
         if m is None:
-            raise AssertionError(f'Unregoinzed typing: {o}')
+            raise AttributeError(f'Unrecognized typing: {o}')
         typing_name, *args = m.groups()
         typing_cls = globals()[typing_name + 'Typing']
-        if issubclass(typing_cls, DictTyping) :
+        if issubclass(typing_cls, DictTyping):
             return typing_cls(args[1], args[0])
         elif args[1] != '':
             raise AssertionError(f'args[1] shold be empty for: {o}')
@@ -211,7 +230,7 @@ class Mold(Jsonable):
         self.attrs: Dict[str, AttrEntry] = {}
         if o is not None:
             if isinstance(o, dict):
-                if len(o) == 1 and __ATTRS__ in o :
+                if len(o) == 1 and __ATTRS__ in o:
                     json_attrs = o[__ATTRS__]
                     if isinstance(json_attrs, list):
                         try:
@@ -220,7 +239,7 @@ class Mold(Jsonable):
                                 for ae in map(AttrEntry, json_attrs)
                             })
                             return
-                        except:
+                        except (AttributeError, ValueError) as _:
                             pass
                 self.add_hints(o)
             else:
@@ -260,7 +279,6 @@ class Mold(Jsonable):
         return {__ATTRS__: [str(ae) for k, ae in self.attrs.items()]}
 
     def check_overlaps(self, values):
-        # sort out error conditions
         missing = set(
             ae.name for ae in self.attrs.values()
             if isinstance(ae.typing, RequiredTyping)
@@ -398,9 +416,18 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
         }
 
 
-class Implementation(SmAttr):
+class JsonWrap(SmAttr):
     classRef:GlobalRef
-    config:Optional[Any]
+    json:Optional[Any]
 
-    def create(self):
-        return self.classRef.get_instance()(self.config)
+    def unwrap(self):
+        return self.classRef.get_instance()(self.json)
+
+    @classmethod
+    def wrap(cls, o):
+        if isinstance(o, Jsonable):
+            return cls({
+                    "classRef": GlobalRef(type(o)),
+                    "json": o.to_json()
+            })
+        raise AttributeError(f"Not jsonable: {o}")

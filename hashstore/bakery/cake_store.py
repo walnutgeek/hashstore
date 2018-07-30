@@ -164,7 +164,7 @@ class GuestAccess:
         elif cake.is_resolved():
             self.authorize(cake_or_path, Permissions.read_data_cake)
             return self.backend().get_content(cake_or_path)
-        elif cake.is_portal():
+        elif cake.type.is_portal:
             self.authorize(cake_or_path, Permissions.read_portal)
             if cake.type == CakeType.PORTAL :
                 resolution_stack = dal.resolve_cake_stack(

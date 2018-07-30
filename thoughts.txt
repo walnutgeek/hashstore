@@ -1,0 +1,10 @@
+
+
+
+    memos
+    =====
+    cake: Cake
+    category: str
+    text: str
+    created_dt: datetime
+
