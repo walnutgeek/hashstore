@@ -4,7 +4,7 @@ import os
 import json
 import sys
 import enum
-from typing import Any
+from typing import Any, TypeVar, Type, Dict
 
 from datetime import date, datetime
 import codecs
@@ -14,7 +14,15 @@ def identity(v):
     return v
 
 
+def not_zero_len(v):
+    return len(v)!=0
+
+
 def quict(**kwargs):
+    """
+    >>> quict(a=3,x="a")
+    {'a': 3, 'x': 'a'}
+    """
     r = {}
     r.update(**kwargs)
     return r
@@ -472,14 +480,29 @@ class GlobalRef(Stringable, EnsureIt, StrKeyMixin):
         return getattr(self.get_module(), self.name)
 
 
-class StringEnum(Stringable, enum.Enum):
+CodeEnumT = TypeVar('CodeEnumT', bound='CodeEnum')
 
-    def _generate_next_value_(name, start, count, last_values):
-        return name
+
+class CodeEnum(Stringable, enum.Enum):
+
+    def __init__(self, code:int) -> None:
+        self.code = code
+        type(self)._value2member_map_[code] = self # type: ignore
+
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, int):
+            return cls.find_by_code(cls, value)
+        else:
+            return cls[value]
+
+    @classmethod
+    def find_by_code(cls : Type[CodeEnumT], code:int) -> CodeEnumT:
+        return cls._value2member_map_[code] # type: ignore
 
     def __str__(self):
         return self.name
 
     def __repr__(self):
-        return f'{type(self).__name__}({repr(self.name)})'
+        return f'<{type(self).__name__}.{self.name}: {self.code}>'
 

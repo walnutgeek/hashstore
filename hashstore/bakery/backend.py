@@ -1,22 +1,27 @@
 import os
 import shutil
 import datetime
+from typing import Union
+
 import pylru
 
 from hashstore.ndb import Dbf
-from hashstore.utils import ensure_bytes,ensure_directory
+from hashstore.utils import ensure_bytes, ensure_directory, Stringable, \
+    EnsureIt
 
 from sqlalchemy import func,select
 
 
-from hashstore.bakery import (
-    NotFoundError, Cake, ContentAddress, is_it_shard, Content, Hasher )
+from hashstore.bakery import (NotFoundError, Cake, is_it_shard,
+                              Content, Hasher, ContentAddress)
 from hashstore.ndb.models.blob import blob_meta, blob
 from hashstore.ndb.models.incoming import incoming_meta, incoming
 
 import logging
 
+
 log = logging.getLogger(__name__)
+
 
 
 class Lookup:
@@ -112,8 +117,8 @@ class FileLookup(ContentAddressLookup):
         return content
 
 
-
 MAX_DB_BLOB_SIZE = 1 << 16
+
 
 class LiteBackend:
     '''

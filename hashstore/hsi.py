@@ -63,7 +63,8 @@ class ClientApp:
     def logout(self, dir='.'):
         pass
 
-    @ca.command('list directory as of last scan.',cake=('Display cakes', Switch))
+    @ca.command('list directory as of last scan.',
+                cake=('Display cakes', Switch))
     def ls(self, dir='.', cake=False):
         cake = 'cake' if cake else ''
         entries = cscan.CakeEntries(dir)
@@ -153,7 +154,7 @@ class ClientApp:
                              [ct for ct in CakeType if ct.is_portal]),
                 portal_role=('CakeRole of portal. Only needed if portal_id '
                              'is not provided. ',
-                             CakeRole.from_name, list(CakeRole)),
+                             CakeRole, list(CakeRole)),
                 portal_id=('Portal to be created. If omitted new '
                            'random portal_id will be created .', Cake),
                 cake=('Optional. Cake that created portal points to. ',

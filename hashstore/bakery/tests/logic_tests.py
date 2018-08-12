@@ -9,11 +9,11 @@ test = TestSetup(__name__,ensure_empty=True)
 log = test.log
 
 
-def test_docs():
-    import doctest
-    r = doctest.testmod(logic)
-    ok_(r.attempted > 0, 'There is not doctests in module')
-    eq_(r.failed,0)
+# def test_docs():
+#     import doctest
+#     r = doctest.testmod(logic)
+#     ok_(r.attempted > 0, 'There is not doctests in module')
+#     eq_(r.failed,0)
 
 # class Dag(logic.Task):
 #     v:int
@@ -26,23 +26,23 @@ def test_json():
     json = str(hl)
     match = \
         '{"methods": [' \
-            '{"in_mold": {"__attrs__": [' \
+            '{"in_mold": [' \
                 '"n:Required[hashstore.bakery:Cake]", ' \
-                '"i:Required[builtins:int]"]}, ' \
-            '"out_mold": {"__attrs__": [' \
-                '"return:Required[hashstore.bakery:Cake]"]}, ' \
+                '"i:Required[int]"], ' \
+            '"out_mold": [' \
+                '"return:Required[hashstore.bakery:Cake]"], ' \
             '"ref": "hashstore.bakery.tests.logic_test_module:fn"}, ' \
-            '{"in_mold": {"__attrs__": []}, ' \
-            '"out_mold": {"__attrs__": [' \
-                '"name:Required[builtins:str]", ' \
-                '"id:Required[builtins:int]", ' \
-                '"x:Required[hashstore.bakery:Cake]"]}, ' \
+            '{"in_mold": [], ' \
+            '"out_mold": [' \
+                '"name:Required[str]", ' \
+                '"id:Required[int]", ' \
+                '"x:Required[hashstore.bakery:Cake]"], ' \
             '"ref": "hashstore.bakery.tests.logic_test_module:fn2"}, ' \
-            '{"in_mold": {"__attrs__": [' \
+            '{"in_mold": [' \
                 '"n:Required[hashstore.bakery:Cake]", ' \
-                '"i:Required[builtins:int]=5"]}, ' \
-            '"out_mold": {"__attrs__": [' \
-                '"return:Required[hashstore.bakery:Cake]"]}, ' \
+                '"i:Required[int]=5"], ' \
+            '"out_mold": [' \
+                '"return:Required[hashstore.bakery:Cake]"], ' \
             '"ref": "hashstore.bakery.tests.logic_test_module:fn3"}], ' \
         '"name": "hashstore.bakery.tests.logic_test_module"}' \
 

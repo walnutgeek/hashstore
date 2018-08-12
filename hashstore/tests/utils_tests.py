@@ -138,6 +138,10 @@ def test_wrap():
     do_check(JsonWrap({"classRef": u.GlobalRef(Abc),
                        "json":{'name':'n', 'val': 555}}))
     do_check(JsonWrap.wrap(abc))
+    try:
+        JsonWrap.wrap(5)
+    except AttributeError:
+        eq_('Not jsonable: 5', u.exception_message())
 
 
 def test_args():

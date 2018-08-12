@@ -278,7 +278,7 @@ class CakeTree(Neuron):
     /4Fm5goWjjISStoovcZaowz0heUxOv4CXbUob0CBKi46T/a/z,
     /4Fm5goWjjISStoovcZaowz0heUxOv4CXbUob0CBKi46T/a,
     /4Fm5goWjjISStoovcZaowz0heUxOv4CXbUob0CBKi46T]
-    >>> [ v.role().value for v in y.visit_tree()]
+    >>> [ v.role().code for v in y.visit_tree()]
     [0, 1, 0, 1, 1]
     >>> len(list(y.visit_tree(None))) == len(list(y.visit_tree(4)))
     True

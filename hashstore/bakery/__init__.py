@@ -3,7 +3,10 @@
 
 import abc
 
-from hashstore.utils import Stringable, EnsureIt, Jsonable
+import threading
+from datetime import datetime
+
+from hashstore.utils import Jsonable
 from io import BytesIO
 from hashlib import sha256, sha1
 import os
@@ -13,20 +16,20 @@ from hashstore.utils.base_x import base_x
 import json
 import enum
 from typing import (
-    Union, Optional, Any, BinaryIO, Callable, Tuple,
-    List, Iterable, Dict)
+    Union, Optional, Any, Callable, Tuple,
+    List, Iterable, Dict, IO)
 import logging
 from hashstore.utils import path_split_all
 from hashstore.utils.file_types import guess_name, file_types, HSB
-
+from hashstore.utils.smattr import JsonWrap, SmAttr
 
 log = logging.getLogger(__name__)
 
 B62 = base_x(62)
+
 B36 = base_x(36)
 
 MAX_NUM_OF_SHARDS = 8192
-
 
 class Hasher:
     def __init__(self, data: Optional[bytes] = None)->None:
@@ -39,6 +42,65 @@ class Hasher:
 
     def digest(self):
         return self.sha.digest()
+
+class ContentAddress(utils.Stringable, utils.EnsureIt):
+    """
+    case-insensitive address that used to store blobs
+    of data in file system and in db
+
+    >>> a46 = Cake.from_bytes(b'a' * 46)
+    >>> str(a46)
+    '2lEWHXV2XeYyZnKNyQyGPt4poJhV7VeYCfeszHnLyFtx'
+    >>> from_c = ContentAddress(a46)
+    >>> str(from_c)
+    '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
+    >>> from_id = ContentAddress(str(from_c))
+    >>> str(from_id)
+    '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
+    >>> from_id
+    ContentAddress('2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv')
+    >>> from_id.hash_bytes == from_c.hash_bytes
+    True
+    >>> from_id.match(a46)
+    True
+    >>> a47 = Cake.from_bytes(b'a' * 47)
+    >>> str(a47)
+    '21EUi09ZvZAelgu02ANS9dSpK9oPsERF0uSpfEEZcdMx'
+    >>> from_id.match(a47)
+    False
+    """
+
+    def __init__(self, h: Union['Cake', Hasher, str])->None:
+        if isinstance(h, Hasher):
+            self.hash_bytes = h.digest()
+            self._id = B36.encode(self.hash_bytes)
+        elif isinstance(h, Cake):
+            self.hash_bytes = h.hash_bytes()
+            self._id = B36.encode(self.hash_bytes)
+        else:
+            self._id = h.lower()
+            self.hash_bytes = B36.decode(self._id)
+        self.shard_name = shard_name_int(shard_num(self.hash_bytes))
+
+    def __str__(self):
+        return self._id
+
+    def __repr__(self):
+        return f"{type(self).__name__}({repr(self._id)})"
+
+    def match(self, cake):
+        return cake.hash_bytes() == self.hash_bytes
+
+    def __eq__(self, other):
+        return isinstance(other, ContentAddress) and \
+               self._id == other._id
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(self._id)
+
 
 
 def shard_name_int(num: int):
@@ -63,9 +125,9 @@ def decode_shard(name: str):
     return B36.decode_int(name)
 
 
-def is_it_shard(shard_name: str):
+def is_it_shard(shard_name: str, max_num:int = MAX_NUM_OF_SHARDS)->bool:
     """
-    Test if directory name can represent shard
+    Test if name can represent shard
 
     >>> is_it_shard('668')
     True
@@ -93,7 +155,7 @@ def is_it_shard(shard_name: str):
         shard_num = decode_shard(shard_name.lower())
     except:
         pass
-    return shard_num >= 0 and shard_num < MAX_NUM_OF_SHARDS
+    return shard_num >= 0 and shard_num < max_num
 
 
 def shard_num(hash_bytes: bytes, base: int = MAX_NUM_OF_SHARDS):
@@ -152,13 +214,13 @@ class Content(Jsonable):
                     self.file_type = HSB
         return self.guess_file_type()
 
-    def has_data(self):
+    def has_data(self) -> bool:
         return self.data is not None
 
-    def get_data(self):
+    def get_data(self) -> bytes:
         return self.data if self.has_data() else self.stream().read()
 
-    def stream(self):
+    def stream(self)-> IO[bytes]:
         if self.has_data():
             return BytesIO(self.data)
         elif self.file is not None:
@@ -176,56 +238,72 @@ class Content(Jsonable):
         return { n:getattr(self,k) for k,n in self.JSONABLE_FIELDS}
 
 
-class CakeRole(enum.IntEnum):
-    SYNAPSE = 0
-    NEURON = 1
-
-    def __str__(self):
-        return self.name
-
-    @staticmethod
-    def from_name(s):
-        for e in CakeRole:
-            if e.name == s:
-                return e
-        raise ValueError('unknown role:' + s)
+class CakeRole(utils.CodeEnum):
+    SYNAPSE = (0,)
+    NEURON = (1,)
 
 
-IS_PORTAL = "is_portal"
-IS_VTREE = "is_vtree"
+class EventState(utils.CodeEnum):
+    NEW = enum.auto()
+    IN_PROCESS = enum.auto()
+    SUCCESS = enum.auto()
+    FAIL = enum.auto()
 
 
-class CakeType(enum.Enum):
-    INLINE = (0, None)
-    SHA256 = (1, None)
-    PORTAL = (2, None,IS_PORTAL)
-    VTREE = (3, None, IS_VTREE)
-    DMOUNT = (4, None, IS_PORTAL)
-    EVENT = (5, CakeRole.SYNAPSE)
-    DAG_STATE = (6, CakeRole.NEURON, IS_VTREE)
-    JSON_WRAP = (7, CakeRole.SYNAPSE)
+class Event(SmAttr):
+    '''
+    >>> EventState.NEW
+    <EventState.NEW: 1>
+    >>> EventState("IN_PROCESS")
+    <EventState.IN_PROCESS: 2>
+    >>> EventState(2)
+    <EventState.IN_PROCESS: 2>
+    >>> EventState("Q")
+    Traceback (most recent call last):
+    ...
+    KeyError: 'Q'
+    >>> e = Event()
+    >>> e.to_json()
+    {'state': 'NEW', 'input': {}, 'output': {}, 'codebase': None, 'additional_data': None}
+    >>> q = Event(e.to_json())
+    >>> q.state
+    <EventState.NEW: 1>
+    >>> str(q)
+    '{"additional_data": null, "codebase": null, "input": {}, "output": {}, "state": "NEW"}'
+    '''
+    state: EventState = EventState.NEW
+    input: Dict[str,Any]
+    output: Dict[str,Any]
+    codebase: Optional[str]
+    additional_data: Optional[str]
+
+
+_IS_PORTAL, _IS_VTREE, _IS_RESOLVED = (
+    "is_portal", "is_vtree", "is_resolved" )
+
+
+class CakeType(utils.CodeEnum):
+    INLINE = (0, None, None)
+    SHA256 = (1, None, None, _IS_RESOLVED)
+    PORTAL = (2, None, None, _IS_PORTAL)
+    VTREE = (3, None, None, _IS_VTREE)
+    DMOUNT = (4, None, None, _IS_PORTAL)
+    EVENT = (5, CakeRole.SYNAPSE, Event, _IS_RESOLVED)
+    DAG_STATE = (6, CakeRole.NEURON, None, _IS_VTREE)
+    JSON_WRAP = (7, CakeRole.SYNAPSE, JsonWrap, _IS_RESOLVED )
 
     def __init__(self,
-                 key:int,
+                 code:int,
                  implied_role:Optional[CakeRole],
+                 json_type:Optional[type],
                  *modifiers:str) -> None:
-        self.key = key
+        utils.CodeEnum.__init__(self, code)
         self.implied_role = implied_role
-        self.is_vtree = IS_VTREE in modifiers
-        self.is_portal = self.is_vtree or IS_PORTAL in modifiers
+        self.json_type = json_type
+        self.is_vtree = _IS_VTREE in modifiers
+        self.is_portal = self.is_vtree or _IS_PORTAL in modifiers
+        self.is_resolved = _IS_RESOLVED in modifiers
 
-    @classmethod
-    def by_key(cls, key:int) -> 'CakeType':
-        for ct in cls:
-            if ct.key == key:
-                return ct
-        raise AttributeError(f'unknown key={key}')
-
-    def __repr__(self):
-        return f'<{type(self).__name__}.{self.name}: {self.key}>'
-
-    def __str__(self):
-        return self.name
 
 
 def portal_from_name(n):
@@ -241,14 +319,14 @@ def portal_from_name(n):
     >>> portal_from_name('INLINE')
     Traceback (most recent call last):
     ...
-    ValueError: unknown portal type:INLINE
+    ValueError: not a portal type:INLINE
     """
     if n is None or n == '':
         return CakeType.PORTAL
     ct = CakeType[n]
     if ct.is_portal :
         return ct
-    raise ValueError('unknown portal type:'+n)
+    raise ValueError('not a portal type:'+n)
 
 
 def assert_key_structure(expected, type):
@@ -260,7 +338,7 @@ def assert_key_structure(expected, type):
 inline_max_bytes=32
 
 
-def nop_on_chunk(chunk:bytes):
+def nop_on_chunk(chunk:bytes)->None:
     """
     Does noting
 
@@ -279,7 +357,7 @@ def _header(type, role):
     >>> _header(CakeType.SHA256,CakeRole.NEURON)
     3
     """
-    return (type.key << 1)|role.value
+    return (type.code << 1)|role.code
 
 
 def pack_in_bytes(type, role, data_bytes):
@@ -292,27 +370,7 @@ def pack_in_bytes(type, role, data_bytes):
     return bytes([_header(type, role)]) + data_bytes
 
 
-def quick_hash(data):
-    r"""
-    Calculate hash on data buffer passed
-
-    >>> quick_hash(b'abc')
-    b'\xbax\x16\xbf\x8f\x01\xcf\xeaAA@\xde]\xae"#\xb0\x03a\xa3\x96\x17z\x9c\xb4\x10\xffa\xf2\x00\x15\xad'
-    >>> quick_hash('abc')
-    b'\xbax\x16\xbf\x8f\x01\xcf\xeaAA@\xde]\xae"#\xb0\x03a\xa3\x96\x17z\x9c\xb4\x10\xffa\xf2\x00\x15\xad'
-    >>> quick_hash(5.7656)
-    b'\x8e\x19\x10\xddb\xc3)\x84~i>\xbeL\x8a\x08\x96\x96\xa5sR0\x8c\x7f\xd7\xec\x0fa\x12\xfbA\xb9\xa3'
-    >>> quick_hash('5.7656')
-    b'\x8e\x19\x10\xddb\xc3)\x84~i>\xbeL\x8a\x08\x96\x96\xa5sR0\x8c\x7f\xd7\xec\x0fa\x12\xfbA\xb9\xa3'
-
-    :param data: in bytes, or if not it will be converted to string first
-                 and then to byte
-    :return: digest
-    """
-    return Hasher(utils.ensure_bytes(data)).digest()
-
-
-def process_stream(fd:BinaryIO,
+def process_stream(fd:IO[bytes],
                    on_chunk:Callable[[bytes], None]=nop_on_chunk,
                    chunk_size:int=65355
                    )->Tuple[bytes,Optional[bytes]]:
@@ -320,10 +378,11 @@ def process_stream(fd:BinaryIO,
     process stream to calculate hash, length of data,
     and if it is smaller then hash size, holds on to stream
     content to use it instead of hash.
-    It allows
+
+
     :param fd: stream
-    :param on_chunk: function  called on every chan
-    :return:
+    :param on_chunk: function  called on every chunk
+    :return: (<hash>, Optional[<inline_data>])
     """
     inline_data = bytes()
     hasher = Hasher()
@@ -352,9 +411,10 @@ class Cake(utils.Stringable, utils.EnsureIt):
     halves: `CakeType` and `CakeRole`. Base62 encoding is
     used to encode bytes.
 
-    We allow future extension and use different type of hash algos.
-    Currently we have 4 `CakeType` defined, leaving 12 more for
-    future extension.
+    >>> CakeRole('SYNAPSE') == CakeRole.SYNAPSE
+    True
+    >>> CakeRole('SYNAPSE')
+    <CakeRole.SYNAPSE: 0>
     >>> list(CakeType) #doctest: +NORMALIZE_WHITESPACE
     [<CakeType.INLINE: 0>, <CakeType.SHA256: 1>, <CakeType.PORTAL: 2>,
      <CakeType.VTREE: 3>, <CakeType.DMOUNT: 4>, <CakeType.EVENT: 5>,
@@ -418,8 +478,8 @@ class Cake(utils.Stringable, utils.EnsureIt):
             decoded = B62.decode(utils.ensure_string(s))
             header = decoded[0]
             self._data = decoded[1:]
-            self.type = CakeType.by_key(header >> 1)
-            self.role = CakeRole(header & 1)
+            self.type = CakeType.find_by_code(header >> 1)
+            self.role = CakeRole.find_by_code(header & 1)
         if not(self.has_data()):
             if len(self._data) != 32:
                 raise AssertionError('invalid CAKey: %r ' % s)
@@ -458,7 +518,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
                         role=role)
 
     @staticmethod
-    def from_stream(fd: BinaryIO,
+    def from_stream(fd: IO[bytes],
                     role: CakeRole=CakeRole.SYNAPSE
                     )->'Cake':
         digest, inline_data = process_stream(fd)
@@ -505,16 +565,13 @@ class Cake(utils.Stringable, utils.EnsureIt):
     def digest(self)->bytes:
         if not(hasattr(self, '_digest')):
             if self.has_data():
-                self._digest = quick_hash(self._data)
+                self._digest = Hasher(self._data).digest()
             else:
                 self._digest = self._data
         return self._digest
 
-    def is_resolved(self)->bool:
-        return self.type == CakeType.SHA256
-
     def is_immutable(self)->bool:
-        return self.has_data() or self.is_resolved()
+        return self.has_data() or self.type.is_resolved
 
     def assert_portal(self)->None:
         if not self.type.is_portal:
@@ -525,7 +582,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
         :raise AssertionError when Cake is not hash based
         :return: hash in bytes
         """
-        if not self.is_resolved():
+        if not self.type.is_resolved:
             raise AssertionError("Not-hash %r %r" %
                                  (self.type, self))
         return self._data
@@ -561,62 +618,6 @@ class HasCake(metaclass=abc.ABCMeta):
         raise NotImplementedError('subclasses must override')
 
 
-class ContentAddress(Stringable, EnsureIt):
-    """
-    Content Address
-
-    >>> a46 = Cake.from_bytes(b'a' * 46)
-    >>> str(a46)
-    '2lEWHXV2XeYyZnKNyQyGPt4poJhV7VeYCfeszHnLyFtx'
-    >>> from_c = ContentAddress(a46)
-    >>> str(from_c)
-    '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
-    >>> from_id = ContentAddress(str(from_c))
-    >>> str(from_id)
-    '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
-    >>> from_id
-    ContentAddress('2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv')
-    >>> from_id.hash_bytes == from_c.hash_bytes
-    True
-    >>> from_id.match(a46)
-    True
-    >>> a47 = Cake.from_bytes(b'a' * 47)
-    >>> str(a47)
-    '21EUi09ZvZAelgu02ANS9dSpK9oPsERF0uSpfEEZcdMx'
-    >>> from_id.match(a47)
-    False
-    """
-
-    def __init__(self, h: Union[Cake, Hasher, str])->None:
-        if isinstance(h, Hasher):
-            self.hash_bytes = h.digest()
-            self._id = B36.encode(self.hash_bytes)
-        elif isinstance(h, Cake):
-            self.hash_bytes = h.hash_bytes()
-            self._id = B36.encode(self.hash_bytes)
-        else:
-            self._id = h.lower()
-            self.hash_bytes = B36.decode(self._id)
-        self.shard_name = shard_name_int(shard_num(self.hash_bytes))
-
-    def __str__(self):
-        return self._id
-
-    def __repr__(self):
-        return "ContentAddress(%r)" % self.__str__()
-
-    def match(self, cake):
-        return cake.hash_bytes() == self.hash_bytes
-
-    def __eq__(self, other):
-        return isinstance(other, ContentAddress) and \
-               self._id == other._id
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __hash__(self):
-        return hash(self._id)
 
 
 class PatchAction(Jsonable, enum.Enum):
@@ -681,7 +682,8 @@ class CakeRack(utils.Jsonable, HasCake):
         if self._cake is None:
             in_bytes = self.in_bytes()
             self._cake = Cake.from_digest_and_inline_data(
-                quick_hash(in_bytes), in_bytes,
+                Hasher(in_bytes).digest(),
+                in_bytes,
                 role=CakeRole.NEURON)
         return self._cake
 
@@ -949,7 +951,127 @@ def ensure_cakepath(s):
         return s
 
 
-SSHA_MARK='{SSHA}'
+class HashSession(metaclass=abc.ABCMeta):
+
+    @staticmethod
+    def get() -> 'HashSession':
+        return threading.local().hash_ctx
+
+    @staticmethod
+    def set(ctx: 'HashSession') -> None:
+        threading.local().hash_ctx = ctx
+
+    @staticmethod
+    def close() -> None:
+        l = threading.local()
+        if hasattr(l, 'hash_ctx'):
+            l.hash_ctx.close()
+            l.hash_ctx = None
+
+    @abc.abstractmethod
+    def get_content(self, cake_or_path) -> 'Content':
+        raise NotImplementedError('subclasses must override')
+
+
+class PathResolved(SmAttr):
+    path: CakePath
+    resolved: Optional[Cake]
+
+
+class PathInfo(SmAttr):
+    path: CakePath
+    role: CakeRole
+    size: int
+    created_dt: datetime
+    file_type: str
+    mime: str
+    data: Optional[bytes]
+
+
+class LookupInfo(PathInfo):
+    stream_fn: Optional[Callable[[],IO[bytes]]]
+    file: Optional[str]
+
+    def has_data(self) -> bool:
+        return self.data is not None
+
+    def get_data(self) -> bytes:
+        return self.stream().read() if self.data is None else self.data
+
+    def stream(self) -> IO[bytes]:
+        if self.data is not None:
+            return BytesIO(self.data)
+        elif self.file is not None:
+            return open(self.file, 'rb')
+        elif self.stream_fn is not None:
+            return self.stream_fn()
+        else:
+            raise AssertionError(f'cannot stream: {self.path}')
+
+    def has_file(self):
+        return self.file is not None
+
+    def open_fd(self):
+        return os.open(self.file, os.O_RDONLY)
+
+
+"""
+@HashSession
+    def get_info(self, cake_path) -> PathInfo
+    def get_content(self, cake_path) -> PathInfo
+
+    def write_content(self, fp, chunk_size=65355):
+    def store_directories(self, directories:Dict[Cake,CakeRack]):
+    def edit_portal(self, cake_path, cake):
+    def query(self, cake_path, include_path_info:bool=False) -> CakeRack:
+    def edit_portal_tree(self, 
+            files:List[PatchAction,Cake,Optional[Cake]], 
+            asof_dt:datetime=None):
+            
+@guest
+    def info(self):
+    def login(self, email, passwd, client_id=None):
+    def authorize(self, cake, pts):
+    def get_content(self, cake_or_path):
+
+@user
+    def logout(self):
+    def write_content(self, fp, chunk_size=65355):
+    def store_directories(self, directories):
+    def create_portal(self, portal_id, cake):
+    def edit_portal(self, portal_id, cake):
+    def list_acls(self):
+    def edit_portal_tree(self, files, asof_dt=None):
+    def delete_in_portal_tree(self, cake_path, asof_dt = None):
+    def get_portal_tree(self, portal_id, asof_dt=None):
+    def grant_portal(self, portal_id, grantee, permission_type):
+    def delete_portal(self, portal_id):
+
+@admin
+    def add_user(self, email, ssha_pwd, full_name = None):
+    def remove_user(self, user_or_email):
+    def add_acl(self, user_or_email, acl):
+    def remove_acl(self, user_or_email, acl):
+
+"""
+
+
+def makeMoldedCake(name:str, cls:type):
+    class _MoldedCake(Cake):
+        __name__ = name
+        __qualname__ = name
+
+        def get_instance(self):
+            data = HashSession.get().get_content(self).get_data()
+            return cls(json.loads(data))
+
+    return _MoldedCake
+
+
+EventCake = makeMoldedCake('EventCake', Event)
+JsonWrapCake  = makeMoldedCake('JsonWrapCake', JsonWrap)
+
+_SSHA_MARK= '{SSHA}'
 
 
 class SaltedSha(utils.Stringable, utils.EnsureIt):
@@ -980,8 +1102,8 @@ class SaltedSha(utils.Stringable, utils.EnsureIt):
             self.digest = _digest
             self.salt = _salt
         else:
-            len_of_mark = len(SSHA_MARK)
-            if SSHA_MARK == s[:len_of_mark]:
+            len_of_mark = len(_SSHA_MARK)
+            if _SSHA_MARK == s[:len_of_mark]:
                 challenge_bytes = base64.b64decode(s[len_of_mark:])
                 self.digest = challenge_bytes[:20]
                 self.salt = challenge_bytes[20:]
@@ -1004,7 +1126,7 @@ class SaltedSha(utils.Stringable, utils.EnsureIt):
 
     def __str__(self):
         encode = base64.b64encode(self.digest + self.salt)
-        return SSHA_MARK + utils.ensure_string(encode)
+        return _SSHA_MARK + utils.ensure_string(encode)
 
 
 class InetAddress(utils.Stringable, utils.EnsureIt):

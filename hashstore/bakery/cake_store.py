@@ -161,7 +161,7 @@ class GuestAccess:
         if cake.has_data():
             return Content(data=cake_or_path.data())\
                 .set_role(cake_or_path)
-        elif cake.is_resolved():
+        elif cake.type.is_resolved:
             self.authorize(cake_or_path, Permissions.read_data_cake)
             return self.backend().get_content(cake_or_path)
         elif cake.type.is_portal:
@@ -172,8 +172,7 @@ class GuestAccess:
                 for resolved_portal in resolution_stack[:-1]:
                     self.authorize(cake_or_path, Permissions.read_portal)
                 return self.backend().get_content(resolution_stack[-1])
-            elif cake.type in [CakeType.DMOUNT,
-                                        CakeType.VTREE] :
+            elif cake.type in [CakeType.DMOUNT, CakeType.VTREE]:
                 return self.get_content_by_path(CakePath(None, _root=cake, _path=[]))
         else:
             raise AssertionError('should never get here')
@@ -187,7 +186,7 @@ class GuestAccess:
             will be validated on them before you able to proceed further.
         '''
         if cake_path.relative():
-            raise AssertionError('path has to be absolute: %s '%cake_path)
+            raise AssertionError(f'Has to be absolute: {cake_path}')
         root = cake_path.root
         if root.type == CakeType.VTREE:
             return self._read_vtree(cake_path)
@@ -199,9 +198,9 @@ class GuestAccess:
             try:
                 next_cake = bundle[next_name]
             except:
-                reraise_with_msg(' %r %r' % (cake_path, bundle.content()))
+                reraise_with_msg(f'{cake_path} {bundle.content()}')
 
-            if next_cake.is_resolved():
+            if next_cake.type.is_resolved:
                 content = self.backend().get_content(next_cake)
             else:
                 content = self.get_content(next_cake)
@@ -320,7 +319,6 @@ class PrivilegedAccess(GuestAccess):
                                  dirs_mismatch_input_cake)
         return len(dirs_stored), list(unseen_cakes)
 
-
     def _collect_unseen(self, cake, unseen_set):
         if not cake.has_data():
             lookup = self.backend().lookup(cake)
@@ -426,7 +424,6 @@ class PrivilegedAccess(GuestAccess):
             raise AssertionError('portal %r does not exists.' %
                                  portal_id)
 
-
     def _assert_vtree_(self, cake_path):
         cake_path = CakePath.ensure_it(cake_path)
         if cake_path.relative():
@@ -480,7 +477,6 @@ class PrivilegedAccess(GuestAccess):
 
     def _read_dmount(self, cake_path, asof_dt=None):
         raise AssertionError('not impl')
-
 
     @user_api.call()
     def edit_portal_tree(self, files, asof_dt=None):
@@ -734,7 +730,6 @@ class CakeStore:
                 glue_session.add(
                     Permission(permission_type=PT.Admin,
                                user=system))
-
 
     def ctx(self):
         return StoreContext(self)

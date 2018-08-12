@@ -1,14 +1,13 @@
 import re
 from datetime import date, datetime
+from enum import IntEnum
 from typing import (Any, Dict, List, Optional, get_type_hints, Union)
 from inspect import getfullargspec
 from hashstore.utils import (adjust_for_json, Jsonable,
                              lazy_factory, GlobalRef, Stringable,
                              StrKeyMixin, EnsureIt, json_decode,
-                             json_encode, identity)
+                             json_encode, identity, not_zero_len)
 from dateutil.parser import parse as dt_parse
-
-__ATTRS__ = "__attrs__"
 
 
 def get_args(cls, default=None):
@@ -17,23 +16,34 @@ def get_args(cls, default=None):
     return default
 
 
+class Conversion(IntEnum):
+    TO_JSON = -1
+    TO_OBJECT = 1
+
 class ClassRef(Stringable, StrKeyMixin, EnsureIt):
     """
-    >>> crint=ClassRef('builtins:int')
+    >>> crint=ClassRef('int')
     >>> str(crint)
-    'builtins:int'
-    >>> crint.to_json(5)
+    'int'
+    >>> crint.convert(5, Conversion.TO_JSON)
     5
-    >>> crint.from_json('3')
+    >>> crint.convert('3', Conversion.TO_OBJECT)
     3
     >>> crint = ClassRef(int)
-    >>> crint.to_json(5)
+    >>> crint.convert(5, Conversion.TO_JSON)
     5
-    >>> crint.from_json('3')
+    >>> crint.convert('3', Conversion.TO_OBJECT)
     3
+    >>> crint.matches(3)
+    True
+    >>> crint.matches('3')
+    False
     """
+
     def __init__(self, cls_or_str: Union[type, str])->None:
         if isinstance(cls_or_str, str):
+            if ':' not in cls_or_str:
+                cls_or_str = 'builtins:'+cls_or_str
             cls_or_str = GlobalRef(cls_or_str).get_instance()
         self.cls = cls_or_str
         if self.cls == Any:
@@ -47,20 +57,24 @@ class ClassRef(Stringable, StrKeyMixin, EnsureIt):
         else:
             self._from_json = lazy_factory(self.cls, self.cls)
 
-    def json(self, v: Any, direction: bool)->Any:
-        return self.from_json(v) if direction else self.to_json(v)
+    def matches(self, v):
+        return self.cls == Any or isinstance(v, self.cls)
 
-    def from_json(self, v: Any)->Any:
-        return self._from_json(v)
-
-    def to_json(self, v: Any)->Any:
-        return adjust_for_json(v, v)
+    def convert(self, v: Any, direction: Conversion)->Any:
+        if direction == Conversion.TO_OBJECT:
+            return self._from_json(v)
+        else:
+            return adjust_for_json(v, v)
 
     def __str__(self):
-        return str(GlobalRef(self.cls))
+        if self.cls.__module__ == 'builtins':
+            return self.cls.__name__
+        else:
+            return str(GlobalRef(self.cls))
 
 
 class Typing(Stringable, EnsureIt):
+
     @classmethod
     def factory(cls):
         return typing_factory
@@ -68,11 +82,11 @@ class Typing(Stringable, EnsureIt):
     def __init__(self, val_cref):
         self.val_cref = ClassRef.ensure_it(val_cref)
 
-    def convert(self, v: Any, direction: bool)->Any:
-        return self.val_cref.json(v, direction)
+    def convert(self, v: Any, direction:Conversion)->Any:
+        return self.val_cref.convert(v, direction)
 
     def default(self):
-        raise AssertionError(f'no default for {type(self)}')
+        raise AssertionError(f'no default for {str(self)}')
 
     @classmethod
     def name(cls):
@@ -83,23 +97,33 @@ class Typing(Stringable, EnsureIt):
 
 
 class OptionalTyping(Typing):
+
+    def validate(self, v):
+        return v is None or self.val_cref.matches(v)
+
     def default(self):
         return None
 
 
 class RequiredTyping(Typing):
-    pass
+
+    def validate(self, v):
+        return self.val_cref.matches(v)
 
 
 class DictTyping(Typing):
+
     def __init__(self, val_cref, key_cref):
         Typing.__init__(self, val_cref)
         self.key_cref = ClassRef.ensure_it(key_cref)
 
-    def convert(self, in_v: Any, direction: bool)->Dict[Any, Any]:
-        return {self.key_cref.json(k, direction):
-                self.val_cref.json(v, direction)
+    def convert(self, in_v:Any, direction:Conversion)->Dict[Any, Any]:
+        return {self.key_cref.convert(k, direction):
+                self.val_cref.convert(v, direction)
                 for k, v in in_v.items()}
+
+    def validate(self, v):
+        return isinstance(v, dict)
 
     def __str__(self):
         return f'{self.name()}[{self.key_cref},{self.val_cref}]'
@@ -109,8 +133,12 @@ class DictTyping(Typing):
 
 
 class ListTyping(Typing):
-    def convert(self, in_v: Any, direction: bool)->List[Any]:
-        return [self.val_cref.json(v, direction) for v in in_v]
+
+    def convert(self, in_v: Any, direction:Conversion)->List[Any]:
+        return [self.val_cref.convert(v, direction) for v in in_v]
+
+    def validate(self, v):
+        return isinstance(v, list)
 
     def default(self):
         return []
@@ -141,41 +169,46 @@ class AttrEntry(EnsureIt, Stringable):
     Traceback (most recent call last):
     ...
     AttributeError: 'int' object has no attribute 'split'
-
     """
-    def __init__(self, name, typing=None, default=None):
-        self.default = None
+    def __init__(self, name, typing=None, default=None, index=None):
+        self.default = default
+        self.index = None
         default_s = None
         if typing is None:
             split = name.split('=', 1)
             if len(split) == 2:
                 name, default_s = split
             name, typing = name.split(':', 1)
-        else:
-            self.default = default
         self.name = name
         self.typing = typing_factory(typing)
         if default_s is not None:
             self.default = self.typing.convert(
-                json_decode(default_s), True)
+                json_decode(default_s), Conversion.TO_OBJECT)
 
-    def from_json(self, v):
-        if v is None:
-            if self.default is not None:
-                return self.default
+    def convert(self, v: Any, direction: Conversion)->Any:
+        if Conversion.TO_OBJECT == direction:
+            if v is None:
+                if self.default is not None:
+                    return self.default
+                else:
+                    return self.typing.default()
             else:
-                return self.typing.default()
+                return self.typing.convert(v, Conversion.TO_OBJECT)
         else:
-            return self.typing.convert(v, True)
+            if v is None:
+                return None
+            else:
+                return self.typing.convert(v, Conversion.TO_JSON)
 
-    def to_json(self, o):
-        v = getattr(o, self.name)
-        return None if v is None else self.typing.convert(v, False)
+    def validate(self, v:Any)->bool:
+        if v is None and self.default is not None:
+            return True
+        return self.typing.validate(v)
 
     def __str__(self):
         def_s = ''
         if self.default is not None:
-            v = json_encode(self.typing.convert(self.default, False))
+            v = json_encode(self.typing.convert(self.default, Conversion.TO_JSON))
             def_s = f'={v}'
         return f'{self.name}:{self.typing}{def_s}'
 
@@ -189,14 +222,12 @@ def typing_factory(o):
     RequiredTyping('Required[hashstore.bakery:Cake]')
     >>> typing_factory(req)
     RequiredTyping('Required[hashstore.bakery:Cake]')
-    >>> Typing.ensure_it('Dict[datetime:datetime,builtins:str]')
-    DictTyping('Dict[datetime:datetime,builtins:str]')
+    >>> Typing.ensure_it('Dict[datetime:datetime,str]')
+    DictTyping('Dict[datetime:datetime,str]')
     """
 
     if isinstance(o, Typing):
         return o
-    if isinstance(o, AttrEntry):
-        return o.typing
     if isinstance(o, str):
         m = re.match(r'^(\w+)\[([\w.:]+),?([\w.:]*)\]$', o)
         if m is None:
@@ -224,32 +255,45 @@ def typing_factory(o):
                 f'Unknown annotation: {o}')
 
 
+class DictLike:
+    def __init__(self, o):
+        self.o = o
+
+    def __contains__(self, item):
+        return hasattr(self.o, item)
+
+    def __getitem__(self, item):
+        return getattr(self.o, item)
+
+
 class Mold(Jsonable):
 
     def __init__(self, o=None):
+        self.keys: List[str] = []
         self.attrs: Dict[str, AttrEntry] = {}
         if o is not None:
-            if isinstance(o, dict):
-                if len(o) == 1 and __ATTRS__ in o:
-                    json_attrs = o[__ATTRS__]
-                    if isinstance(json_attrs, list):
-                        try:
-                            self.attrs.update({
-                                ae.name: ae
-                                for ae in map(AttrEntry, json_attrs)
-                            })
-                            return
-                        except (AttributeError, ValueError) as _:
-                            pass
+            if isinstance(o, list):
+                for ae in map(AttrEntry.ensure_it, o):
+                    self.add_entry(ae)
+            elif isinstance(o, dict):
                 self.add_hints(o)
             else:
                 self.add_hints(get_type_hints(o))
 
+    @classmethod
+    def factory(cls):
+        def make(o):
+            for name in ('__mold__', 'mold'):
+                if hasattr(o, name):
+                    possible_mold = getattr(o, name)
+                    if isinstance(possible_mold, cls):
+                        return possible_mold
+            return cls(o)
+        return make
+
     def add_hints(self, hints):
-        self.attrs.update({
-            var_name: AttrEntry(var_name, var_cls)
-            for var_name, var_cls in hints.items()
-        })
+        for var_name, var_cls in hints.items():
+            self.add_entry(AttrEntry(var_name, var_cls))
 
     def set_defaults(self, defaults):
         for k in self.attrs:
@@ -273,10 +317,12 @@ class Mold(Jsonable):
                 if k in self.attrs}
 
     def add_entry(self, entry:AttrEntry):
+        entry.index = len(self.attrs)
+        self.keys.append(entry.name)
         self.attrs[entry.name] = entry
 
     def to_json(self):
-        return {__ATTRS__: [str(ae) for k, ae in self.attrs.items()]}
+        return [str(ae) for ae in self.attrs.values()]
 
     def check_overlaps(self, values):
         missing = set(
@@ -290,16 +336,35 @@ class Mold(Jsonable):
         if len(not_known) > 0:
             raise AttributeError(f'Not known: {not_known}')
 
-    def mold_dict(self, values):
-        self.check_overlaps(values)
-        return {
-            attr_name:
-                attr_entry.from_json(values.get(attr_name, None))
-            for attr_name, attr_entry in self.attrs.items()}
+    def build_val_dict(self, json_values):
+        self.check_overlaps(json_values)
+        return self.mold_it(json_values, Conversion.TO_OBJECT,
+                            to_dict=True)
 
-    def mold_attrs(self, values, target):
-        for k, v in self.mold_dict(values).items():
+    def mold_it(
+            self,
+            in_data: Union[List[Any],Dict[str,Any],DictLike],
+            direction: Conversion, to_dict=False
+    ) -> Union[List[Any],Dict[str,Any]]:
+        if not(isinstance(in_data, list)):
+            in_data = [in_data[k] if k in in_data else None
+                       for k in (self.keys)]
+        if len(self.keys) != len(in_data):
+            raise AttributeError(f'arrays has to match in size:'
+                                 f' {self.keys} {in_data}')
+        values = [
+            self.attrs[self.keys[i]].convert(in_data[i], direction)
+            for i in range(len(self.keys))]
+        if to_dict:
+            return dict(zip(self.keys, values))
+        else:
+            return values
+
+    def set_attrs(self, values, target):
+        for k, v in self.build_val_dict(values).items():
             setattr(target, k, v)
+
+
 
 
 class AnnotationsProcessor(type):
@@ -324,8 +389,8 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
     ...     z:bool
     ...
     >>> A.__mold__.attrs #doctest: +NORMALIZE_WHITESPACE
-    {'x': AttrEntry('x:Required[builtins:int]'),
-    'z': AttrEntry('z:Required[builtins:bool]')}
+    {'x': AttrEntry('x:Required[int]'),
+    'z': AttrEntry('z:Required[bool]')}
     >>> A({"x":3})
     Traceback (most recent call last):
     ...
@@ -342,7 +407,7 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
     ...     z:Optional[date]
     ...
     >>> A2.__mold__.attrs #doctest: +NORMALIZE_WHITESPACE
-    {'x': AttrEntry('x:Required[builtins:int]'),
+    {'x': AttrEntry('x:Required[int]'),
     'z': AttrEntry('z:Optional[datetime:date]')}
     >>> class B(SmAttr):
     ...     x: Cake
@@ -406,14 +471,167 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
         if _vals_ is None:
             _vals_ = dict(kwargs)
         values = {k: v for k, v in _vals_.items() if v is not None}
-        type(self).__mold__.mold_attrs(values, self)
+        type(self).__mold__.set_attrs(values, self)
 
-    def to_json(self):
-        return {
-            attr_name: attr_entry.to_json(self)
-            for attr_name, attr_entry
-            in self.__mold__.attrs.items()
-        }
+    def to_json(self) -> Dict[str, Any]:
+        return type(self).__mold__.mold_it(
+            DictLike(self),
+            Conversion.TO_JSON,
+            to_dict=True
+        )
+
+
+class Row:
+    def _row_id(self)->int:
+        raise AssertionError('need to be implemented')
+
+
+def get_row_id(row_id:Union[int, Row])->int:
+    if isinstance(row_id, int):
+        return row_id
+    return row_id._row_id()
+
+
+class MoldedTable(Stringable):
+    """
+    >>> class A(SmAttr):
+    ...     i:int
+    ...     s:str = 'xyz'
+    ...     d:Optional[datetime]
+    ...     z:List[datetime]
+    ...     y:Dict[str,str]
+    ...
+    >>> t = MoldedTable(A)
+    >>> str(t)
+    '#{"columns": ["i:Required[int]", "s:Required[str]=\\\\"xyz\\\\"", "d:Optional[datetime:datetime]", "z:List[datetime:datetime]", "y:Dict[str,str]"]}\\n'
+    >>> t.add_row(A(i=5,s='abc'))
+    0
+    >>> str(t)
+    '#{"columns": ["i:Required[int]", "s:Required[str]=\\\\"xyz\\\\"", "d:Optional[datetime:datetime]", "z:List[datetime:datetime]", "y:Dict[str,str]"]}\\n[5, "abc", null, [], {}]\\n'
+    >>> t.find_invalid_keys(t.add_row([7,None,'2018-08-10',None,None]))
+    []
+    >>> t.add_row([])
+    Traceback (most recent call last):
+    ...
+    AttributeError: arrays has to match in size: ['i', 's', 'd', 'z', 'y'] []
+    >>> t.add_row([None,None,None,None,None])
+    Traceback (most recent call last):
+    ...
+    AssertionError: no default for Required[int]
+    >>> str(t)
+    '#{"columns": ["i:Required[int]", "s:Required[str]=\\\\"xyz\\\\"", "d:Optional[datetime:datetime]", "z:List[datetime:datetime]", "y:Dict[str,str]"]}\\n[5, "abc", null, [], {}]\\n[7, "xyz", "2018-08-10T00:00:00", [], {}]\\n'
+    >>> t = MoldedTable(str(t))
+    >>> str(t)
+    '#{"columns": ["i:Required[int]", "s:Required[str]=\\\\"xyz\\\\"", "d:Optional[datetime:datetime]", "z:List[datetime:datetime]", "y:Dict[str,str]"]}\\n[5, "abc", null, [], {}]\\n[7, "xyz", "2018-08-10T00:00:00", [], {}]\\n'
+    >>> MoldedTable('a')
+    Traceback (most recent call last):
+    ...
+    AttributeError: header should start with "#": a
+    >>> t.find_invalid_rows()
+    []
+    >>> r=t.new_row()
+    >>> t.find_invalid_rows()
+    [2]
+    >>> t.find_invalid_keys(r)
+    ['i', 'z', 'y']
+    >>> r.i
+    >>> r.i=77
+    >>> r.i
+    77
+    >>> r[3]=[datetime(2018,8,1),]
+    >>> t.find_invalid_keys(r)
+    ['y']
+    >>> r['y']={}
+    >>> r['y']
+    {}
+    >>> r[4]
+    {}
+    >>> t.find_invalid_rows()
+    []
+    >>> str(t)
+    '#{"columns": ["i:Required[int]", "s:Required[str]=\\\\"xyz\\\\"", "d:Optional[datetime:datetime]", "z:List[datetime:datetime]", "y:Dict[str,str]"]}\\n[5, "abc", null, [], {}]\\n[7, "xyz", "2018-08-10T00:00:00", [], {}]\\n[77, null, null, ["2018-08-01T00:00:00"], {}]\\n'
+    >>> len(t)
+    3
+    """
+
+    def __init__(self, moldable_or_str:Any)->None:
+        self.data:List[List[Any]] = []
+        if isinstance(moldable_or_str, str):
+            lines=filter(not_zero_len, (
+                s.strip() for s in moldable_or_str.split('\n')))
+            header_line = next(lines)
+            if header_line[0] != '#':
+                raise AttributeError(f'header should start with "#":'
+                                     f' {header_line}')
+            header = json_decode(header_line[1:])
+            self.mold = Mold(header["columns"])
+            for l in lines:
+                self.add_row(json_decode(l))
+        else:
+            self.mold = Mold.ensure_it(moldable_or_str)
+
+    def add_row(self, row=None):
+        if not(isinstance(row, (list,dict))):
+            row = DictLike(row)
+        row = self.mold.mold_it(row, Conversion.TO_OBJECT)
+        row_id = len(self.data)
+        self.data.append(row)
+        return row_id
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, row_id:int) -> Row:
+        mold=self.mold
+        row = self.data[row_id]
+        class _MoldedRow(Row):
+            def _row_id(self):
+                return row_id
+
+            def __getattr__(self, key):
+                return row[mold.attrs[key].index]
+
+            def __setattr__(self, key, value):
+                row[mold.attrs[key].index] = value
+
+            def __getitem__(self, item):
+                if isinstance(item, str):
+                    return self.__getattr__(item)
+                else:
+                    return row[item]
+
+            def __setitem__(self, key, value):
+                if isinstance(key, str):
+                    self.__setattr__(key, value)
+                else:
+                    row[key] = value
+
+        return _MoldedRow()
+
+    def find_invalid_keys(self, row_id:Union[int, Row])-> List[str]:
+        row_id = get_row_id(row_id)
+        invalid_keys = []
+        for ae in self.mold.attrs.values():
+            if not (ae.validate(self.data[row_id][ae.index])):
+                invalid_keys.append(ae.name)
+        return invalid_keys
+
+    def find_invalid_rows(self) -> List[int]:
+        return [row_id for row_id in range(len(self.data))
+                if len(self.find_invalid_keys(row_id)) > 0]
+
+    def new_row(self) -> Row:
+        row_id = len(self.data)
+        self.data.append([None for _ in self.mold.keys])
+        return self[row_id]
+
+    def __str__(self):
+        def lines():
+            yield '#' +json_encode({'columns': self.mold.to_json()})
+            for row in self.data:
+                yield json_encode(self.mold.mold_it(row, Conversion.TO_JSON))
+            yield ''
+        return '\n'.join(lines())
 
 
 class JsonWrap(SmAttr):

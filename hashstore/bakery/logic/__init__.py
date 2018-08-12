@@ -1,11 +1,10 @@
 import inspect
-from enum import Enum, auto
 from typing import Union, Callable, Dict, Any, List, Optional, \
     get_type_hints
 
-from hashstore.utils import GlobalRef, StringEnum
-from hashstore.utils.smattr import SmAttr, Mold, AttrEntry, \
-    typing_factory
+from hashstore.utils import GlobalRef
+from hashstore.utils.smattr import (SmAttr, Mold, AttrEntry,
+    typing_factory)
 from hashstore.utils.time import CronExp, TimeZone
 
 
@@ -81,38 +80,6 @@ class Task:
                 if var.wired is None:
                     unresolved_variables.append(var)
 
-
-class EventState(StringEnum):
-    NEW = auto()
-    IN_PROCESS = auto()
-    SUCCESS = auto()
-    FAIL = auto()
-
-
-class Event(SmAttr):
-    '''
-    >>> EventState.NEW
-    EventState('NEW')
-    >>> EventState("IN_PROCESS")
-    EventState('IN_PROCESS')
-    >>> EventState("Q")
-    Traceback (most recent call last):
-    ...
-    ValueError: 'Q' is not a valid EventState
-    >>> e = Event()
-    >>> e.to_json()
-    {'state': 'NEW', 'input': {}, 'output': {}, 'codebase': None, 'additional_data': None}
-    >>> q = Event(e.to_json())
-    >>> q.state
-    EventState('NEW')
-    >>> str(q)
-    '{"additional_data": null, "codebase": null, "input": {}, "output": {}, "state": "NEW"}'
-    '''
-    state: EventState = EventState.NEW
-    input: Dict[str,Any]
-    output: Dict [str,Any]
-    codebase: Optional[str]
-    additional_data: Optional[str]
 
 class DagInitializer(type):
     def __init__(cls, name, bases, dct):
