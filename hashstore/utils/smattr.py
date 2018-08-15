@@ -501,13 +501,16 @@ class MoldedTable(Stringable):
     ...     z:List[datetime]
     ...     y:Dict[str,str]
     ...
-    >>> t = MoldedTable(A)
+    >>> class ATable(MoldedTable):
+    ...     __mold__ = A
+    ...
+    >>> t = ATable()
     >>> str(t)
-    '#{"columns": ["i:Required[int]", "s:Required[str]=\\\\"xyz\\\\"", "d:Optional[datetime:datetime]", "z:List[datetime:datetime]", "y:Dict[str,str]"]}\\n'
+    '#{"columns": ["i", "s", "d", "z", "y"]}\\n'
     >>> t.add_row(A(i=5,s='abc'))
     0
     >>> str(t)
-    '#{"columns": ["i:Required[int]", "s:Required[str]=\\\\"xyz\\\\"", "d:Optional[datetime:datetime]", "z:List[datetime:datetime]", "y:Dict[str,str]"]}\\n[5, "abc", null, [], {}]\\n'
+    '#{"columns": ["i", "s", "d", "z", "y"]}\\n[5, "abc", null, [], {}]\\n'
     >>> t.find_invalid_keys(t.add_row([7,None,'2018-08-10',None,None]))
     []
     >>> t.add_row([])
@@ -519,11 +522,11 @@ class MoldedTable(Stringable):
     ...
     AssertionError: no default for Required[int]
     >>> str(t)
-    '#{"columns": ["i:Required[int]", "s:Required[str]=\\\\"xyz\\\\"", "d:Optional[datetime:datetime]", "z:List[datetime:datetime]", "y:Dict[str,str]"]}\\n[5, "abc", null, [], {}]\\n[7, "xyz", "2018-08-10T00:00:00", [], {}]\\n'
-    >>> t = MoldedTable(str(t))
+    '#{"columns": ["i", "s", "d", "z", "y"]}\\n[5, "abc", null, [], {}]\\n[7, "xyz", "2018-08-10T00:00:00", [], {}]\\n'
+    >>> t = MoldedTable(str(t),A)
     >>> str(t)
-    '#{"columns": ["i:Required[int]", "s:Required[str]=\\\\"xyz\\\\"", "d:Optional[datetime:datetime]", "z:List[datetime:datetime]", "y:Dict[str,str]"]}\\n[5, "abc", null, [], {}]\\n[7, "xyz", "2018-08-10T00:00:00", [], {}]\\n'
-    >>> MoldedTable('a')
+    '#{"columns": ["i", "s", "d", "z", "y"]}\\n[5, "abc", null, [], {}]\\n[7, "xyz", "2018-08-10T00:00:00", [], {}]\\n'
+    >>> ATable('a')
     Traceback (most recent call last):
     ...
     AttributeError: header should start with "#": a
@@ -533,6 +536,8 @@ class MoldedTable(Stringable):
     >>> t.find_invalid_rows()
     [2]
     >>> t.find_invalid_keys(r)
+    ['i', 'z', 'y']
+    >>> t.find_invalid_keys(2)
     ['i', 'z', 'y']
     >>> r.i
     >>> r.i=77
@@ -549,26 +554,31 @@ class MoldedTable(Stringable):
     >>> t.find_invalid_rows()
     []
     >>> str(t)
-    '#{"columns": ["i:Required[int]", "s:Required[str]=\\\\"xyz\\\\"", "d:Optional[datetime:datetime]", "z:List[datetime:datetime]", "y:Dict[str,str]"]}\\n[5, "abc", null, [], {}]\\n[7, "xyz", "2018-08-10T00:00:00", [], {}]\\n[77, null, null, ["2018-08-01T00:00:00"], {}]\\n'
+    '#{"columns": ["i", "s", "d", "z", "y"]}\\n[5, "abc", null, [], {}]\\n[7, "xyz", "2018-08-10T00:00:00", [], {}]\\n[77, null, null, ["2018-08-01T00:00:00"], {}]\\n'
     >>> len(t)
     3
     """
 
-    def __init__(self, moldable_or_str:Any)->None:
+    def __init__(self, s:Optional[str]=None, mold:Any = None)->None:
+        if mold is not None:
+            self.mold = Mold.ensure_it(mold)
+        else:
+            self.mold = Mold.ensure_it(type(self).__mold__) #type: ignore
         self.data:List[List[Any]] = []
-        if isinstance(moldable_or_str, str):
+        if s is not None:
             lines=filter(not_zero_len, (
-                s.strip() for s in moldable_or_str.split('\n')))
+                s.strip() for s in s.split('\n')))
             header_line = next(lines)
             if header_line[0] != '#':
                 raise AttributeError(f'header should start with "#":'
                                      f' {header_line}')
             header = json_decode(header_line[1:])
-            self.mold = Mold(header["columns"])
+            cols = tuple(header["columns"])
+            mold_cols = tuple(self.mold.keys)
+            if mold_cols != cols:
+                raise AttributeError(f' mismatch: {cols} {mold_cols}')
             for l in lines:
                 self.add_row(json_decode(l))
-        else:
-            self.mold = Mold.ensure_it(moldable_or_str)
 
     def add_row(self, row=None):
         if not(isinstance(row, (list,dict))):
@@ -626,12 +636,13 @@ class MoldedTable(Stringable):
         return self[row_id]
 
     def __str__(self):
-        def lines():
-            yield '#' +json_encode({'columns': self.mold.to_json()})
+        def gen():
+            yield '#' + json_encode({'columns': self.mold.keys})
             for row in self.data:
-                yield json_encode(self.mold.mold_it(row, Conversion.TO_JSON))
+                yield json_encode(
+                    self.mold.mold_it(row, Conversion.TO_JSON))
             yield ''
-        return '\n'.join(lines())
+        return '\n'.join(gen())
 
 
 class JsonWrap(SmAttr):

@@ -904,7 +904,7 @@ class CakePath(utils.Stringable, utils.EnsureIt):
         return self.root is None
 
     def is_root(self):
-        return not self.relative() and len(self.path) == 0;
+        return not self.relative() and len(self.path) == 0
 
     def make_absolute(self, current_cake_path):
         if self.relative():
@@ -920,7 +920,7 @@ class CakePath(utils.Stringable, utils.EnsureIt):
         if self.relative():
             return self.path_join()
         else:
-            return '/%s/%s' % (utils.ensure_string(str(self.root)), utils.ensure_string(self.path_join()))
+            return f'/{str(self.root)}/{self.path_join()}'
 
     def path_join(self):
         return '/'.join(self.path)
@@ -1056,20 +1056,18 @@ class LookupInfo(PathInfo):
 """
 
 
-def makeMoldedCake(name:str, cls:type):
-    class _MoldedCake(Cake):
-        __name__ = name
-        __qualname__ = name
+class MoldedCake(Cake):
 
-        def get_instance(self):
-            data = HashSession.get().get_content(self).get_data()
-            return cls(json.loads(data))
-
-    return _MoldedCake
+    def get_instance(self):
+        data = HashSession.get().get_content(self).get_data()
+        return self.__smattr__(json.loads(data))
 
 
-EventCake = makeMoldedCake('EventCake', Event)
-JsonWrapCake  = makeMoldedCake('JsonWrapCake', JsonWrap)
+class EventCake(MoldedCake):
+    __smattr__= Event
+
+class JsonWrapCake(MoldedCake):
+    __smattr__ = JsonWrap
 
 _SSHA_MARK= '{SSHA}'
 
