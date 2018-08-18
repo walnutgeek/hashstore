@@ -9,6 +9,8 @@ from typing import Any, TypeVar, Type, Dict
 from datetime import date, datetime
 import codecs
 
+ENCODING_USED = 'utf-8'
+
 
 def identity(v):
     return v
@@ -73,13 +75,23 @@ def ensure_directory(directory: str):
         os.makedirs(directory)
 
 
-ensure_bytes = lambda s: s if isinstance(s, bytes)\
-    else str(s).encode('utf-8')
+def ensure_bytes(s:Any)->bytes:
+    if isinstance(s, bytes):
+        return s
+    if not isinstance(s, str):
+        s = str(s)
+    return s.encode(ENCODING_USED)
 
-ensure_string = lambda s: s if isinstance(s, str)\
-    else s.decode('utf-8') if isinstance(s, bytes) else str(s)
 
-utf8_reader = codecs.getreader("utf-8")
+def ensure_string(s:Any)->str:
+    if isinstance(s, str):
+        return s
+    if isinstance(s, bytes):
+        return s.decode(ENCODING_USED)
+    return str(s)
+
+
+utf8_reader = codecs.getreader(ENCODING_USED)
 
 
 def path_split_all(path: str, ensure_trailing_slash: bool = None):
@@ -145,7 +157,7 @@ class Stringable:
     it's string representation as single parameter.
     '''
     def __repr__(self):
-        return '%s(%r)' % (type(self).__name__, str(self))
+        return f'{type(self).__name__}({repr(str(self))})'
 
 
 class StrKeyMixin:

@@ -21,7 +21,7 @@ from typing import (
 import logging
 from hashstore.utils import path_split_all
 from hashstore.utils.file_types import guess_name, file_types, HSB
-from hashstore.utils.smattr import JsonWrap, SmAttr
+from hashstore.utils.smattr import JsonWrap, SmAttr, MoldedTable
 
 log = logging.getLogger(__name__)
 
@@ -583,8 +583,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
         :return: hash in bytes
         """
         if not self.type.is_resolved:
-            raise AssertionError("Not-hash %r %r" %
-                                 (self.type, self))
+            raise AssertionError(f"Not-hash {self.type} {self}")
         return self._data
 
     def __str__(self)->str:
@@ -618,7 +617,20 @@ class HasCake(metaclass=abc.ABCMeta):
         raise NotImplementedError('subclasses must override')
 
 
+class CakedBytes(HasCake):
 
+    @abc.abstractmethod
+    def in_bytes(self)->bytes:
+        raise NotImplementedError('subclasses must override')
+
+
+class Str2Bytes(metaclass=abc.ABCMeta):
+
+    def in_bytes(self)->bytes:
+        return str(self).encode('utf-8')
+
+
+CakedBytes.register(MoldedTable)
 
 class PatchAction(Jsonable, enum.Enum):
     update = +1
@@ -635,7 +647,7 @@ class PatchAction(Jsonable, enum.Enum):
         return str(self)
 
 
-class CakeRack(utils.Jsonable, HasCake):
+class CakeRack(utils.Jsonable, CakedBytes):
     """
     sorted dictionary of names and corresponding Cakes
 
@@ -979,16 +991,18 @@ class PathResolved(SmAttr):
 
 
 class PathInfo(SmAttr):
-    path: CakePath
+    name: str
     role: CakeRole
     size: int
     created_dt: datetime
     file_type: str
     mime: str
-    data: Optional[bytes]
+    resolved: Optional[Cake]
 
 
 class LookupInfo(PathInfo):
+    path: CakePath
+    data: Optional[bytes]
     stream_fn: Optional[Callable[[],IO[bytes]]]
     file: Optional[str]
 

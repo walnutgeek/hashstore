@@ -3,10 +3,12 @@ from datetime import date, datetime
 from enum import IntEnum
 from typing import (Any, Dict, List, Optional, get_type_hints, Union)
 from inspect import getfullargspec
+
 from hashstore.utils import (adjust_for_json, Jsonable,
                              lazy_factory, GlobalRef, Stringable,
                              StrKeyMixin, EnsureIt, json_decode,
-                             json_encode, identity, not_zero_len)
+                             json_encode, identity, not_zero_len,
+                             ensure_string)
 from dateutil.parser import parse as dt_parse
 
 
@@ -559,13 +561,14 @@ class MoldedTable(Stringable):
     3
     """
 
-    def __init__(self, s:Optional[str]=None, mold:Any = None)->None:
+    def __init__(self, s:Union[str,bytes,None]=None, mold:Any = None)->None:
         if mold is not None:
             self.mold = Mold.ensure_it(mold)
         else:
             self.mold = Mold.ensure_it(type(self).__mold__) #type: ignore
         self.data:List[List[Any]] = []
         if s is not None:
+            s = ensure_string(s)
             lines=filter(not_zero_len, (
                 s.strip() for s in s.split('\n')))
             header_line = next(lines)
@@ -574,6 +577,7 @@ class MoldedTable(Stringable):
                                      f' {header_line}')
             header = json_decode(header_line[1:])
             cols = tuple(header["columns"])
+            #TODO support: [ int, bool, str, float, date, datetime, object ]
             mold_cols = tuple(self.mold.keys)
             if mold_cols != cols:
                 raise AttributeError(f' mismatch: {cols} {mold_cols}')
@@ -644,6 +648,9 @@ class MoldedTable(Stringable):
             yield ''
         return '\n'.join(gen())
 
+    def in_bytes(self)->bytes:
+        return str(self).encode('utf-8')
+
 
 class JsonWrap(SmAttr):
     classRef:GlobalRef
@@ -660,3 +667,4 @@ class JsonWrap(SmAttr):
                     "json": o.to_json()
             })
         raise AttributeError(f"Not jsonable: {o}")
+

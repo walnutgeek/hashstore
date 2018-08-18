@@ -6,7 +6,7 @@ from hashstore.ndb import StringCast
 from hashstore.ndb.mixins import ReprIt, NameIt, Cdt, GuidPk, Udt
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (ForeignKey, Column, String, Boolean, DateTime,
-                        Index)
+                        Index, Integer)
 
 Base:Any = declarative_base(name='CakeShardBase')
 CakeShardBase:Any = Base
@@ -30,6 +30,9 @@ class VolatileTree(NameIt, ReprIt, CakeShardBase):
     path = Column(String, nullable=False, primary_key=True)
     parent_path = Column(String, nullable=False)
     cake = Column(StringCast(Cake), nullable=True)
+    size = Column(Integer, nullable=True)
+    file_type = Column(String, nullable=True)
+    mime = Column(String, nullable=True)
     start_by = Column(StringCast(Cake),nullable=False)
     end_by = Column(StringCast(Cake),nullable=True)
     start_dt = Column(DateTime, nullable=False, primary_key=True,

@@ -1,6 +1,7 @@
 from enum import IntEnum
 
-from hashstore.bakery import CakePath, HasCake, Cake, CakeRack, CakeRole
+from hashstore.bakery import CakePath, HasCake, Cake, CakeRack, \
+    CakeRole, CakedBytes, Str2Bytes
 
 
 class NodeState(IntEnum):
@@ -85,7 +86,8 @@ class CakeNode(Node):
         return self._cake
 
 
-class Neuron(Node):
+class Neuron(Node, Str2Bytes, CakedBytes):
+
     def __init__(self, parent, name, state=NodeState.unknown):
         Node.__init__(self, parent, name, state)
         self.store = {}
