@@ -1,7 +1,8 @@
 from enum import IntEnum
 
 from hashstore.bakery import CakePath, HasCake, Cake, CakeRack, \
-    CakeRole, Str2Bytes
+    CakeRole
+from hashstore.utils import Str2Bytes
 
 
 class NodeState(IntEnum):

@@ -3,14 +3,13 @@ import shutil
 import datetime
 import pylru
 from hashstore.ndb import Dbf
-from hashstore.utils import (ensure_bytes, ensure_directory)
+from hashstore.utils import ensure_directory
 from hashstore.utils.hashing import (is_it_shard, Hasher)
 from sqlalchemy import func, select
 from hashstore.bakery import (NotFoundError, Content)
 from . import (blob_meta, blob,
                incoming_meta, incoming,
                ContentAddress, MAX_NUM_OF_SHARDS)
-
 import logging
 
 
@@ -208,9 +207,8 @@ class ContentWriter:
 
     def write(self, content, done=False):
         if not isinstance(content,bytes):
-            raise AssertionError('expecting bytes, got: %s %r' %
-                                 (type(content),content))
-        content = ensure_bytes(content)
+            raise AssertionError(
+                f'expecting bytes, got: {type(content)} {content!r}')
         self.hasher.update(content)
         if self.buffer is not None:
             if MAX_DB_BLOB_SIZE > (len(self.buffer) + len(content)):

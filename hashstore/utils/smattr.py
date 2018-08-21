@@ -648,8 +648,6 @@ class MoldedTable(Stringable):
             yield ''
         return '\n'.join(gen())
 
-    def in_bytes(self)->bytes:
-        return str(self).encode('utf-8')
 
 
 class JsonWrap(SmAttr):

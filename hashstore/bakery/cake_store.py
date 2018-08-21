@@ -283,7 +283,7 @@ class PrivilegedAccess(GuestAccess):
                 lookup = self.backend().lookup(dir_cake)
                 if not lookup.found():
                     w = self.backend().writer()
-                    w.write(dir_contents.in_bytes(), done=True)
+                    w.write(bytes(dir_contents), done=True)
                     lookup = self.backend().lookup(dir_cake)
                     if lookup.found():
                         dirs_stored.add(dir_cake)
@@ -443,7 +443,7 @@ class PrivilegedAccess(GuestAccess):
             namedCakes = self._make_bundle(
                 query(VolatileTree.parent_path == path).all())
             return Content(created_dt=neuron_maybe.start_dt,
-                           data=namedCakes.in_bytes())\
+                           data=bytes(namedCakes))\
                 .set_role(CakeRole.NEURON)
         else:
             return self.get_content(neuron_maybe.cake)

@@ -11,7 +11,7 @@ from hashstore.utils.hashing import SaltedSha
 from hashstore.bakery import Content, cake_or_path, \
     NotAuthorizedError
 from hashstore.utils import json_encoder, FileNotFound, ensure_bytes, \
-    exception_message, ensure_string
+    exception_message, decode
 from hashstore.utils.file_types import guess_type
 import json
 import tornado.web
@@ -140,7 +140,7 @@ class PostHandler(_StoreAccessMixin, tornado.web.RequestHandler):
     SUPPORTED_METHODS = ['POST']
 
     def post(self):
-        req = json.loads(ensure_string(self.request.body))
+        req = json.loads(decode(self.request.body))
         res = self.access.process_api_call(req['call'], req['msg'])
 
         self.write(json_encoder.encode(res))

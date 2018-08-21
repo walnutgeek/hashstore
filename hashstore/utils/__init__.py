@@ -80,6 +80,10 @@ def ensure_bytes(s:Any)->bytes:
         return s
     if not isinstance(s, str):
         s = str(s)
+    return encode(s)
+
+
+def encode(s:str)->bytes:
     return s.encode(ENCODING_USED)
 
 
@@ -87,8 +91,12 @@ def ensure_string(s:Any)->str:
     if isinstance(s, str):
         return s
     if isinstance(s, bytes):
-        return s.decode(ENCODING_USED)
+        return decode(s)
     return str(s)
+
+
+def decode(s:bytes)->str:
+    return s.decode(ENCODING_USED)
 
 
 utf8_reader = codecs.getreader(ENCODING_USED)
@@ -149,7 +157,12 @@ class EnsureIt:
         return cls.ensure_it(o)
 
 
-class Stringable:
+class Str2Bytes:
+    def __bytes__(self)->bytes:
+        return str(self).encode(ENCODING_USED)
+
+
+class Stringable(Str2Bytes):
     '''
     Marker to inform json_encoder to use `str(o)` to
     serialize in json. Also assumes that any implementing
@@ -158,6 +171,7 @@ class Stringable:
     '''
     def __repr__(self):
         return f'{type(self).__name__}({repr(str(self))})'
+
 
 
 class StrKeyMixin:

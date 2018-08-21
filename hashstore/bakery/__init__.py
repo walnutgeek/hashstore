@@ -228,16 +228,6 @@ def _header(type, role):
     return (type.code << 1)|role.code
 
 
-def pack_in_bytes(type, role, data_bytes):
-    r"""
-    >>> pack_in_bytes(CakeType.INLINE,CakeRole.SYNAPSE, b'ABC')
-    b'\x00ABC'
-    >>> pack_in_bytes(CakeType.SHA256,CakeRole.NEURON, b'XYZ')
-    b'\x03XYZ'
-    """
-    return bytes([_header(type, role)]) + data_bytes
-
-
 def process_stream(fd:IO[bytes],
                    on_chunk:Callable[[bytes], None]=nop_on_chunk,
                    chunk_size:int=65355
@@ -455,9 +445,8 @@ class Cake(utils.Stringable, utils.EnsureIt):
         return self._data
 
     def __str__(self)->str:
-        in_bytes = pack_in_bytes(self.type, self.role,
-                                 self._data)
-        return B62.encode(in_bytes)
+        return B62.encode( bytes([_header(self.type, self.role)]) +
+                           self._data )
 
     def __repr__(self)->str:
         return f"Cake({str(self)!r})"
@@ -486,10 +475,6 @@ class HasCake(metaclass=abc.ABCMeta):
         raise NotImplementedError('subclasses must override')
 
 
-class Str2Bytes:
-
-    def __bytes__(self)->bytes:
-        return str(self).encode('utf-8')
 
 
 class PatchAction(Jsonable, enum.Enum):
@@ -552,7 +537,7 @@ class CakeRack(utils.Jsonable):
 
     def cake(self)->Cake:
         if self._cake is None:
-            in_bytes = self.in_bytes()
+            in_bytes = bytes(self)
             self._cake = Cake.from_digest_and_inline_data(
                 Hasher(in_bytes).digest(),
                 in_bytes,
@@ -564,14 +549,14 @@ class CakeRack(utils.Jsonable):
             self._content = str(self)
         return self._content
 
-    def in_bytes(self)->bytes:
+    def __bytes__(self)->bytes:
         if self._in_bytes is None:
-            self._in_bytes = utils.ensure_bytes(self.content())
+            self._in_bytes = utils.encode(self.content())
         return self._in_bytes
 
     def size(self)->int:
         if self._size is None:
-            self._size = len(self.in_bytes())
+            self._size = len(bytes(self))
         return self._size
 
     def is_defined(self)->bool:
@@ -690,6 +675,8 @@ class CakeRack(utils.Jsonable):
     def to_json(self)->Tuple[List[str],List[Optional[Cake]]]:
         keys = self.keys()
         return (keys, self.get_cakes(keys))
+
+HasCake.register(CakeRack)
 
 
 class CakePath(utils.Stringable, utils.EnsureIt):
