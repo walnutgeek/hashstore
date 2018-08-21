@@ -1,19 +1,19 @@
 from typing import Any, Type
 
 from hashstore.ndb import StringCast
-from hashstore.bakery import Cake, SaltedSha, CakeRole, CakeType as KS, \
-    CakeType
+from hashstore.bakery import (Cake, CakeRole, CakeType)
 import datetime
 from sqlalchemy import Column, DateTime, String, Integer
 from sqlalchemy.ext.declarative import declared_attr
 from hashstore.utils import from_camel_case_to_underscores
+from hashstore.utils.hashing import SaltedSha
 
 
 class ReprIt:
     def __repr__(self):
-        vals = ', '.join( '%s=%r' % (c.name, getattr(self, c.name))
+        vals = ', '.join( f'{c.name}={repr(getattr(self, c.name))}'
                                 for c in self.__table__.c)
-        return '<<table:%s %s>>' % ( self.__tablename__, vals)
+        return f'<<table:{self.__tablename__} {vals}>>'
 
 
 class NameIt(object):
@@ -55,7 +55,7 @@ class ServersMixin(NameIt, Cdt, Udt):
     secret = Column(StringCast(SaltedSha), nullable=False)
 
 
-def newSingleton(ks=KS.PORTAL):
+def newSingleton(ks=CakeType.PORTAL):
     new_dmount = lambda: Cake.new_portal(CakeRole.NEURON, ks)
     class NewSingleton(NameIt, ReprIt):
         single = Column(Integer,primary_key=True, default=1)
@@ -65,4 +65,4 @@ def newSingleton(ks=KS.PORTAL):
 
 Singleton = newSingleton()
 
-DirSingleton = newSingleton(KS.DMOUNT)
+DirSingleton = newSingleton(CakeType.DMOUNT)

@@ -26,7 +26,8 @@ from hashstore.ndb.mixins import ReprIt, GuidPk, Cdt, Udt, \
     NameIt, ServersMixin, GuidPkWithDefault, \
     GuidPkWithSynapsePortalDefault
 from hashstore.ndb import StringCast, IntCast
-from hashstore.bakery import Cake, SaltedSha, CakeRole
+from hashstore.bakery import Cake
+from hashstore.utils.hashing import SaltedSha
 from hashstore.utils import Stringable, EnsureIt
 
 import enum

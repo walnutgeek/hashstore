@@ -2,7 +2,8 @@ from typing import Any
 
 from hashstore.ndb.mixins import ReprIt, NameIt, Cdt, Udt, \
     GuidPk, Singleton, GuidPkWithSynapsePortalDefault
-from hashstore.bakery import Cake, SaltedSha, InetAddress
+from hashstore.bakery import Cake
+from hashstore.utils.hashing import SaltedSha, InetAddress
 from hashstore.ndb import StringCast
 
 from sqlalchemy.ext.declarative import declarative_base

@@ -1,7 +1,7 @@
 from enum import IntEnum
 
 from hashstore.bakery import CakePath, HasCake, Cake, CakeRack, \
-    CakeRole, CakedBytes, Str2Bytes
+    CakeRole, Str2Bytes
 
 
 class NodeState(IntEnum):
@@ -86,7 +86,7 @@ class CakeNode(Node):
         return self._cake
 
 
-class Neuron(Node, Str2Bytes, CakedBytes):
+class Neuron(Node, Str2Bytes):
 
     def __init__(self, parent, name, state=NodeState.unknown):
         Node.__init__(self, parent, name, state)

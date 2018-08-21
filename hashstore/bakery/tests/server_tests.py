@@ -1,11 +1,12 @@
 from nose.tools import eq_
 
-from hashstore.bakery import SaltedSha, Cake, CakeRole, CakeType, \
-    CakePath
+from hashstore.bakery import Cake, CakeRole, CakeType, CakePath
 from hashstore.tests import (sqlite_q, TestSetup, file_set1, file_set2,
     prep_mount, update_mount, fileset1_cake, fileset2_cake)
 import os
 from time import sleep
+
+from hashstore.utils.hashing import SaltedSha
 
 
 class ServerSetup:

@@ -23,7 +23,8 @@ def test_docs():
     import hashstore.utils.ignore_file as ignore_file
     import hashstore.utils.time as time
     import hashstore.utils.smattr as smattr
-    for t in (utils, ignore_file, time, smattr):
+    import hashstore.utils.hashing as hashing
+    for t in (utils, ignore_file, time, smattr, hashing):
         r = doctest.testmod(t)
         ok_(r.attempted > 0, f'There is not doctests in module {t}')
         eq_(r.failed,0)

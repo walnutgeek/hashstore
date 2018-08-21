@@ -8,7 +8,6 @@ from datetime import datetime
 
 from hashstore.utils import Jsonable
 from io import BytesIO
-from hashlib import sha256, sha1
 import os
 import hashstore.utils as utils
 import base64
@@ -22,146 +21,15 @@ import logging
 from hashstore.utils import path_split_all
 from hashstore.utils.file_types import guess_name, file_types, HSB
 from hashstore.utils.smattr import JsonWrap, SmAttr, MoldedTable
+from hashstore.utils.hashing import Hasher, shard_name_int, shard_num, \
+    HashBytes
 
 log = logging.getLogger(__name__)
 
 B62 = base_x(62)
 
-B36 = base_x(36)
 
 MAX_NUM_OF_SHARDS = 8192
-
-class Hasher:
-    def __init__(self, data: Optional[bytes] = None)->None:
-        self.sha = sha256()
-        if data is not None:
-            self.update(data)
-
-    def update(self, b: bytes):
-        self.sha.update(b)
-
-    def digest(self):
-        return self.sha.digest()
-
-class ContentAddress(utils.Stringable, utils.EnsureIt):
-    """
-    case-insensitive address that used to store blobs
-    of data in file system and in db
-
-    >>> a46 = Cake.from_bytes(b'a' * 46)
-    >>> str(a46)
-    '2lEWHXV2XeYyZnKNyQyGPt4poJhV7VeYCfeszHnLyFtx'
-    >>> from_c = ContentAddress(a46)
-    >>> str(from_c)
-    '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
-    >>> from_id = ContentAddress(str(from_c))
-    >>> str(from_id)
-    '2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv'
-    >>> from_id
-    ContentAddress('2jr7e7m1dz6uky4soq7eaflekjlgzwsvech6skma3ojl4tc0zv')
-    >>> from_id.hash_bytes == from_c.hash_bytes
-    True
-    >>> from_id.match(a46)
-    True
-    >>> a47 = Cake.from_bytes(b'a' * 47)
-    >>> str(a47)
-    '21EUi09ZvZAelgu02ANS9dSpK9oPsERF0uSpfEEZcdMx'
-    >>> from_id.match(a47)
-    False
-    """
-
-    def __init__(self, h: Union['Cake', Hasher, str])->None:
-        if isinstance(h, Hasher):
-            self.hash_bytes = h.digest()
-            self._id = B36.encode(self.hash_bytes)
-        elif isinstance(h, Cake):
-            self.hash_bytes = h.hash_bytes()
-            self._id = B36.encode(self.hash_bytes)
-        else:
-            self._id = h.lower()
-            self.hash_bytes = B36.decode(self._id)
-        self.shard_name = shard_name_int(shard_num(self.hash_bytes))
-
-    def __str__(self):
-        return self._id
-
-    def __repr__(self):
-        return f"{type(self).__name__}({repr(self._id)})"
-
-    def match(self, cake):
-        return cake.hash_bytes() == self.hash_bytes
-
-    def __eq__(self, other):
-        return isinstance(other, ContentAddress) and \
-               self._id == other._id
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __hash__(self):
-        return hash(self._id)
-
-
-
-def shard_name_int(num: int):
-    """
-    >>> shard_name_int(0)
-    '0'
-    >>> shard_name_int(1)
-    '1'
-    >>> shard_name_int(8000)
-    '668'
-    """
-    return B36.encode_int(num)
-
-
-def decode_shard(name: str):
-    """
-    >>> decode_shard('0')
-    0
-    >>> decode_shard('668')
-    8000
-    """
-    return B36.decode_int(name)
-
-
-def is_it_shard(shard_name: str, max_num:int = MAX_NUM_OF_SHARDS)->bool:
-    """
-    Test if name can represent shard
-
-    >>> is_it_shard('668')
-    True
-    >>> is_it_shard('6bk')
-    False
-    >>> is_it_shard('0')
-    True
-
-    logic should not be sensitive for upper case:
-    >>> is_it_shard('5BK')
-    True
-    >>> is_it_shard('6BK')
-    False
-    >>> is_it_shard('')
-    False
-    >>> is_it_shard('.5k')
-    False
-    >>> is_it_shard('abcd')
-    False
-    """
-    shard_num = -1
-    if shard_name == '' or len(shard_name) > 3:
-        return False
-    try:
-        shard_num = decode_shard(shard_name.lower())
-    except:
-        pass
-    return shard_num >= 0 and shard_num < max_num
-
-
-def shard_num(hash_bytes: bytes, base: int = MAX_NUM_OF_SHARDS):
-    b1, b2 = hash_bytes[:2]
-    return (b1 * 256 + b2) % base
-
 
 class Content(Jsonable):
     """
@@ -482,15 +350,15 @@ class Cake(utils.Stringable, utils.EnsureIt):
             self.role = CakeRole.find_by_code(header & 1)
         if not(self.has_data()):
             if len(self._data) != 32:
-                raise AssertionError('invalid CAKey: %r ' % s)
+                raise AssertionError(f'invalid CAKey: {s}' )
 
-    def shard_num(self, base=MAX_NUM_OF_SHARDS)->int:
+    def shard_num(self, base:int)->int:
         """
-        >>> Cake('0').shard_num()
+        >>> Cake('0').shard_num(8192)
         0
-        >>> Cake.from_bytes(b' ').shard_num()
+        >>> Cake.from_bytes(b' ').shard_num(8192)
         32
-        >>> Cake('2xgkyws1ZbSlXUvZRCSIrjne73Pv1kmYArYvhOrTtqkX').shard_num()
+        >>> Cake('2xgkyws1ZbSlXUvZRCSIrjne73Pv1kmYArYvhOrTtqkX').shard_num(8192)
         5937
 
         """
@@ -502,7 +370,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
         else:
             return 0
 
-    def shard_name(self, base: int=MAX_NUM_OF_SHARDS)->str:
+    def shard_name(self, base: int)->str:
         return shard_name_int(self.shard_num(base))
 
     @staticmethod
@@ -609,6 +477,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
     def __ne__(self, other)->bool:
         return not self.__eq__(other)
 
+HashBytes.register(Cake)
 
 class HasCake(metaclass=abc.ABCMeta):
 
@@ -617,20 +486,11 @@ class HasCake(metaclass=abc.ABCMeta):
         raise NotImplementedError('subclasses must override')
 
 
-class CakedBytes(HasCake):
+class Str2Bytes:
 
-    @abc.abstractmethod
-    def in_bytes(self)->bytes:
-        raise NotImplementedError('subclasses must override')
-
-
-class Str2Bytes(metaclass=abc.ABCMeta):
-
-    def in_bytes(self)->bytes:
+    def __bytes__(self)->bytes:
         return str(self).encode('utf-8')
 
-
-CakedBytes.register(MoldedTable)
 
 class PatchAction(Jsonable, enum.Enum):
     update = +1
@@ -647,7 +507,7 @@ class PatchAction(Jsonable, enum.Enum):
         return str(self)
 
 
-class CakeRack(utils.Jsonable, CakedBytes):
+class CakeRack(utils.Jsonable):
     """
     sorted dictionary of names and corresponding Cakes
 
@@ -1083,71 +943,6 @@ class EventCake(MoldedCake):
 class JsonWrapCake(MoldedCake):
     __smattr__ = JsonWrap
 
-_SSHA_MARK= '{SSHA}'
-
-
-class SaltedSha(utils.Stringable, utils.EnsureIt):
-    """
-    >>> ssha = SaltedSha.from_secret('abc')
-    >>> ssha.check_secret('abc')
-    True
-    >>> ssha.check_secret('zyx')
-    False
-    >>> ssha = SaltedSha('{SSHA}5wRHUQxypw7C4AVd4yZRW/8pXy2Gwvh/')
-    >>> ssha.check_secret('abc')
-    True
-    >>> ssha.check_secret('Abc')
-    False
-    >>> ssha.check_secret('zyx')
-    False
-    >>> str(ssha)
-    '{SSHA}5wRHUQxypw7C4AVd4yZRW/8pXy2Gwvh/'
-    >>> ssha
-    SaltedSha('{SSHA}5wRHUQxypw7C4AVd4yZRW/8pXy2Gwvh/')
-
-    """
-    def __init__( self,
-                  s:Optional[str],
-                  _digest: bytes=None,
-                  _salt: bytes=None)->None:
-        if s is None:
-            self.digest = _digest
-            self.salt = _salt
-        else:
-            len_of_mark = len(_SSHA_MARK)
-            if _SSHA_MARK == s[:len_of_mark]:
-                challenge_bytes = base64.b64decode(s[len_of_mark:])
-                self.digest = challenge_bytes[:20]
-                self.salt = challenge_bytes[20:]
-            else:
-                raise AssertionError('cannot init: %r' % s)
-
-    @staticmethod
-    def from_secret(secret):
-        secret = utils.ensure_bytes(secret)
-        h = sha1(secret)
-        salt = os.urandom(4)
-        h.update(salt)
-        return SaltedSha(None, _digest=h.digest(), _salt=salt)
-
-    def check_secret(self, secret):
-        secret = utils.ensure_bytes(secret)
-        h = sha1(secret)
-        h.update(self.salt)
-        return self.digest == h.digest()
-
-    def __str__(self):
-        encode = base64.b64encode(self.digest + self.salt)
-        return _SSHA_MARK + utils.ensure_string(encode)
-
-
-class InetAddress(utils.Stringable, utils.EnsureIt):
-
-    def __init__(self, k):
-        self.k = k
-
-    def __str__(self):
-        return self.k
 
 
 class RemoteError(ValueError): pass

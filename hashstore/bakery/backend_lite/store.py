@@ -1,27 +1,20 @@
 import os
 import shutil
 import datetime
-from typing import Union
-
 import pylru
-
 from hashstore.ndb import Dbf
-from hashstore.utils import ensure_bytes, ensure_directory, Stringable, \
-    EnsureIt
-
-from sqlalchemy import func,select
-
-
-from hashstore.bakery import (NotFoundError, Cake, is_it_shard,
-                              Content, Hasher, ContentAddress)
-from hashstore.ndb.models.blob import blob_meta, blob
-from hashstore.ndb.models.incoming import incoming_meta, incoming
+from hashstore.utils import (ensure_bytes, ensure_directory)
+from hashstore.utils.hashing import (is_it_shard, Hasher)
+from sqlalchemy import func, select
+from hashstore.bakery import (NotFoundError, Content)
+from . import (blob_meta, blob,
+               incoming_meta, incoming,
+               ContentAddress, MAX_NUM_OF_SHARDS)
 
 import logging
 
 
 log = logging.getLogger(__name__)
-
 
 
 class Lookup:
@@ -148,7 +141,9 @@ class LiteBackend:
             return NULL_LOOKUP
 
     def __iter__(self):
-        for shard_name in filter(is_it_shard, os.listdir(self.root)):
+        for shard_name in filter(
+                lambda s: is_it_shard(s,MAX_NUM_OF_SHARDS),
+                os.listdir(self.root)):
             blob_db = self.blob_dbf(shard_name)
             if blob_db.exists():
                 for row in blob_db.execute(select([blob.c.file_id])):
@@ -162,10 +157,7 @@ class LiteBackend:
         return self.lookup(k).content().set_role(k)
 
     def lookup(self, cake_or_cadr):
-        if isinstance(cake_or_cadr, Cake):
-            file_id = ContentAddress(cake_or_cadr)
-        else:
-            file_id = ContentAddress.ensure_it(cake_or_cadr)
+        file_id = ContentAddress.ensure_it(cake_or_cadr)
         for lookup_contr in (self.cache_lookup_factory,
                              FileLookup, DbLookup):
             l = lookup_contr(self, file_id)

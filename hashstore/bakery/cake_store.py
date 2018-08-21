@@ -2,10 +2,11 @@ import os
 import datetime
 from hashstore.bakery import (
     NotAuthorizedError, CredentialsError, Content, Cake, CakeRack,
-    CakePath, SaltedSha, CakeType, assert_key_structure, CakeRole,
+    CakePath, CakeType, assert_key_structure, CakeRole,
     PatchAction, shard_name_int
 )
-from hashstore.bakery.backend import LiteBackend
+from hashstore.utils.hashing import SaltedSha
+from hashstore.bakery.backend_lite.store import LiteBackend
 from hashstore.bakery.cake_tree import CakeTree
 from hashstore.ndb import Dbf, MultiSessionContextManager
 from hashstore.utils import reraise_with_msg, tuple_mapper, utf8_reader

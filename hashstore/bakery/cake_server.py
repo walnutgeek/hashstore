@@ -5,10 +5,10 @@ import requests
 import os
 import time
 import signal
-
 from hashstore.bakery.cake_store import StoreContext, GuestAccess, \
     FROM_COOKIE
-from hashstore.bakery import Content, cake_or_path, SaltedSha, \
+from hashstore.utils.hashing import SaltedSha
+from hashstore.bakery import Content, cake_or_path, \
     NotAuthorizedError
 from hashstore.utils import json_encoder, FileNotFound, ensure_bytes, \
     exception_message, ensure_string
