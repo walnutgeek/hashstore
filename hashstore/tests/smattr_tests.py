@@ -5,7 +5,8 @@ from nose.tools import eq_,ok_,with_setup
 from hashstore.tests import TestSetup, assert_text
 import hashstore.utils as u
 
-from hashstore.utils.smattr import SmAttr, JsonWrap, MoldedTable
+from hashstore.utils.smattr import (
+    SmAttr, JsonWrap, MoldedTable, typing_factory)
 
 test = TestSetup(__name__,ensure_empty=True)
 
@@ -42,6 +43,11 @@ def test_gref_with_molded_table():
     a_table = u.GlobalRef(aref).get_instance()
     ok_(ATable is a_table)
 
+def test_typing_with_template():
+    s = f'List[{u.GlobalRef(MoldedTable[A])}]'
+    tt = typing_factory(s)
+    eq_(s, str(typing_factory(str(tt))))
+    ok_(tt.val_cref.cls is MoldedTable[A])
 
 class Abc(SmAttr):
     name:str

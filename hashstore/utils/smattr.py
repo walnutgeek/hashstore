@@ -144,8 +144,6 @@ class AttrEntry(EnsureIt, Stringable):
                 return self.typing.convert(v, Conversion.TO_JSON)
 
     def validate(self, v:Any)->bool:
-        # if v is None and self.default is not None:
-        #     return True
         return self.typing.validate(v)
 
     def __str__(self):
@@ -172,17 +170,17 @@ def typing_factory(o):
     if isinstance(o, Typing):
         return o
     if isinstance(o, str):
-        m = re.match(r'^(\w+)\[([\w.:]+),?([\w.:]*)\]$', o)
-        if m is None:
-            raise AttributeError(f'Unrecognized typing: {o}')
-        typing_name, *args = m.groups()
-        typing_cls = globals()[typing_name + 'Typing']
-        if issubclass(typing_cls, DictTyping):
-            return typing_cls(args[1], args[0])
-        elif args[1] != '':
-            raise AssertionError(f'args[1] shold be empty for: {o}')
-        else:
-            return typing_cls(args[0])
+        if o[-1] == ']':
+            typing_name, args_s = o[:-1].split('[', 1)
+            args = args_s.split(',')
+            typing_cls = globals()[typing_name + 'Typing']
+            if issubclass(typing_cls, DictTyping):
+                return typing_cls(args[1], args[0])
+            elif len(args) != 1:
+                raise AssertionError(f'len({args}) should be 1. input:{o}')
+            else:
+                return typing_cls(args[0])
+        raise AttributeError(f'Unrecognized typing: {o}')
     else:
         args = get_args(o, [])
         if len(args) == 0:
