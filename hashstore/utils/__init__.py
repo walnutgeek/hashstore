@@ -4,10 +4,12 @@ import os
 import json
 import sys
 import enum
-from typing import Any, TypeVar, Type, Dict
+from typing import Any, TypeVar, Type, Dict, Optional
 
 from datetime import date, datetime
 import codecs
+
+_GLOBAL_REF = '__global_ref__'
 
 ENCODING_USED = 'utf-8'
 
@@ -169,7 +171,7 @@ class Stringable(Str2Bytes):
     class has constructor that recreate same object from
     it's string representation as single parameter.
     '''
-    def __repr__(self):
+    def __repr__(self)->str:
         return f'{type(self).__name__}({repr(str(self))})'
 
 
@@ -227,10 +229,11 @@ class StrKeyMixin:
 
 
 class Jsonable(EnsureIt):
-    '''
+    """
     Marker to inform json_encoder to use `o.to_json()` to
     serialize in json
-    '''
+
+    """
 
     def to_json(self):
         raise AssertionError('need to be implemented')
@@ -476,12 +479,18 @@ class GlobalRef(Stringable, EnsureIt, StrKeyMixin):
     >>> uref.get_module().__name__
     'hashstore.utils'
     '''
-    def __init__(self, s: Any)->None:
-        if inspect.ismodule(s):
-            self.module,self.name = s.__name__,''
+    def __init__(self, s: Any, item: Optional[str] = None)->None:
+        self.item = item
+        if hasattr(s, _GLOBAL_REF):
+            that = getattr(s, _GLOBAL_REF)
+            self.module, self.name, self.item = ( that.module, that.name, that.item)
+        elif inspect.ismodule(s):
+                self.module,self.name = s.__name__,''
         elif inspect.isclass(s) or inspect.isfunction(s):
             self.module, self.name = s.__module__, s.__name__
         else:
+            if s[-1] == ']' :
+                s, self.item = s[:-1].split('[')
             split = s.split(':')
             if len(split) == 1:
                 if not(split[0]):
@@ -492,7 +501,8 @@ class GlobalRef(Stringable, EnsureIt, StrKeyMixin):
             self.module, self.name = split
 
     def __str__(self):
-        return f'{self.module}:{self.name}'
+        item = '' if self.item is None else f'[{self.item}]'
+        return f'{self.module}:{self.name}{item}'
 
     def get_module(self)->ModuleType:
         return __import__(self.module, fromlist=['', ])
@@ -503,7 +513,11 @@ class GlobalRef(Stringable, EnsureIt, StrKeyMixin):
     def get_instance(self)->Any:
         if self.module_only():
             raise AssertionError(f'{repr(self)}.get_module() only')
-        return getattr(self.get_module(), self.name)
+        attr = getattr(self.get_module(), self.name)
+        if self.item is None:
+            return attr
+        else:
+            return attr[self.item]
 
 
 CodeEnumT = TypeVar('CodeEnumT', bound='CodeEnum')

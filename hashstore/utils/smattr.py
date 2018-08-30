@@ -1,78 +1,19 @@
 import re
-from datetime import date, datetime
-from enum import IntEnum
+
 from typing import (Any, Dict, List, Optional, get_type_hints, Union)
 from inspect import getfullargspec
 
-from hashstore.utils import (adjust_for_json, Jsonable,
+from . import (adjust_for_json, Jsonable,
                              lazy_factory, GlobalRef, Stringable,
                              StrKeyMixin, EnsureIt, json_decode,
                              json_encode, identity, not_zero_len,
                              ensure_string)
-from dateutil.parser import parse as dt_parse
-
+from .template import ClassRef, Conversion, Template
 
 def get_args(cls, default=None):
     if hasattr(cls, '__args__'):
         return cls.__args__
     return default
-
-
-class Conversion(IntEnum):
-    TO_JSON = -1
-    TO_OBJECT = 1
-
-class ClassRef(Stringable, StrKeyMixin, EnsureIt):
-    """
-    >>> crint=ClassRef('int')
-    >>> str(crint)
-    'int'
-    >>> crint.convert(5, Conversion.TO_JSON)
-    5
-    >>> crint.convert('3', Conversion.TO_OBJECT)
-    3
-    >>> crint = ClassRef(int)
-    >>> crint.convert(5, Conversion.TO_JSON)
-    5
-    >>> crint.convert('3', Conversion.TO_OBJECT)
-    3
-    >>> crint.matches(3)
-    True
-    >>> crint.matches('3')
-    False
-    """
-
-    def __init__(self, cls_or_str: Union[type, str])->None:
-        if isinstance(cls_or_str, str):
-            if ':' not in cls_or_str:
-                cls_or_str = 'builtins:'+cls_or_str
-            cls_or_str = GlobalRef(cls_or_str).get_instance()
-        self.cls = cls_or_str
-        if self.cls == Any:
-            self._from_json = identity
-        elif self.cls is date:
-            self._from_json = lazy_factory(
-                self.cls, lambda v: dt_parse(v).date())
-        elif self.cls is datetime:
-            self._from_json = lazy_factory(
-                self.cls, lambda v: dt_parse(v))
-        else:
-            self._from_json = lazy_factory(self.cls, self.cls)
-
-    def matches(self, v):
-        return self.cls == Any or isinstance(v, self.cls)
-
-    def convert(self, v: Any, direction: Conversion)->Any:
-        if direction == Conversion.TO_OBJECT:
-            return self._from_json(v)
-        else:
-            return adjust_for_json(v, v)
-
-    def __str__(self):
-        if self.cls.__module__ == 'builtins':
-            return self.cls.__name__
-        else:
-            return str(GlobalRef(self.cls))
 
 
 class Typing(Stringable, EnsureIt):
@@ -203,8 +144,8 @@ class AttrEntry(EnsureIt, Stringable):
                 return self.typing.convert(v, Conversion.TO_JSON)
 
     def validate(self, v:Any)->bool:
-        if v is None and self.default is not None:
-            return True
+        # if v is None and self.default is not None:
+        #     return True
         return self.typing.validate(v)
 
     def __str__(self):
@@ -386,6 +327,7 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
       x:datetime
       x:date
     >>> from hashstore.bakery import Cake
+    >>> from datetime import date, datetime
     >>> class A(SmAttr):
     ...     x:int
     ...     z:bool
@@ -494,8 +436,9 @@ def get_row_id(row_id:Union[int, Row])->int:
     return row_id._row_id()
 
 
-class MoldedTable(Stringable):
+class MoldedTable(metaclass=Template):
     """
+    >>> from datetime import date, datetime
     >>> class A(SmAttr):
     ...     i:int
     ...     s:str = 'xyz'
@@ -503,10 +446,7 @@ class MoldedTable(Stringable):
     ...     z:List[datetime]
     ...     y:Dict[str,str]
     ...
-    >>> class ATable(MoldedTable):
-    ...     __mold__ = A
-    ...
-    >>> t = ATable()
+    >>> t = MoldedTable[A]()
     >>> str(t)
     '#{"columns": ["i", "s", "d", "z", "y"]}\\n'
     >>> t.add_row(A(i=5,s='abc'))
@@ -528,7 +468,7 @@ class MoldedTable(Stringable):
     >>> t = MoldedTable(str(t),A)
     >>> str(t)
     '#{"columns": ["i", "s", "d", "z", "y"]}\\n[5, "abc", null, [], {}]\\n[7, "xyz", "2018-08-10T00:00:00", [], {}]\\n'
-    >>> ATable('a')
+    >>> MoldedTable[A]('a')
     Traceback (most recent call last):
     ...
     AttributeError: header should start with "#": a
@@ -538,34 +478,39 @@ class MoldedTable(Stringable):
     >>> t.find_invalid_rows()
     [2]
     >>> t.find_invalid_keys(r)
-    ['i', 'z', 'y']
+    ['i', 's', 'z', 'y']
     >>> t.find_invalid_keys(2)
-    ['i', 'z', 'y']
+    ['i', 's', 'z', 'y']
     >>> r.i
     >>> r.i=77
     >>> r.i
     77
     >>> r[3]=[datetime(2018,8,1),]
     >>> t.find_invalid_keys(r)
-    ['y']
+    ['s', 'y']
     >>> r['y']={}
     >>> r['y']
     {}
     >>> r[4]
     {}
     >>> t.find_invalid_rows()
-    []
+    [2]
     >>> str(t)
     '#{"columns": ["i", "s", "d", "z", "y"]}\\n[5, "abc", null, [], {}]\\n[7, "xyz", "2018-08-10T00:00:00", [], {}]\\n[77, null, null, ["2018-08-01T00:00:00"], {}]\\n'
     >>> len(t)
     3
+    >>> str(MoldedTable[A](str(t)))
+    '#{"columns": ["i", "s", "d", "z", "y"]}\\n[5, "abc", null, [], {}]\\n[7, "xyz", "2018-08-10T00:00:00", [], {}]\\n[77, "xyz", null, ["2018-08-01T00:00:00"], {}]\\n'
+    >>> r['s']='zyx'
+    >>> str(MoldedTable[A](str(t)))
+    '#{"columns": ["i", "s", "d", "z", "y"]}\\n[5, "abc", null, [], {}]\\n[7, "xyz", "2018-08-10T00:00:00", [], {}]\\n[77, "zyx", null, ["2018-08-01T00:00:00"], {}]\\n'
     """
 
     def __init__(self, s:Union[str,bytes,None]=None, mold:Any = None)->None:
         if mold is not None:
             self.mold = Mold.ensure_it(mold)
         else:
-            self.mold = Mold.ensure_it(type(self).__mold__) #type: ignore
+            self.mold = Mold.ensure_it(type(self).__item_cref__.cls) #type: ignore
         self.data:List[List[Any]] = []
         if s is not None:
             s = ensure_string(s)
@@ -647,7 +592,6 @@ class MoldedTable(Stringable):
                     self.mold.mold_it(row, Conversion.TO_JSON))
             yield ''
         return '\n'.join(gen())
-
 
 
 class JsonWrap(SmAttr):

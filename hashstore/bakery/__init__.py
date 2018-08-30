@@ -475,8 +475,6 @@ class HasCake(metaclass=abc.ABCMeta):
         raise NotImplementedError('subclasses must override')
 
 
-
-
 class PatchAction(Jsonable, enum.Enum):
     update = +1
     delete = -1
@@ -490,6 +488,14 @@ class PatchAction(Jsonable, enum.Enum):
 
     def to_json(self):
         return str(self)
+
+
+class RackRow(SmAttr):
+    name: str
+    cake: Optional[Cake]
+
+    def role(self)->CakeRole:
+        return CakeRole.NEURON if self.cake is None else self.cake.role
 
 
 class CakeRack(utils.Jsonable):
@@ -837,18 +843,18 @@ class PathResolved(SmAttr):
     resolved: Optional[Cake]
 
 
-class PathInfo(SmAttr):
-    name: str
-    role: CakeRole
+
+
+class PathInfo(RackRow):
     size: int
     created_dt: datetime
     file_type: str
     mime: str
-    resolved: Optional[Cake]
 
 
-class LookupInfo(PathInfo):
+class LookupInfo(SmAttr):
     path: CakePath
+    info: Optional[PathInfo]
     data: Optional[bytes]
     stream_fn: Optional[Callable[[],IO[bytes]]]
     file: Optional[str]
@@ -879,7 +885,7 @@ class LookupInfo(PathInfo):
 """
 @HashSession
     def get_info(self, cake_path) -> PathInfo
-    def get_content(self, cake_path) -> PathInfo
+    def get_content(self, cake_path) -> LookupInfo
 
     def write_content(self, fp, chunk_size=65355):
     def store_directories(self, directories:Dict[Cake,CakeRack]):

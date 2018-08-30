@@ -6,7 +6,6 @@ from hashstore.tests import TestSetup, assert_text
 import hashstore.utils as u
 
 from hashstore.utils.args import CommandArgs
-from hashstore.utils.smattr import SmAttr, JsonWrap
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log
@@ -22,9 +21,9 @@ def test_docs():
     import hashstore.utils as utils
     import hashstore.utils.ignore_file as ignore_file
     import hashstore.utils.time as time
-    import hashstore.utils.smattr as smattr
+    import hashstore.utils.template as template
     import hashstore.utils.hashing as hashing
-    for t in (utils, ignore_file, time, smattr, hashing):
+    for t in (utils, ignore_file, time, template, hashing):
         r = doctest.testmod(t)
         ok_(r.attempted > 0, f'There is not doctests in module {t}')
         eq_(r.failed,0)
@@ -120,29 +119,6 @@ def test_api():
     eq_({'result': -5}, methods.run(a, 'returns_5', {'a': 7}))
     eq_({'error': '4'}, methods.run(a, 'error', {'x': 2}))
     eq_({'result': None}, methods.run(a, 'none', {}))
-
-
-class Abc(SmAttr):
-    name:str
-    val:int
-
-
-def test_wrap():
-    abc = Abc({'name': 'n', 'val': 555})
-    s = str(abc)
-    def do_check(w):
-        eq_(str(w.unwrap()), s)
-        eq_(str(w),
-            '{"classRef": "hashstore.tests.utils_tests:Abc", '
-            '"json": {"name": "n", "val": 555}}')
-        eq_(str(JsonWrap(w.to_json()).unwrap()), s)
-    do_check(JsonWrap({"classRef": u.GlobalRef(Abc),
-                       "json":{'name':'n', 'val': 555}}))
-    do_check(JsonWrap.wrap(abc))
-    try:
-        JsonWrap.wrap(5)
-    except AttributeError:
-        eq_('Not jsonable: 5', u.exception_message())
 
 
 def test_args():
