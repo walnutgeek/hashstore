@@ -4,7 +4,7 @@ import os
 import json
 import sys
 import enum
-from typing import Any, TypeVar, Type, Dict, Optional
+from typing import Any, TypeVar, Type, List, Optional
 
 from datetime import date, datetime
 import codecs
@@ -430,16 +430,16 @@ def tuple_mapper(*mappers):
 
 def normalize_url(url):
     '''
-    >>> normalize_url('http://abc')
-    'http://abc/'
-    >>> normalize_url('abc')
-    'http://abc/'
-    >>> normalize_url('abc:8976')
-    'http://abc:8976/'
-    >>> normalize_url('https://abc:8976')
-    'https://abc:8976/'
-    >>> normalize_url('https://abc:8976/')
-    'https://abc:8976/'
+    >>> normalize_url('http://example.com')
+    'http://example.com/'
+    >>> normalize_url('example.com')
+    'http://example.com/'
+    >>> normalize_url('example.com:8976')
+    'http://example.com:8976/'
+    >>> normalize_url('https://example.com:8976')
+    'https://example.com:8976/'
+    >>> normalize_url('https://example.com:8976/')
+    'https://example.com:8976/'
 
     '''
     if url[-1:] != '/':
@@ -546,3 +546,19 @@ class CodeEnum(Stringable, enum.Enum):
     def __repr__(self):
         return f'<{type(self).__name__}.{self.name}: {self.code}>'
 
+
+def mix_in(mixin:type, target:type) -> List[str]:
+    """
+    Copy all defined functions from mixin into target. It could be
+    usefull when you cannot inherit from mixin because incompatible
+    metaclass.
+
+    Returns list of copied methods.
+    """
+    def mix():
+        for n in dir(mixin):
+            fn = getattr(mixin, n)
+            if inspect.isfunction(fn):
+                setattr(target, n, fn)
+                yield n
+    return list(mix())

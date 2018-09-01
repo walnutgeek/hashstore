@@ -4,6 +4,8 @@ from nose.tools import eq_,ok_,with_setup
 import sys
 from hashstore.tests import TestSetup, assert_text
 import hashstore.utils as u
+import abc
+
 
 from hashstore.utils.args import CommandArgs
 
@@ -77,6 +79,7 @@ def test_json_encoder_force_default_call():
         ok_('is not JSON serializable' in u.exception_message())
 
 
+
 def test_api():
 
     from hashstore.utils.api import ApiCallRegistry
@@ -146,3 +149,54 @@ def test_args():
 
     ca.run(ca.parse_args(('do', '--test1', 'abc')))
     eq_(v['do'], 'abc')
+
+
+def test_mix_in():
+    class A(metaclass=abc.ABCMeta):
+        @abc.abstractmethod
+        def __str__(self):
+            raise NotImplementedError('subclasses must override')
+
+    u.mix_in(u.StrKeyMixin, A)
+
+    class B1(A):
+        def __init__(self, k):
+            self.k = k
+
+        def __str__(self):
+            return self.k
+
+    class B2:
+        def __init__(self, k):
+            self.k = k
+
+        def __str__(self):
+            return self.k
+
+    eq_(u.mix_in(u.StrKeyMixin, B2),
+        ['_StrKeyMixin__cached_str', '__eq__', '__hash__', '__ne__'])
+
+    class B3(u.StrKeyMixin):
+        def __init__(self, k):
+            self.k = k
+
+        def __str__(self):
+            return self.k
+
+    class B4:
+        def __init__(self, k):
+            self.k = k
+
+        def __str__(self):
+            return self.k
+
+    def retest(B, match = (False, True, True, False)):
+        eq_(B('a') != B('a'), match[0])
+        eq_(B('a') != B('b'), match[1])
+        eq_(B('a') == B('a'), match[2])
+        eq_(B('a') == B('b'), match[3])
+
+    retest(B1)
+    retest(B2)
+    retest(B3)
+    retest(B4, ( True, True, False, False) )

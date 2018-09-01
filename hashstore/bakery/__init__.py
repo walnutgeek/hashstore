@@ -237,7 +237,6 @@ def process_stream(fd:IO[bytes],
     and if it is smaller then hash size, holds on to stream
     content to use it instead of hash.
 
-
     :param fd: stream
     :param on_chunk: function  called on every chunk
     :return: (<hash>, Optional[<inline_data>])
@@ -682,6 +681,7 @@ class CakeRack(utils.Jsonable):
         keys = self.keys()
         return (keys, self.get_cakes(keys))
 
+
 HasCake.register(CakeRack)
 
 
@@ -841,8 +841,6 @@ class HashSession(metaclass=abc.ABCMeta):
 class PathResolved(SmAttr):
     path: CakePath
     resolved: Optional[Cake]
-
-
 
 
 class PathInfo(RackRow):

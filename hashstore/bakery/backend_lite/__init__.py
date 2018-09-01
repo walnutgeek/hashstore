@@ -9,6 +9,7 @@ from hashstore.utils.hashing import (HashBytes, B36, shard_num,
                                      shard_name_int)
 MAX_NUM_OF_SHARDS = 8192
 
+
 class ContentAddress(Stringable, EnsureIt):
     """
     case-insensitive address that used to store blobs
