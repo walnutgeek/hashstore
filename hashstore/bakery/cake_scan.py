@@ -4,10 +4,10 @@ from hashstore.utils.ignore_file import ignore_files, \
     parse_ignore_specs, check_if_path_should_be_ignored
 from hashstore.bakery import Cake, process_stream, CakeRack, \
     CakePath
-from hashstore.ndb.models.scan import ScanBase, DirEntry, DirKey, \
+from hashstore.bakery.lite.client import ScanBase, DirEntry, DirKey, \
     FileType
 from sqlalchemy import desc
-from hashstore.ndb import Dbf
+from hashstore.utils.db import Dbf
 
 import os
 import sys

@@ -1,7 +1,7 @@
 import os
 from hashstore.bakery.cake_store import CakeStore, PrivilegedAccess
 from hashstore.bakery.cake_server import CakeServer
-from hashstore.ndb.models.glue import PermissionType, Acl
+from hashstore.bakery.lite.node import PermissionType, Acl
 from hashstore.utils import print_pad
 from hashstore.utils.args import Switch, CommandArgs
 from hashstore.utils.hashing import SaltedSha

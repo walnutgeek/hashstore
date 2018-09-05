@@ -4,7 +4,7 @@ from hashstore.tests import TestSetup, doctest_it
 
 from sqlalchemy import Table, Integer, MetaData, Column, types, select
 
-from hashstore.ndb import Dbf, IntCast, StringCast
+from hashstore.utils.db import Dbf, IntCast, StringCast
 import enum
 
 import logging

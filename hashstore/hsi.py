@@ -6,7 +6,7 @@ from hashstore.bakery.cake_client import ClientUserSession, CakeClient
 from hashstore.bakery import (Cake, portal_from_name, CakeRole,
                               CakePath, process_stream, CakeType,
                               ensure_cakepath, PatchAction)
-from hashstore.ndb.models.scan import FileType
+from hashstore.bakery.lite.client import FileType
 from hashstore.utils.args import CommandArgs, Switch
 from hashstore.utils import print_pad, exception_message
 import hashstore.bakery.cake_scan as cscan

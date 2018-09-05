@@ -467,6 +467,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
 
 HashBytes.register(Cake)
 
+
 class HasCake(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
@@ -816,6 +817,36 @@ def ensure_cakepath(s):
         return s
 
 
+"""
+@guest
+    def info(self):
+    def login(self, email, passwd, client_id=None):
+    def authorize(self, cake, pts):
+    def get_info(self, cake_path) -> PathInfo
+    def get_content(self, cake_or_path) -> LookupInfo:
+
+@user
+    def logout(self):
+    def write_content(self, fp, chunk_size=65355):
+    def store_directories(self, directories):
+    def create_portal(self, portal_id, cake):
+    def edit_portal(self, portal_id, cake):
+    def list_acls(self):
+    def edit_portal_tree(self, files, asof_dt=None):
+    def delete_in_portal_tree(self, cake_path, asof_dt = None):
+    def get_portal_tree(self, portal_id, asof_dt=None):
+    def grant_portal(self, portal_id, grantee, permission_type):
+    def delete_portal(self, portal_id):
+
+@admin
+    def add_user(self, email, ssha_pwd, full_name = None):
+    def remove_user(self, user_or_email):
+    def add_acl(self, user_or_email, acl):
+    def remove_acl(self, user_or_email, acl):
+
+"""
+
+
 class HashSession(metaclass=abc.ABCMeta):
 
     @staticmethod
@@ -834,8 +865,35 @@ class HashSession(metaclass=abc.ABCMeta):
             l.hash_ctx = None
 
     @abc.abstractmethod
-    def get_content(self, cake_or_path) -> 'Content':
+    def get_info(self, cake_path:CakePath ) -> 'PathInfo':
         raise NotImplementedError('subclasses must override')
+
+    @abc.abstractmethod
+    def get_content(self, cake_path:CakePath ) -> 'LookupInfo':
+        raise NotImplementedError('subclasses must override')
+
+    # @abc.abstractmethod
+    # def write_content(self, fp:IO[bytes], chunk_size:int=65355
+    #                   ) -> HashBytes:
+    #     raise NotImplementedError('subclasses must override')
+    #
+    # @abc.abstractmethod
+    # def store_directories(self, directories:Dict[Cake,CakeRack]):
+    #     raise NotImplementedError('subclasses must override')
+    #
+    # @abc.abstractmethod
+    # def edit_portal(self, cake_path, cake):
+    #     raise NotImplementedError('subclasses must override')
+    #
+    # @abc.abstractmethod
+    # def query(self, cake_path, include_path_info:bool=False) -> CakeRack:
+    #     raise NotImplementedError('subclasses must override')
+    #
+    # @abc.abstractmethod
+    # def edit_portal_tree(self,
+    #         files:List[PatchAction,Cake,Optional[Cake]],
+    #         asof_dt:datetime=None):
+    #     raise NotImplementedError('subclasses must override')
 
 
 class PathResolved(SmAttr):
@@ -864,6 +922,9 @@ class LookupInfo(SmAttr):
         return self.stream().read() if self.data is None else self.data
 
     def stream(self) -> IO[bytes]:
+        """
+        stream is always avalable
+        """
         if self.data is not None:
             return BytesIO(self.data)
         elif self.file is not None:
@@ -880,45 +941,6 @@ class LookupInfo(SmAttr):
         return os.open(self.file, os.O_RDONLY)
 
 
-"""
-@HashSession
-    def get_info(self, cake_path) -> PathInfo
-    def get_content(self, cake_path) -> LookupInfo
-
-    def write_content(self, fp, chunk_size=65355):
-    def store_directories(self, directories:Dict[Cake,CakeRack]):
-    def edit_portal(self, cake_path, cake):
-    def query(self, cake_path, include_path_info:bool=False) -> CakeRack:
-    def edit_portal_tree(self, 
-            files:List[PatchAction,Cake,Optional[Cake]], 
-            asof_dt:datetime=None):
-            
-@guest
-    def info(self):
-    def login(self, email, passwd, client_id=None):
-    def authorize(self, cake, pts):
-    def get_content(self, cake_or_path):
-
-@user
-    def logout(self):
-    def write_content(self, fp, chunk_size=65355):
-    def store_directories(self, directories):
-    def create_portal(self, portal_id, cake):
-    def edit_portal(self, portal_id, cake):
-    def list_acls(self):
-    def edit_portal_tree(self, files, asof_dt=None):
-    def delete_in_portal_tree(self, cake_path, asof_dt = None):
-    def get_portal_tree(self, portal_id, asof_dt=None):
-    def grant_portal(self, portal_id, grantee, permission_type):
-    def delete_portal(self, portal_id):
-
-@admin
-    def add_user(self, email, ssha_pwd, full_name = None):
-    def remove_user(self, user_or_email):
-    def add_acl(self, user_or_email, acl):
-    def remove_acl(self, user_or_email, acl):
-
-"""
 
 
 class MoldedCake(Cake):

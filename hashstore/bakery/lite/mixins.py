@@ -1,6 +1,6 @@
 from typing import Any, Type
 
-from hashstore.ndb import StringCast
+from hashstore.utils.db import StringCast
 from hashstore.bakery import (Cake, CakeRole, CakeType)
 import datetime
 from sqlalchemy import Column, DateTime, String, Integer

@@ -1,10 +1,7 @@
 from hashstore.bakery import Cake, CakeRole
 
-from hashstore.ndb.models.glue import User, Permission, UserType
-
-from hashstore.ndb.models.cake_shard import (
-    Portal, PortalHistory, VolatileTree
-)
+from hashstore.bakery.lite.node import (
+    User, Permission, UserType, Portal, PortalHistory, VolatileTree)
 
 from sqlalchemy import or_, and_
 

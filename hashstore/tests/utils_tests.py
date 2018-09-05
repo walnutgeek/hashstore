@@ -1,20 +1,13 @@
-import json
-
 from nose.tools import eq_,ok_,with_setup
 import sys
 from hashstore.tests import TestSetup, assert_text
 import hashstore.utils as u
-import abc
 
 
 from hashstore.utils.args import CommandArgs
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log
-
-
-substitutions = {'{test_dir}': test.dir, '{q}': 'q'}
-
 u.ensure_directory(test.dir)
 
 
@@ -31,7 +24,6 @@ def test_docs():
         eq_(r.failed,0)
 
 
-
 def test_split_all():
     eq_(u.path_split_all('/a/b/c'), ['/', 'a', 'b', 'c'])
     eq_(u.path_split_all('/a/b/c/'), ['/', 'a', 'b', 'c', ''])
@@ -46,7 +38,9 @@ def test_split_all():
     eq_(u.path_split_all('a/b/c', False), ['a', 'b', 'c'])
     eq_(u.path_split_all('a/b/c/', False), ['a', 'b', 'c'])
 
+
 read_count = 0
+
 
 def test_reraise():
     for e_type in range(2):
@@ -152,14 +146,8 @@ def test_args():
 
 
 def test_mix_in():
-    class A(metaclass=abc.ABCMeta):
-        @abc.abstractmethod
-        def __str__(self):
-            raise NotImplementedError('subclasses must override')
 
-    u.mix_in(u.StrKeyMixin, A)
-
-    class B1(A):
+    class B1(u.StrKeyAbcMixin):
         def __init__(self, k):
             self.k = k
 
@@ -190,6 +178,12 @@ def test_mix_in():
         def __str__(self):
             return self.k
 
+    class B5:
+        ...
+
+    u.mix_in(B4, B5)
+    u.mix_in(u.StrKeyMixin, B5)
+
     def retest(B, match = (False, True, True, False)):
         eq_(B('a') != B('a'), match[0])
         eq_(B('a') != B('b'), match[1])
@@ -200,3 +194,4 @@ def test_mix_in():
     retest(B2)
     retest(B3)
     retest(B4, ( True, True, False, False) )
+    retest(B5)

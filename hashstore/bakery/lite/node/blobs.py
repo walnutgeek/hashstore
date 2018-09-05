@@ -2,7 +2,7 @@ import os
 import shutil
 import datetime
 import pylru
-from hashstore.ndb import Dbf
+from hashstore.utils.db import Dbf
 from hashstore.utils import ensure_directory
 from hashstore.utils.hashing import (is_it_shard, Hasher)
 from sqlalchemy import func, select
@@ -112,7 +112,7 @@ class FileLookup(ContentAddressLookup):
 MAX_DB_BLOB_SIZE = 1 << 16
 
 
-class LiteBackend:
+class BlobStore:
     '''
     Storage backend that keep blobs in set of sharded directories.
     BLOBs smaller then db_limit will be stored in SQLite and bigger

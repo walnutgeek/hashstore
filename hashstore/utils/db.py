@@ -3,8 +3,6 @@ from sqlalchemy.orm import sessionmaker
 from hashstore.utils import KeyMapper
 from inspect import ismodule
 from contextlib import contextmanager
-import re
-
 import os
 
 

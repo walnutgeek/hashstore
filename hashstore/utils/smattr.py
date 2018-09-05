@@ -1,14 +1,9 @@
-import re
-
 from typing import (Any, Dict, List, Optional, get_type_hints, Union)
 from inspect import getfullargspec
-
-from . import (adjust_for_json, Jsonable,
-                             lazy_factory, GlobalRef, Stringable,
-                             StrKeyMixin, EnsureIt, json_decode,
-                             json_encode, identity, not_zero_len,
-                             ensure_string)
+from . import ( Jsonable, GlobalRef, Stringable, EnsureIt, json_decode,
+                json_encode, not_zero_len, ensure_string)
 from .template import ClassRef, Conversion, Template
+
 
 def get_args(cls, default=None):
     if hasattr(cls, '__args__'):
@@ -279,27 +274,29 @@ class Mold(Jsonable):
 
     def build_val_dict(self, json_values):
         self.check_overlaps(json_values)
-        return self.mold_it(json_values, Conversion.TO_OBJECT,
-                            to_dict=True)
+        return self.mold_it(json_values, Conversion.TO_OBJECT)
 
     def mold_it(
             self,
             in_data: Union[List[Any],Dict[str,Any],DictLike],
-            direction: Conversion, to_dict=False
-    ) -> Union[List[Any],Dict[str,Any]]:
-        if not(isinstance(in_data, list)):
+            direction: Conversion
+    ) -> Dict[str,Any]:
+        return dict(zip(self.keys,
+                        self.mold_to_list(in_data, direction)))
+
+    def mold_to_list(self,
+                     in_data: Union[List[Any],Dict[str,Any],DictLike],
+                     direction: Conversion) -> List[Any]:
+        if not (isinstance(in_data, list)):
             in_data = [in_data[k] if k in in_data else None
                        for k in (self.keys)]
         if len(self.keys) != len(in_data):
             raise AttributeError(f'arrays has to match in size:'
                                  f' {self.keys} {in_data}')
-        values = [
+        return[
             self.attrs[self.keys[i]].convert(in_data[i], direction)
-            for i in range(len(self.keys))]
-        if to_dict:
-            return dict(zip(self.keys, values))
-        else:
-            return values
+            for i in range(len(self.keys))
+        ]
 
     def set_attrs(self, values, target):
         for k, v in self.build_val_dict(values).items():
@@ -416,11 +413,7 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
         type(self).__mold__.set_attrs(values, self)
 
     def to_json(self) -> Dict[str, Any]:
-        return type(self).__mold__.mold_it(
-            DictLike(self),
-            Conversion.TO_JSON,
-            to_dict=True
-        )
+        return type(self).__mold__.mold_it( DictLike(self), Conversion.TO_JSON )
 
 
 class Row:
@@ -530,7 +523,7 @@ class MoldedTable(metaclass=Template):
     def add_row(self, row=None):
         if not(isinstance(row, (list,dict))):
             row = DictLike(row)
-        row = self.mold.mold_it(row, Conversion.TO_OBJECT)
+        row = self.mold.mold_to_list(row, Conversion.TO_OBJECT)
         row_id = len(self.data)
         self.data.append(row)
         return row_id
@@ -587,7 +580,7 @@ class MoldedTable(metaclass=Template):
             yield '#' + json_encode({'columns': self.mold.keys})
             for row in self.data:
                 yield json_encode(
-                    self.mold.mold_it(row, Conversion.TO_JSON))
+                    self.mold.mold_to_list(row, Conversion.TO_JSON))
             yield ''
         return '\n'.join(gen())
 

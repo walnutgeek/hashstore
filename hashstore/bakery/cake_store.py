@@ -6,21 +6,24 @@ from hashstore.bakery import (
     PatchAction, shard_name_int
 )
 from hashstore.utils.hashing import SaltedSha
-from hashstore.bakery.backend_lite.store import LiteBackend
+from hashstore.bakery.lite.node.blobs import BlobStore
 from hashstore.bakery.cake_tree import CakeTree
-from hashstore.ndb import Dbf, MultiSessionContextManager
+from hashstore.utils.db import Dbf, MultiSessionContextManager
 from hashstore.utils import reraise_with_msg, tuple_mapper, utf8_reader
 import hashstore.bakery.dal as dal
 from sqlalchemy import and_, or_
-from hashstore.ndb.models.server_config import (
+
+from hashstore.bakery.lite.node import (
     UserSession, ServerKey, ServerConfigBase )
-from hashstore.ndb.models.glue import (
+
+from hashstore.bakery.lite.node import (
     GlueBase, User, UserState, Permission,
     PermissionType as PT, Acl, UserType
 )
 
-from hashstore.ndb.models.cake_shard import Portal, VolatileTree, \
-    CakeShardBase
+from hashstore.bakery.lite.node import (
+    Portal, VolatileTree, CakeShardBase
+)
 
 import logging
 
@@ -95,8 +98,8 @@ class GuestAccess:
         else:
             return dal.find_normal_user(self.ctx.glue_session(), user)
 
-    def backend(self):
-        return self.ctx.store.backend()
+    def blob_store(self):
+        return self.ctx.store.blob_store()
 
     def process_api_call(self, method, params):
         # log.debug("{self} {method}({params})".format(**locals()))
@@ -164,7 +167,7 @@ class GuestAccess:
                 .set_role(cake_or_path)
         elif cake.type.is_resolved:
             self.authorize(cake_or_path, Permissions.read_data_cake)
-            return self.backend().get_content(cake_or_path)
+            return self.blob_store().get_content(cake_or_path)
         elif cake.type.is_portal:
             self.authorize(cake_or_path, Permissions.read_portal)
             if cake.type == CakeType.PORTAL :
@@ -172,7 +175,7 @@ class GuestAccess:
                     self.ctx.cake_session, cake_or_path)
                 for resolved_portal in resolution_stack[:-1]:
                     self.authorize(cake_or_path, Permissions.read_portal)
-                return self.backend().get_content(resolution_stack[-1])
+                return self.blob_store().get_content(resolution_stack[-1])
             elif cake.type in [CakeType.DMOUNT, CakeType.VTREE]:
                 return self.get_content_by_path(CakePath(None, _root=cake, _path=[]))
         else:
@@ -202,7 +205,7 @@ class GuestAccess:
                 reraise_with_msg(f'{cake_path} {bundle.content()}')
 
             if next_cake.type.is_resolved:
-                content = self.backend().get_content(next_cake)
+                content = self.blob_store().get_content(next_cake)
             else:
                 content = self.get_content(next_cake)
         return content.guess_file_type(cake_path.filename())
@@ -244,7 +247,7 @@ class PrivilegedAccess(GuestAccess):
             get writer object
         '''
         self.authorize(None, Permissions.write_data)
-        return self.backend().writer()
+        return self.blob_store().writer()
 
     def write_content(self, fp, chunk_size=65355):
         '''
@@ -280,11 +283,11 @@ class PrivilegedAccess(GuestAccess):
 
         def store_bundle(dir_cake, dir_contents):
             if not(dir_cake.has_data()):
-                lookup = self.backend().lookup(dir_cake)
+                lookup = self.blob_store().lookup(dir_cake)
                 if not lookup.found():
-                    w = self.backend().writer()
+                    w = self.blob_store().writer()
                     w.write(bytes(dir_contents), done=True)
-                    lookup = self.backend().lookup(dir_cake)
+                    lookup = self.blob_store().lookup(dir_cake)
                     if lookup.found():
                         dirs_stored.add(dir_cake)
                     else: # pragma: no cover
@@ -322,7 +325,7 @@ class PrivilegedAccess(GuestAccess):
 
     def _collect_unseen(self, cake, unseen_set):
         if not cake.has_data():
-            lookup = self.backend().lookup(cake)
+            lookup = self.blob_store().lookup(cake)
             if not lookup.found():
                 unseen_set.add(cake)
 
@@ -650,7 +653,7 @@ class PrivilegedAccess(GuestAccess):
 class CakeStore:
     def __init__(self, store_dir):
         self.store_dir = store_dir
-        self._backend = None
+        self._blob_store = None
         self.srvcfg_db = Dbf(
             ServerConfigBase.metadata,
             os.path.join(self.store_dir, 'server.db')
@@ -675,12 +678,12 @@ class CakeStore:
             db.ensure_db()
         return db
 
-    def backend(self):
-        if self._backend is None:
-            self._backend = LiteBackend(
+    def blob_store(self):
+        if self._blob_store is None:
+            self._blob_store = BlobStore(
                 os.path.join(self.store_dir, 'backend')
             )
-        return self._backend
+        return self._blob_store
 
     def initdb(self, external_ip, port, num_cake_shards=10):
         if not os.path.exists(self.store_dir):
@@ -688,7 +691,7 @@ class CakeStore:
         self.srvcfg_db.ensure_db()
         os.chmod(self.srvcfg_db.path, 0o600)
         self.glue_db.ensure_db()
-        self.backend()
+        self.blob_store()
         with self.srvcfg_db.session_scope() as srv_session:
             skey = srv_session.query(ServerKey).one_or_none()
             if skey is None:

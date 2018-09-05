@@ -1,5 +1,6 @@
-import inspect
 from types import ModuleType
+import abc
+import inspect
 import os
 import json
 import sys
@@ -139,6 +140,21 @@ def path_split_all(path: str, ensure_trailing_slash: bool = None):
                 parts = parts[:-1]
     return parts
 
+def mix_in(mixin:type, target:type) -> List[str]:
+    """
+    Copy all defined functions from mixin into target. It could be
+    usefull when you cannot inherit from mixin because incompatible
+    metaclass.
+
+    Returns list of copied methods.
+    """
+    def mix():
+        for n in dir(mixin):
+            fn = getattr(mixin, n)
+            if inspect.isfunction(fn):
+                setattr(target, n, fn)
+                yield n
+    return list(mix())
 
 class EnsureIt:
 
@@ -227,6 +243,13 @@ class StrKeyMixin:
     def __ne__(self, other):
         return not self.__eq__(other)
 
+class StrKeyAbcMixin(metaclass=abc.ABCMeta):
+
+    @abc.abstractmethod
+    def __str__(self):
+        raise NotImplementedError('subclasses must override')
+
+mix_in(StrKeyMixin, StrKeyAbcMixin)
 
 class Jsonable(EnsureIt):
     """
@@ -547,18 +570,3 @@ class CodeEnum(Stringable, enum.Enum):
         return f'<{type(self).__name__}.{self.name}: {self.code}>'
 
 
-def mix_in(mixin:type, target:type) -> List[str]:
-    """
-    Copy all defined functions from mixin into target. It could be
-    usefull when you cannot inherit from mixin because incompatible
-    metaclass.
-
-    Returns list of copied methods.
-    """
-    def mix():
-        for n in dir(mixin):
-            fn = getattr(mixin, n)
-            if inspect.isfunction(fn):
-                setattr(target, n, fn)
-                yield n
-    return list(mix())

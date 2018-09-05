@@ -3,10 +3,10 @@ import requests
 import json
 from sqlalchemy import desc
 from hashstore.bakery import RemoteError, Content, Cake
-from hashstore.bakery.backend_lite import ContentAddress
+from hashstore.bakery.lite.node import ContentAddress
 from hashstore.utils.hashing import SaltedSha
-from hashstore.ndb import Dbf
-from hashstore.ndb.models.client_config import ClientConfigBase, \
+from hashstore.utils.db import Dbf
+from hashstore.bakery.lite.client import ClientConfigBase, \
     ClientKey, Server, MountSession
 from hashstore.utils import json_encoder, normalize_url, \
     is_file_in_directory, json_decode
