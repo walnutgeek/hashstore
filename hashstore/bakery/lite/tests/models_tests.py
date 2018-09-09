@@ -19,11 +19,6 @@ test = TestSetup(__name__,ensure_empty=True)
 log = test.log
 
 
-def test_server():
-    #'sqlite:///:memory:'
-    pass
-
-
 def test_glue():
     dbf = Dbf(GlueBase.metadata, test.file_path('test_glue.sqlite3'))
     dbf.ensure_db()

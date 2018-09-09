@@ -1,7 +1,8 @@
-import os
-from hashstore.bakery.cake_store import CakeStore, PrivilegedAccess
+from hashstore.bakery.lite.node.access import (
+    PrivilegedAccess, StoreContext)
 from hashstore.bakery.cake_server import CakeServer
 from hashstore.bakery.lite.node import PermissionType, Acl
+from hashstore.bakery.lite.node.store import CakeStore
 from hashstore.utils import print_pad
 from hashstore.utils.args import Switch, CommandArgs
 from hashstore.utils.hashing import SaltedSha
@@ -48,14 +49,14 @@ class DaemonApp():
                 raise ValueError('Passwords does not match')
         else:
             password = SaltedSha(password)
-        with self.store.ctx() as ctx:
+        with StoreContext(self.store) as ctx:
             actions = PrivilegedAccess.system_access(ctx)
             actions.add_user(email,password,
                             full_name=full_name)
 
     @ca.command(user=USER)
     def remove_user(self, user):
-        with self.store.ctx() as ctx:
+        with StoreContext(self.store) as ctx:
             actions = PrivilegedAccess.system_access(ctx)
             actions.remove_user(user)
 
@@ -66,7 +67,7 @@ class DaemonApp():
                      'with "_" require  `Cake` that points to  portal '
                      'or data.' % (perm_names,))
     def acl(self, user, acl=None):
-        with self.store.ctx() as ctx:
+        with StoreContext(self.store) as ctx:
             actions = PrivilegedAccess.system_access(ctx)
             if acl is not None:
                 action = acl[-1]
@@ -85,7 +86,7 @@ class DaemonApp():
 
     @ca.command('Backup dir', dir='directory to be stored. ')
     def backup(self, dir):
-        with self.store.ctx() as ctx:
+        with StoreContext(self.store) as ctx:
             actions = PrivilegedAccess.system_access(ctx)
             scan_path = ScanPath(dir)
             print('DirId: %s\nCake:  %s' % backup(scan_path, actions))
@@ -94,7 +95,7 @@ class DaemonApp():
                 dir='destination directory.',
                 cake='content cake or portal or cake_path' )
     def pull(self, cake, dir):
-        with self.store.ctx() as ctx:
+        with StoreContext(self.store) as ctx:
             actions = PrivilegedAccess.system_access(ctx)
             pull(actions, ensure_cakepath(cake), dir)
 

@@ -5,8 +5,8 @@ import requests
 import os
 import time
 import signal
-from hashstore.bakery.cake_store import StoreContext, GuestAccess, \
-    FROM_COOKIE
+from hashstore.bakery.lite.node.access import (
+    StoreContext, GuestAccess, FROM_COOKIE )
 from hashstore.utils.hashing import SaltedSha
 from hashstore.bakery import Content, cake_or_path, \
     NotAuthorizedError
