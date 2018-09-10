@@ -5,8 +5,8 @@ from sqlalchemy.orm import relationship
 
 from hashstore.bakery import Cake
 from hashstore.utils.db import StringCast, IntCast
-from hashstore.bakery.lite.mixins import ReprIt, NameIt, Cdt, Udt, GuidPk, \
-    GuidPkWithSynapsePortalDefault, ServersMixin, Singleton
+from hashstore.bakery.lite.mixins import ReprIt, NameIt, Cdt, Udt, CakePk, \
+    PortalPkWithSynapseDefault, ServersMixin, Singleton
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import LargeBinary, Column, Integer, Boolean, \
     ForeignKey, DateTime, String, Index, and_
@@ -115,8 +115,10 @@ incoming_meta = IncomingBase.metadata
 
 CakeShardBase:Any = declarative_base(name='CakeShardBase')
 
+class BackLink(CakePk, NameIt, Cdt, Udt, CakeShardBase):
+    referrer = Column(StringCast(Cake), nullable=False)
 
-class Portal(GuidPk, NameIt, Cdt, Udt, CakeShardBase):
+class Portal(CakePk, NameIt, Cdt, Udt, CakeShardBase):
     latest = Column(StringCast(Cake), nullable=True)
     active = Column(Boolean, nullable=False, default=True)
 
@@ -270,7 +272,7 @@ class UserType(enum.Enum):
     system = 999
 
 
-class User(GuidPkWithSynapsePortalDefault, NameIt, Cdt, Udt, ReprIt,
+class User(PortalPkWithSynapseDefault, NameIt, Cdt, Udt, ReprIt,
            GlueBase):
     email = Column(String, nullable=False)
     user_state = Column(IntCast(UserState), nullable=False)
@@ -289,7 +291,7 @@ class User(GuidPkWithSynapsePortalDefault, NameIt, Cdt, Udt, ReprIt,
         return self._acls
 
 
-class Permission(GuidPkWithSynapsePortalDefault, NameIt, Cdt, Udt,
+class Permission(PortalPkWithSynapseDefault, NameIt, Cdt, Udt,
                  GlueBase):
     user_id = Column(None, ForeignKey('user.id'))
     cake = Column(StringCast(Cake), nullable=True)
@@ -377,7 +379,7 @@ class ServerKey(Singleton, ServerConfigBase):
     num_cake_shards = Column(Integer, nullable=False)
 
 
-class UserSession(GuidPkWithSynapsePortalDefault, NameIt, Cdt, Udt,
+class UserSession(PortalPkWithSynapseDefault, NameIt, Cdt, Udt,
                   ReprIt, ServerConfigBase):
     user = Column(StringCast(Cake), nullable=False)
     client = Column(StringCast(SaltedSha), nullable= True)
@@ -385,5 +387,5 @@ class UserSession(GuidPkWithSynapsePortalDefault, NameIt, Cdt, Udt,
     active = Column(Boolean, nullable=False)
 
 
-class DirMount(NameIt, GuidPk, Cdt, Udt, ReprIt, ServerConfigBase):
+class DirMount(NameIt, CakePk, Cdt, Udt, ReprIt, ServerConfigBase):
     path = Column(String, index=True, nullable=False, unique=True)

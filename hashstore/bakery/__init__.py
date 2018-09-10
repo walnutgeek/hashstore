@@ -10,7 +10,6 @@ from hashstore.utils import Jsonable
 from io import BytesIO
 import os
 import hashstore.utils as utils
-import base64
 from hashstore.utils.base_x import base_x
 import json
 import enum
@@ -908,9 +907,7 @@ class PathInfo(RackRow):
     mime: str
 
 
-class LookupInfo(SmAttr):
-    path: CakePath
-    info: Optional[PathInfo]
+class ContentLoader(SmAttr):
     data: Optional[bytes]
     stream_fn: Optional[Callable[[],IO[bytes]]]
     file: Optional[str]
@@ -940,7 +937,14 @@ class LookupInfo(SmAttr):
     def open_fd(self):
         return os.open(self.file, os.O_RDONLY)
 
+    @classmethod
+    def from_file(cls, file):
+        return cls(file=file)
 
+
+class LookupInfo(ContentLoader):
+    path: CakePath
+    info: Optional[PathInfo]
 
 
 class MoldedCake(Cake):

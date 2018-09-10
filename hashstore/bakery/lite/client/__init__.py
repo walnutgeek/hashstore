@@ -1,6 +1,6 @@
 
 from hashstore.bakery.lite.mixins import (
-    Cdt, Udt, ServersMixin, Singleton,  GuidPk, NameIt, DirSingleton,
+    Cdt, Udt, ServersMixin, Singleton, CakePk, NameIt, DirSingleton,
     ReprIt)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, String, Integer, ForeignKey, Boolean
@@ -21,7 +21,7 @@ class Server(ServersMixin, ClientConfigBase):
     pass
 
 
-class MountSession(NameIt, GuidPk, Cdt, Udt, ClientConfigBase):
+class MountSession(NameIt, CakePk, Cdt, Udt, ClientConfigBase):
     path = Column(String, index=True, nullable=False, unique=True)
     username = Column(String, nullable=False)
     server_id = Column(None, ForeignKey('server.id'), nullable=False)

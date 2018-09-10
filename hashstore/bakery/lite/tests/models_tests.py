@@ -1,4 +1,3 @@
-from nose.tools import eq_,ok_
 from hashstore.bakery import Cake, CakeRole
 from hashstore.utils.hashing import SaltedSha
 from hashstore.tests import TestSetup, doctest_it

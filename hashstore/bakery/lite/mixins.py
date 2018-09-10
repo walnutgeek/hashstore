@@ -25,19 +25,20 @@ class NameIt(object):
         return strip
 
 
-class GuidPk:
+class CakePk:
     id = Column(StringCast(Cake), primary_key=True)
 
 
-def GuidPkWithDefault(role:CakeRole=None, type:CakeType=None):
-    class GuidPk:
-        id = Column(
-            StringCast(Cake), primary_key=True,
-            default=lambda : Cake.new_portal(role, type))
-    return GuidPk
+def make_portal_pk_type(cr:CakeRole=None, ct:CakeType=None)->type:
+    class PortalPk:
+        id = Column(StringCast(Cake), primary_key=True,
+                    default=lambda : Cake.new_portal(cr, ct))
+    return PortalPk
 
-GuidPkWithSynapsePortalDefault:Any =GuidPkWithDefault(
+
+PortalPkWithSynapseDefault:type = make_portal_pk_type(
     CakeRole.SYNAPSE, CakeType.PORTAL)
+
 
 class Cdt:
     created_dt = Column(DateTime, nullable=False,
@@ -55,14 +56,15 @@ class ServersMixin(NameIt, Cdt, Udt):
     secret = Column(StringCast(SaltedSha), nullable=False)
 
 
-def newSingleton(ks=CakeType.PORTAL):
+def new_singleton(ks=CakeType.PORTAL):
     new_dmount = lambda: Cake.new_portal(CakeRole.NEURON, ks)
+
     class NewSingleton(NameIt, ReprIt):
-        single = Column(Integer,primary_key=True, default=1)
+        single = Column(Integer, primary_key=True, default=1)
         id = Column(StringCast(Cake), nullable=False,
                     default=new_dmount)
     return NewSingleton
 
-Singleton = newSingleton()
+Singleton = new_singleton()
 
-DirSingleton = newSingleton(CakeType.DMOUNT)
+DirSingleton = new_singleton(CakeType.DMOUNT)

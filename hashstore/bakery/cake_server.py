@@ -9,7 +9,7 @@ from hashstore.bakery.lite.node.access import (
     StoreContext, GuestAccess, FROM_COOKIE )
 from hashstore.utils.hashing import SaltedSha
 from hashstore.bakery import Content, cake_or_path, \
-    NotAuthorizedError
+    NotAuthorizedError, LookupInfo
 from hashstore.utils import json_encoder, FileNotFound, ensure_bytes, \
     exception_message, decode
 from hashstore.utils.file_types import guess_type
