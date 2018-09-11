@@ -1,9 +1,9 @@
 import os
 
 from hashstore.bakery import NotFoundError
+from hashstore.bakery.lite.node import ContentAddress
 from hashstore.tests import TestSetup, seed, random_bytes
 from ..node.blobs import BlobStore
-from ..node import ContentAddress
 from hashstore.bakery import Cake
 from nose.tools import eq_,ok_,with_setup
 

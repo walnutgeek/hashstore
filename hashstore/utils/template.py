@@ -1,10 +1,10 @@
 from . import (adjust_for_json, lazy_factory, GlobalRef, Stringable,
-                             StrKeyMixin, EnsureIt, identity, _GLOBAL_REF)
+               StrKeyMixin, EnsureIt, identity, _GLOBAL_REF,
+               reraise_with_msg)
 from datetime import date, datetime
 from typing import (Any, Union, Optional)
 from dateutil.parser import parse as dt_parse
 from enum import IntEnum
-import re
 
 
 class Conversion(IntEnum):
@@ -48,17 +48,24 @@ class ClassRef(Stringable, StrKeyMixin, EnsureIt):
         elif self.cls is datetime:
             self._from_json = lazy_factory(
                 self.cls, lambda v: dt_parse(v))
-        else:
+        elif hasattr(self.cls, '__args__'):
+            self._from_json = identity
+        elif isinstance(self.cls, type):
             self._from_json = lazy_factory(self.cls, self.cls)
+        else:
+            self._from_json = identity
 
     def matches(self, v):
         return self.cls == Any or isinstance(v, self.cls)
 
     def convert(self, v: Any, direction: Conversion)->Any:
-        if direction == Conversion.TO_OBJECT:
-            return self._from_json(v)
-        else:
-            return adjust_for_json(v, v)
+        try:
+            if direction == Conversion.TO_OBJECT:
+                return self._from_json(v)
+            else:
+                return adjust_for_json(v, v)
+        except:
+            reraise_with_msg(f'{self.cls} {v}')
 
     def __str__(self):
         if self.cls.__module__ == 'builtins':

@@ -29,6 +29,8 @@ my_name_dict = dict(
 
 WDF = 'WDF'
 HSB = 'HSB'
+BINARY = 'BINARY'
+BINARY_MIME = 'application/octet-stream'
 
 
 def guess_name(filename):

@@ -29,14 +29,14 @@ class CakePk:
     id = Column(StringCast(Cake), primary_key=True)
 
 
-def make_portal_pk_type(cr:CakeRole=None, ct:CakeType=None)->type:
+def make_portal_pk_type(cr:CakeRole=None, ct:CakeType=None)->Any:
     class PortalPk:
         id = Column(StringCast(Cake), primary_key=True,
                     default=lambda : Cake.new_portal(cr, ct))
     return PortalPk
 
 
-PortalPkWithSynapseDefault:type = make_portal_pk_type(
+PortalPkWithSynapseDefault:Any = make_portal_pk_type(
     CakeRole.SYNAPSE, CakeType.PORTAL)
 
 

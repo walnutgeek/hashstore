@@ -412,8 +412,12 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
         values = {k: v for k, v in _vals_.items() if v is not None}
         type(self).__mold__.set_attrs(values, self)
 
-    def to_json(self) -> Dict[str, Any]:
-        return type(self).__mold__.mold_it( DictLike(self), Conversion.TO_JSON )
+    def to_json(self, moldable:Any = None) -> Dict[str, Any]:
+        if moldable is not None:
+            mold = Mold.ensure_it(moldable)
+        else:
+            mold = type(self).__mold__
+        return mold.mold_it(DictLike(self), Conversion.TO_JSON)
 
 
 class Row:

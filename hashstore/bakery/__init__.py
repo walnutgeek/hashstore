@@ -14,14 +14,14 @@ from hashstore.utils.base_x import base_x
 import json
 import enum
 from typing import (
-    Union, Optional, Any, Callable, Tuple,
-    List, Iterable, Dict, IO)
+    Union, Optional, Any, Callable, Tuple, List, Iterable, Dict, IO)
 import logging
 from hashstore.utils import path_split_all
-from hashstore.utils.file_types import guess_name, file_types, HSB
-from hashstore.utils.smattr import JsonWrap, SmAttr, MoldedTable
-from hashstore.utils.hashing import Hasher, shard_name_int, shard_num, \
-    HashBytes
+from hashstore.utils.file_types import (
+    guess_name, file_types, HSB, BINARY)
+from hashstore.utils.smattr import JsonWrap, SmAttr
+from hashstore.utils.hashing import (
+    Hasher, shard_name_int, shard_num, HashBytes)
 
 log = logging.getLogger(__name__)
 
@@ -29,80 +29,6 @@ B62 = base_x(62)
 
 
 MAX_NUM_OF_SHARDS = 8192
-
-class Content(Jsonable):
-    """
-    >>> c=Content(size=3, created_dt="some time ago", file_type="TXT", mime='text/plain', data='abc')
-    >>> json.dumps(c.to_json(),sort_keys=True)
-    '{"created_dt": "some time ago", "mime": "text/plain", "size": 3, "type": "TXT"}'
-    """
-    JSONABLE_FIELDS = [(k+':'+k).split(':')[0:2] for k in
-                      'size created_dt file_type:type mime'.split()]
-
-    def __init__(self, data=None, file=None, stream_fn=None,
-                 mime=None, file_type=None, created_dt=None,
-                 size=None, role=None, lookup=None):
-        self.mime = mime
-        self.file_type = file_type
-        if data is None and file is None and stream_fn is None:
-            raise AssertionError('define data or file or stream_fn')
-        self.data = data
-        self.file = file
-        self.stream_fn = stream_fn
-        self.role = role
-        if lookup is None:
-            self.size = size
-            self.created_dt = created_dt
-        else:
-            self.size = lookup.size
-            self.created_dt = lookup.created_dt
-
-    def guess_file_type(self, file=None):
-        if file is None:
-            file = self.file
-        if self.file_type is None:
-            if file is not None:
-                self.file_type = guess_name(file)
-        if self.file_type is not None and self.mime is None:
-            self.mime = file_types[self.file_type].mime
-        return self
-
-    def set_role(self, copy_from):
-        role = None
-        if isinstance(copy_from, CakeRole):
-            role = copy_from
-        else:
-            if hasattr(copy_from, 'role'):
-                role = copy_from.role
-        if role is not None:
-            self.role = role
-            if self.file_type is None:
-                if self.role == CakeRole.NEURON:
-                    self.file_type = HSB
-        return self.guess_file_type()
-
-    def has_data(self) -> bool:
-        return self.data is not None
-
-    def get_data(self) -> bytes:
-        return self.data if self.has_data() else self.stream().read()
-
-    def stream(self)-> IO[bytes]:
-        if self.has_data():
-            return BytesIO(self.data)
-        elif self.file is not None:
-            return open(self.file, 'rb')
-        else:
-            return self.stream_fn()
-
-    def has_file(self):
-        return self.file is not None
-
-    def open_fd(self):
-        return os.open(self.file,os.O_RDONLY)
-
-    def to_json(self):
-        return { n:getattr(self,k) for k,n in self.JSONABLE_FIELDS}
 
 
 class CakeRole(utils.CodeEnum):
@@ -900,14 +826,14 @@ class PathResolved(SmAttr):
     resolved: Optional[Cake]
 
 
-class PathInfo(RackRow):
-    size: int
-    created_dt: datetime
-    file_type: str
+class PathInfo(SmAttr):
     mime: str
+    file_type: Optional[str]
+    created_dt: Optional[datetime]
+    size: Optional[int]
 
 
-class ContentLoader(SmAttr):
+class ContentLoader(PathInfo):
     data: Optional[bytes]
     stream_fn: Optional[Callable[[],IO[bytes]]]
     file: Optional[str]
@@ -929,7 +855,7 @@ class ContentLoader(SmAttr):
         elif self.stream_fn is not None:
             return self.stream_fn()
         else:
-            raise AssertionError(f'cannot stream: {self.path}')
+            raise AssertionError(f'cannot stream: {repr(self)}')
 
     def has_file(self):
         return self.file is not None
@@ -939,7 +865,26 @@ class ContentLoader(SmAttr):
 
     @classmethod
     def from_file(cls, file):
-        return cls(file=file)
+        file_type = guess_name(file)
+        return cls(file=file,
+                   file_type=file_type,
+                   mime=file_types[file_type].mime)
+
+    @classmethod
+    def from_data_and_role(cls, role:CakeRole,
+                           data: Optional[bytes]=None,
+                           file:Optional[str]=None ):
+        file_type = HSB if role == CakeRole.NEURON else BINARY
+        if data is not None:
+            return cls(data=data, size=len(data),
+                       file_type=file_type,
+                       mime=file_types[file_type].mime)
+        elif file is not None:
+            return cls(file=file,
+                       file_type=file_type,
+                       mime=file_types[file_type].mime)
+        else:
+            raise AssertionError('file or data should be defined')
 
 
 class LookupInfo(ContentLoader):

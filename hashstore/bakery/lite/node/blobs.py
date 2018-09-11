@@ -1,12 +1,15 @@
 import os
 import shutil
 import datetime
+from typing import Union
+
 import pylru
 from hashstore.utils.db import Dbf
 from hashstore.utils import ensure_directory
 from hashstore.utils.hashing import (is_it_shard, Hasher)
 from sqlalchemy import func, select
-from hashstore.bakery import (NotFoundError, Content)
+from hashstore.bakery import (NotFoundError, CakeRole,
+                              ContentLoader, Cake)
 from . import (blob_meta, blob,
                incoming_meta, incoming,
                ContentAddress, MAX_NUM_OF_SHARDS)
@@ -26,8 +29,14 @@ class Lookup:
     def found(self):
         return self.size is not None and self.size >= 0
 
-    def content(self):
+    def _content(self, role: CakeRole)->ContentLoader:
         raise NotFoundError
+
+    def content(self, role: CakeRole)->ContentLoader:
+        content = self._content(role)
+        content.size = self.size
+        content.created_dt = self.created_dt
+        return content
 
 
 NULL_LOOKUP = Lookup(None, None)
@@ -50,8 +59,9 @@ class CacheLookup(Lookup):
         self.data = data
         self.store.cache[self.file_id] = self
 
-    def content(self):
-        return Content(data=self.data, lookup=self)
+    def _content(self, role: CakeRole)->ContentLoader:
+        return ContentLoader.from_data_and_role(
+            role=role, data=self.data)
 
 
 class DbLookup(ContentAddressLookup):
@@ -82,13 +92,14 @@ class DbLookup(ContentAddressLookup):
         else:
             return False
 
-    def content(self):
+    def _content(self, role: CakeRole)->ContentLoader:
         row = self.blob_db().execute(
             select([blob.c.content])
             .where(blob.c.file_id == self.file_id)).fetchone()
         if self.size < self.store.cached_max_size:
-            return CacheLookup(self, row.content).content()
-        return Content(data=row.content, lookup=self)
+            return CacheLookup(self, row.content)._content(role)
+        return ContentLoader.from_data_and_role(
+            role=role, data=row.content)
 
 
 class FileLookup(ContentAddressLookup):
@@ -102,10 +113,11 @@ class FileLookup(ContentAddressLookup):
             if e.errno != 2:  # No such file
                  raise # pragma: no cover
 
-    def content(self):
-        content = Content(file=self.file, lookup=self)
+    def _content(self, role: CakeRole)->ContentLoader:
+        content = ContentLoader.from_data_and_role(
+            file=self.file, role=role)
         if self.size < self.store.cached_max_size:
-            return CacheLookup(self, content.stream().read()).content()
+            return CacheLookup(self, content.stream().read())._content(role)
         return content
 
 
@@ -152,8 +164,9 @@ class BlobStore:
                 if len(f) > 48:
                     yield ContentAddress(f)
 
-    def get_content(self, k):
-        return self.lookup(k).content().set_role(k)
+    def get_content(self, k:Union[Cake,ContentAddress]):
+        role = k.role if isinstance(k, Cake) else CakeRole.SYNAPSE
+        return self.lookup(k).content(role)
 
     def lookup(self, cake_or_cadr):
         file_id = ContentAddress.ensure_it(cake_or_cadr)

@@ -1,10 +1,11 @@
 import os
 import datetime
 from hashstore.bakery import (
-    NotAuthorizedError, CredentialsError, Content, Cake, CakeRack,
+    NotAuthorizedError, CredentialsError, Cake, CakeRack,
     CakePath, CakeType, assert_key_structure, CakeRole,
-    PatchAction
-)
+    PatchAction, ContentLoader)
+from hashstore.utils.file_types import BINARY, guess_name, \
+    file_types
 from hashstore.utils.hashing import SaltedSha
 from hashstore.bakery.cake_tree import CakeTree
 from hashstore.utils.db import MultiSessionContextManager
@@ -161,8 +162,8 @@ class GuestAccess:
             return self.get_content_by_path(cake_or_path)
         cake = cake_or_path
         if cake.has_data():
-            return Content(data=cake_or_path.data())\
-                .set_role(cake_or_path)
+            return ContentLoader.from_data_and_role(
+                role=cake.role, data=cake.data())
         elif cake.type.is_resolved:
             self.authorize(cake_or_path, Permissions.read_data_cake)
             return self.blob_store().get_content(cake_or_path)
@@ -206,7 +207,10 @@ class GuestAccess:
                 content = self.blob_store().get_content(next_cake)
             else:
                 content = self.get_content(next_cake)
-        return content.guess_file_type(cake_path.filename())
+        if content.file_type == BINARY:
+            content.file_type = guess_name(cake_path.filename())
+            content.mime = file_types[self.file_type].mime
+        return content
 
 
 user_api = ApiCallRegistry()
@@ -443,9 +447,10 @@ class PrivilegedAccess(GuestAccess):
         if neuron_maybe.cake is None: # yes it is
             namedCakes = self._make_bundle(
                 query(VolatileTree.parent_path == path).all())
-            return Content(created_dt=neuron_maybe.start_dt,
-                           data=bytes(namedCakes))\
-                .set_role(CakeRole.NEURON)
+            content = ContentLoader.from_data_and_role(
+                role=CakeRole.NEURON, data=bytes(namedCakes))
+            content.created_dt=neuron_maybe.start_dt
+            return content
         else:
             return self.get_content(neuron_maybe.cake)
 

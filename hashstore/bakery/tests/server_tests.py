@@ -1,12 +1,25 @@
-from nose.tools import eq_
+import json
+
+from nose.tools import eq_,ok_
 
 from hashstore.bakery import Cake, CakeRole, CakeType, CakePath
 from hashstore.tests import (sqlite_q, TestSetup, file_set1, file_set2,
     prep_mount, update_mount, fileset1_cake, fileset2_cake)
 import os
 from time import sleep
+import urllib.request
+import logging
 
 from hashstore.utils.hashing import SaltedSha
+
+log = logging.getLogger(__name__)
+
+
+def http_GET(u):
+
+    out = urllib.request.urlopen(u).read()
+    log.info(f'{u} -> {out if len(out) < 100 else len(out)}')
+    return out
 
 
 class ServerSetup:
@@ -18,8 +31,8 @@ class ServerSetup:
 
     def do_shutdown(self):
         test.run_script_and_wait(
-            'hsd --store_dir {self.store} stop'
-                .format(**locals()), expect_rc=0)
+            f'hsd --store_dir {self.store} stop',
+            expect_rc=0)
 
     def run_server_tests(self):
         log = self.test.log
@@ -32,8 +45,8 @@ class ServerSetup:
         pwdssha = str(SaltedSha.from_secret(pwd))
 
         test.run_script_and_wait(
-            'hsd --store_dir {self.store} initdb '
-            '--port 7623'.format(**locals()),
+            f'hsd --store_dir {self.store} initdb '
+            f'--port 7623',
             expect_rc=0, expect_read='')
 
         server_db = os.path.join(self.store, "server.db")
@@ -43,8 +56,8 @@ class ServerSetup:
         server_id = server_key[0][1]
 
         test.run_script_and_wait(
-            'hsd --store_dir {self.store} initdb '
-            '--port {self.port}'.format(**locals()),
+            f'hsd --store_dir {self.store} initdb '
+            f'--port {self.port}',
             expect_rc=0, expect_read='')
 
         server_key = sqlite_q(server_db,'select * from server_key')
@@ -53,21 +66,18 @@ class ServerSetup:
         eq_(server_id, server_key[0][1])
 
         server_id = self.test.run_script_in_bg(
-            'hsd --debug --store_dir {self.store} start'
-                .format(**locals()))
+            f'hsd --debug --store_dir {self.store} start')
 
         prep_mount(files, file_set1)
         self.test.run_script_and_wait(
-            'hsd --store_dir {self.store} add_user '
-            '--email {email} --password {pwdssha}'.format(
-                **locals()),
+            f'hsd --store_dir {self.store} add_user '
+            f'--email {email} --password {pwdssha}',
             expect_rc=0, expect_read='')
         acl = 'Create_Portals+'
 
         self.test.run_script_and_wait(
-            'hsd --store_dir {self.store} acl '
-            '--user {email} --acl {acl}'
-            .format(**locals()),
+            f'hsd --store_dir {self.store} acl '
+            f'--user {email} --acl {acl}',
             expect_rc=0, expect_read='''
                                     User: jon@doe.edu
                                     User.id: ...
@@ -77,6 +87,16 @@ class ServerSetup:
             )
 
         sleep(2)
+
+        pid = int(http_GET(f'http://localhost:{self.port}/-/pid'))
+        config_id, ssha_from_secret = json.loads(http_GET(
+            f'http://localhost:{self.port}/-/server_id'))
+        ok_( b'/-/app/' in http_GET(f'http://localhost:{self.port}/') )
+        ok_( len(http_GET(f'http://localhost:{self.port}/favicon.ico'))
+             > 33000 )
+        ok_( len(http_GET(f'http://localhost:{self.port}/-/app/app.js'))
+             > 1000000 )
+
 
         cake1, cake2 = fileset1_cake, fileset2_cake
 
@@ -100,18 +120,18 @@ class ServerSetup:
         eq_(new_portal.type, CakeType.VTREE)
 
         self.test.run_script_and_wait(
-            'hsi update_vtree --cake_path /{new_portal!s}/x/y/2 '
-            '--cake 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4'
-                .format(**locals()), expect_rc=0, expect_read=
+            f'hsi update_vtree --cake_path /{new_portal!s}/x/y/2 '
+            f'--cake 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4'
+            , expect_rc=0, expect_read=
                     'WARNING:__main__:Server does not have '
                     '2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4 stored.\n'
                     'CPath: ...\n'
                     'Cake: 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4')
 
         self.test.run_script_and_wait(
-            'hsi update_vtree --cake_path /{new_portal!s}/x/y/2 '
-            '--file {files!s}/x/y/2'
-                .format(**locals()), expect_rc=0, expect_read=
+            f'hsi update_vtree --cake_path /{new_portal!s}/x/y/2 '
+            f'--file {files!s}/x/y/2',
+            expect_rc=0, expect_read=
                     'CPath: ...\n'
                     'Cake: 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4')
         rpaths = []
@@ -119,7 +139,7 @@ class ServerSetup:
             _, save_words = self.test.run_script_and_wait(
                 'hsi backup --dir {files} --portal_type {portal_type}'
                     .format(**locals()), expect_rc=0,
-                expect_read='''....
+                expect_read=f'''....
                 DirId: ...
                 RemotePath: ...
                 Cake: {cake1}'''.format(**locals()), save_words=[])
@@ -130,8 +150,8 @@ class ServerSetup:
         for i,rpath in enumerate(rpaths):
             stored = rpath.root
             self.test.run_script_and_wait(
-                'hsi backup --dir {files} --remote_path {rpath!s}'
-                    .format(**locals()), expect_rc=0,
+                f'hsi backup --dir {files} --remote_path {rpath!s}',
+                expect_rc=0,
                 expect_read='''....
                 DirId: {dirId!s}
                 RemotePath: /{stored!s}/
@@ -140,15 +160,14 @@ class ServerSetup:
             outx = os.path.join(mount, 'out%d' % i)
             match_cake = cake2 if i == 1 else 'None'
             self.test.run_script_and_wait(
-                'hsi pull --cake {stored!s} --dir {outx}'
-                    .format(**locals()), expect_rc=0,
+                f'hsi pull --cake {stored!s} --dir {outx}',
+                expect_rc=0,
                 expect_read='From: ...\n'
-                            'Cake: {match_cake}\n'
-                    .format(**locals()))
+                            f'Cake: {match_cake}\n')
 
             self.test.run_script_and_wait(
-                'hsi scan --dir {outx}'
-                    .format(**locals()), expect_rc=0,
+                f'hsi scan --dir {outx}',
+                expect_rc=0,
                 expect_read=fileset2_cake)
 
         self.test.run_script_and_wait(
@@ -194,6 +213,7 @@ class ServerSetup:
         if self.shutdown:
             self.do_shutdown()
             self.test.wait_process(server_id, expect_rc=0)
+
 
 
 if __name__ == '__main__':
