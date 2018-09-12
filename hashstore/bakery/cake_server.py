@@ -9,10 +9,10 @@ from hashstore.bakery.lite.node.access import (
     StoreContext, GuestAccess, FROM_COOKIE)
 from hashstore.utils.hashing import SaltedSha
 from hashstore.bakery import (
-    cake_or_path, NotAuthorizedError, ContentLoader, PathInfo)
+    cake_or_path, NotAuthorizedError, Content, PathInfo)
 from hashstore.utils import (
-    json_encoder, FileNotFound, ensure_bytes, exception_message,
-    decode, encode)
+    FileNotFound, ensure_bytes, exception_message, decode, encode,
+    json_encode, json_decode)
 import json
 import tornado.web
 import tornado.template
@@ -107,8 +107,8 @@ class GetCakeHandler(_StoreAccessMixin, _ContentHandler):
         if 'data/' == prefix:
             return content
         elif 'info/' == prefix:
-            return ContentLoader(
-                data=encode(json_encoder.encode(content.to_json(PathInfo))),
+            return Content(
+                data=encode(json_encode(content.to_json(PathInfo))),
                 mime='application/json')
         else:
             raise AssertionError('Unknown prefix: %s' % prefix)
@@ -121,7 +121,7 @@ class StreamHandler(_StoreAccessMixin, tornado.web.RequestHandler):
     def post(self):
         k = self.w.done()
         log.info('write_content: %s' % k)
-        self.write(json_encoder.encode(k))
+        self.write(json_encode(k))
         self.finish()
 
     def prepare(self):
@@ -135,10 +135,10 @@ class PostHandler(_StoreAccessMixin, tornado.web.RequestHandler):
     SUPPORTED_METHODS = ['POST']
 
     def post(self):
-        req = json.loads(decode(self.request.body))
+        req = json_decode(decode(self.request.body))
         res = self.access.process_api_call(req['call'], req['msg'])
 
-        self.write(json_encoder.encode(res))
+        self.write(json_encode(res))
         self.finish()
 
 
@@ -152,7 +152,7 @@ def stop_server(signum, frame):
 def _string_handler(s):
     class StringHandler(_ContentHandler):
         def content(self, _):
-            return ContentLoader(data=ensure_bytes(s), mime='text/plain')
+            return Content(data=ensure_bytes(s), mime='text/plain')
 
     return StringHandler
 
@@ -188,21 +188,21 @@ class CakeServer:
         class AppContentHandler(_ContentHandler):
             def content(self, path):
                 file = os.path.join(app_dir, path)
-                return ContentLoader.from_file(file)
+                return Content.from_file(file)
 
 
         class IndexHandler(_ContentHandler):
             def content(self, _):
                 file = os.path.join(app_dir, 'index.html')
-                return ContentLoader.from_file(file)
+                return Content.from_file(file)
 
         class FavIconHandler(_ContentHandler):
             def content(self, _):
                 file=os.path.join(app_dir, 'favicon.ico')
-                return ContentLoader.from_file(file)
+                return Content.from_file(file)
 
         pid = str(os.getpid())
-        server_id = json_encoder.encode(
+        server_id = json_encode(
             (str(self.config.id),
              str(SaltedSha.from_secret(str(self.config.secret))))
         )

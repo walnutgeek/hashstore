@@ -9,7 +9,7 @@ from hashstore.utils import ensure_directory
 from hashstore.utils.hashing import (is_it_shard, Hasher)
 from sqlalchemy import func, select
 from hashstore.bakery import (NotFoundError, CakeRole,
-                              ContentLoader, Cake)
+                              Content, Cake)
 from . import (blob_meta, blob,
                incoming_meta, incoming,
                ContentAddress, MAX_NUM_OF_SHARDS)
@@ -29,10 +29,10 @@ class Lookup:
     def found(self):
         return self.size is not None and self.size >= 0
 
-    def _content(self, role: CakeRole)->ContentLoader:
+    def _content(self, role: CakeRole)->Content:
         raise NotFoundError
 
-    def content(self, role: CakeRole)->ContentLoader:
+    def content(self, role: CakeRole)->Content:
         content = self._content(role)
         content.size = self.size
         content.created_dt = self.created_dt
@@ -59,8 +59,8 @@ class CacheLookup(Lookup):
         self.data = data
         self.store.cache[self.file_id] = self
 
-    def _content(self, role: CakeRole)->ContentLoader:
-        return ContentLoader.from_data_and_role(
+    def _content(self, role: CakeRole)->Content:
+        return Content.from_data_and_role(
             role=role, data=self.data)
 
 
@@ -92,13 +92,13 @@ class DbLookup(ContentAddressLookup):
         else:
             return False
 
-    def _content(self, role: CakeRole)->ContentLoader:
+    def _content(self, role: CakeRole)->Content:
         row = self.blob_db().execute(
             select([blob.c.content])
             .where(blob.c.file_id == self.file_id)).fetchone()
         if self.size < self.store.cached_max_size:
             return CacheLookup(self, row.content)._content(role)
-        return ContentLoader.from_data_and_role(
+        return Content.from_data_and_role(
             role=role, data=row.content)
 
 
@@ -113,8 +113,8 @@ class FileLookup(ContentAddressLookup):
             if e.errno != 2:  # No such file
                  raise # pragma: no cover
 
-    def _content(self, role: CakeRole)->ContentLoader:
-        content = ContentLoader.from_data_and_role(
+    def _content(self, role: CakeRole)->Content:
+        content = Content.from_data_and_role(
             file=self.file, role=role)
         if self.size < self.store.cached_max_size:
             return CacheLookup(self, content.stream().read())._content(role)

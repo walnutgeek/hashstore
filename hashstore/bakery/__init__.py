@@ -833,7 +833,7 @@ class PathInfo(SmAttr):
     size: Optional[int]
 
 
-class ContentLoader(PathInfo):
+class Content(PathInfo):
     data: Optional[bytes]
     stream_fn: Optional[Callable[[],IO[bytes]]]
     file: Optional[str]
@@ -887,7 +887,7 @@ class ContentLoader(PathInfo):
             raise AssertionError('file or data should be defined')
 
 
-class LookupInfo(ContentLoader):
+class LookupInfo(Content):
     path: CakePath
     info: Optional[PathInfo]
 

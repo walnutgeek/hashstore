@@ -3,7 +3,7 @@ import datetime
 from hashstore.bakery import (
     NotAuthorizedError, CredentialsError, Cake, CakeRack,
     CakePath, CakeType, assert_key_structure, CakeRole,
-    PatchAction, ContentLoader)
+    PatchAction, Content)
 from hashstore.utils.file_types import BINARY, guess_name, \
     file_types
 from hashstore.utils.hashing import SaltedSha
@@ -162,7 +162,7 @@ class GuestAccess:
             return self.get_content_by_path(cake_or_path)
         cake = cake_or_path
         if cake.has_data():
-            return ContentLoader.from_data_and_role(
+            return Content.from_data_and_role(
                 role=cake.role, data=cake.data())
         elif cake.type.is_resolved:
             self.authorize(cake_or_path, Permissions.read_data_cake)
@@ -447,7 +447,7 @@ class PrivilegedAccess(GuestAccess):
         if neuron_maybe.cake is None: # yes it is
             namedCakes = self._make_bundle(
                 query(VolatileTree.parent_path == path).all())
-            content = ContentLoader.from_data_and_role(
+            content = Content.from_data_and_role(
                 role=CakeRole.NEURON, data=bytes(namedCakes))
             content.created_dt=neuron_maybe.start_dt
             return content

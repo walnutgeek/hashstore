@@ -2,7 +2,7 @@ import os
 import requests
 import json
 from sqlalchemy import desc
-from hashstore.bakery import RemoteError, Cake, ContentLoader
+from hashstore.bakery import RemoteError, Cake, Content
 from hashstore.bakery.lite.node import ContentAddress
 from hashstore.utils.file_types import BINARY_MIME
 from hashstore.utils.hashing import SaltedSha
@@ -90,7 +90,7 @@ class ClientUserSession:
             def get_content(_, cake_or_path, skinny=True):
                 if isinstance(cake_or_path, Cake):
                     if cake_or_path.has_data():
-                        return ContentLoader.from_data_and_role(
+                        return Content.from_data_and_role(
                             data=cake_or_path.data(),
                             role=cake_or_path.role
                         )
@@ -99,8 +99,8 @@ class ClientUserSession:
                 else:
                     resp = self.get_response('-/get/info', cake_or_path)
                     info = json_decode(resp.text)
-                return ContentLoader(
-                    stream_fn=(lambda: self.get_stream(cake_or_path)),
+                return Content(
+                    stream_fn=(lambda:self.get_stream(cake_or_path)),
                     **info)
 
             def __getattr__(_, item):
