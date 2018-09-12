@@ -10,7 +10,7 @@ const Tabular = {
 
     render({path, info, content}) {
         if(content && path){
-            const df =  parsers[info.type](content);
+            const df =  parsers[info.file_type](content);
             const col_idxs = _.range(df.getColumnCount());
             return (<table className="pt-table pt-bordered">
               <thead>

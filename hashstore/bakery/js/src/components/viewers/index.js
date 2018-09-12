@@ -23,7 +23,7 @@ export const detect_viewers = ( info ) => {
     if( info.size < 100000 ){
         let accepted = [];
         _.forOwn(viewers, (v,k) =>{
-           if( v.accept_types.indexOf(info.type) >= 0 ){
+           if( v.accept_types.indexOf(info.file_type) >= 0 ){
                accepted.push(k);
            }
         });

@@ -25,7 +25,7 @@ const Text = {
 
     render({info, content}) {
         try {
-            let lang = prismStyles[info.type];
+            let lang = prismStyles[info.file_type];
             if (lang && content) {
                 const grammar = Prism.languages[lang];
                 const __html = Prism.highlight(content, grammar, lang);

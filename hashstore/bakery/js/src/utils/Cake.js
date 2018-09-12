@@ -15,14 +15,18 @@ export const CakeType = new IntEnum({
     PORTAL: 2,
     VTREE: 3,
     DMOUNT: 4,
-    EVENT: 5
+    EVENT: 5,
+    DAG_STATE: 6,
+    JSON_WRAP: 7,
 },{displayPrefix: {
     INLINE: '=',
     SHA256: '#',
     PORTAL: '$',
     VTREE: '$',
     DMOUNT: '$',
-    EVENT: '>'
+    EVENT: '>',
+    DAG_STATE: '>',
+    JSON_WRAP: '>'
 }});
 
 const trimForDisplay = (s)=> s.length > 8 ? s.substring(s.length-8) : s;
@@ -102,7 +106,7 @@ export class Cake{
 
     link(cakepath){
         let cp = this.cakepath();
-        if( this.is_cakepath() && cp.isRelative()){
+        if( cp.isRelative()){
             cp = cp.makeAbsolute(cakepath);
         }
         return "/_"+cp.toString() ;
