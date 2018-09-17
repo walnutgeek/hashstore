@@ -13,7 +13,6 @@ from hashstore.bakery import (
 from hashstore.utils import (
     FileNotFound, ensure_bytes, exception_message, decode, encode,
     json_encode, json_decode)
-import json
 import tornado.web
 import tornado.template
 import tornado.ioloop

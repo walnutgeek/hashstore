@@ -41,7 +41,7 @@ def failback(fn, default):
     Traceback (most recent call last):
     ...
     ZeroDivisionError: integer division or modulo by zero
-    >>> divmod_nofail = failback(divmod,(0,0))
+    >>> divmod_nofail = failback(divmod,(0, 0))
     >>> divmod_nofail(3,2)
     (1, 1)
     >>> divmod_nofail(3,0)

@@ -1,5 +1,5 @@
 import inspect
-from typing import Union, Callable, Dict, Any, List, Optional, \
+from typing import Union, Callable, List, Optional, \
     get_type_hints
 
 from hashstore.utils import GlobalRef
@@ -29,7 +29,9 @@ class Function(SmAttr):
                 out_mold.add_hints(out_hints)
             else:
                 out_mold.add_entry(AttrEntry("return", return_type))
-        return cls({"ref":ref, "in_mold":in_mold, "out_mold":out_mold})
+        return cls(ref=ref,
+                   in_mold=in_mold,
+                   out_mold=out_mold)
 
 class DagVariable(object):
     def __init__(self, typing,
