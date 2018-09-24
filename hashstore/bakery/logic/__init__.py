@@ -33,28 +33,29 @@ class Function(SmAttr):
                    in_mold=in_mold,
                    out_mold=out_mold)
 
-class DagVariable(object):
+
+class TaskVar(object):
     def __init__(self, typing,
                  _path_:Optional[List[str]]=None,
-                 _wired_:Optional['DagVariable']=None
+                 _wired_:Optional['TaskVar']=None
                  )->None:
         self.typing = typing_factory(typing)
         self.path = _path_
         self.wired = _wired_
 
 
-class DagVarMold:
+class EdgeMold:
     def __init__(self,
                  mold: Mold,
                  path: List[str],
-                 variables: List[DagVariable]
+                 variables: List[TaskVar]
                  )->None:
         for k,attr in mold.attrs.items():
-            variable = DagVariable(attr, [*path, k])
+            variable = TaskVar(attr, [*path, k])
             variables.append(variable)
             setattr(self, k, variable)
 
-    def __getattr__(self, k:str)->DagVariable: ...
+    def __getattr__(self, k:str)->TaskVar: ...
 
 
 class Task:
@@ -64,10 +65,10 @@ class Task:
                  **in_vars_values) -> None:
         self.name = _name_
         self.fn = _fn_ if isinstance(_fn_, Function) else Function.parse(_fn_)
-        self.variables:List[DagVariable] = []
-        self.output = DagVarMold(
+        self.variables:List[TaskVar] = []
+        self.output = EdgeMold(
             self.fn.out_mold, ['output'], self.variables)
-        self.input = DagVarMold(
+        self.input = EdgeMold(
             self.fn.in_mold, ['input'], self.variables)
         for k ,v in in_vars_values.items():
             if v is None:
@@ -83,7 +84,7 @@ class Task:
                     unresolved_variables.append(var)
 
 
-class DagInitializer(type):
+class DagMeta(type):
     def __init__(cls, name, bases, dct):
         tasks = []
         variables = []
@@ -91,9 +92,11 @@ class DagInitializer(type):
             if isinstance(v, Task):
                 v.name = k
                 tasks.append(v)
-            if isinstance(v, DagVariable):
+            elif isinstance(v, TaskVar):
                 v.name = k
                 variables.append(v)
+            else:
+                print(f'What else: {v}')
 
         if '_tasks_' in dct:
             for task in dct['_tasks_']:
@@ -112,7 +115,7 @@ class DagInitializer(type):
         dct['_variables_'] = variables
 
 
-class Dag(metaclass=DagInitializer):
+class Dag(metaclass=DagMeta):
     pass
 
 

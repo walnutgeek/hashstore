@@ -412,11 +412,12 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
         values = {k: v for k, v in _vals_.items() if v is not None}
         type(self).__mold__.set_attrs(values, self)
 
-    def to_json(self, moldable:Any = None) -> Dict[str, Any]:
-        if moldable is not None:
-            mold = Mold.ensure_it(moldable)
+    def to_json(self) -> Dict[str, Any]:
+        cls = type(self)
+        if hasattr(cls, '__to_json__'):
+            mold = Mold.ensure_it(cls.__to_json__) #type: ignore
         else:
-            mold = type(self).__mold__
+            mold = cls.__mold__
         return mold.mold_it(DictLike(self), Conversion.TO_JSON)
 
 

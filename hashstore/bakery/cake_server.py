@@ -107,7 +107,7 @@ class GetCakeHandler(_StoreAccessMixin, _ContentHandler):
             return content
         elif 'info/' == prefix:
             return Content(
-                data=encode(json_encode(content.to_json(PathInfo))),
+                data=encode(json_encode(content.to_json())),
                 mime='application/json')
         else:
             raise AssertionError('Unknown prefix: %s' % prefix)
