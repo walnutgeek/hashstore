@@ -49,6 +49,17 @@ def test_CAKe():
     do_test(b'a' * 33, '2sZ85uTW6KyDdVWxpDMRsnsHvDQD9kPdLy1FvVWyWK9Q')
     do_test(b'a' * 46, '2lEWHXV2XeYyZnKNyQyGPt4poJhV7VeYCfeszHnLyFtx')
 
+    b = bakery
+    d = b.Cake.new_portal(b.CakeRole.NEURON, b.CakeType.DMOUNT)
+    x = b.Cake.new_portal(b.CakeRole.NEURON, b.CakeType.DMOUNT)
+    z = b.Cake(str(d))
+    ok_(z == d)
+    eq_(z != d, False)
+    ok_(z != x)
+    ok_(d != x)
+    ok_(z.type == d.type)
+    ok_(str(z) == str(d))
+
 
 def test_Bundle():
     inline_udk = '01aMUQDApalaaYbXFjBVMMvyCAMfSPcTojI0745igi'

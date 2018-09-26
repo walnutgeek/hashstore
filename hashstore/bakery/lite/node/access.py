@@ -2,10 +2,8 @@ import os
 import datetime
 from hashstore.bakery import (
     NotAuthorizedError, CredentialsError, Cake, CakeRack,
-    CakePath, CakeType, assert_key_structure, CakeRole,
-    PatchAction, Content)
-from hashstore.utils.file_types import BINARY, guess_name, \
-    file_types
+    CakePath, CakeType, CakeRole, PatchAction, Content)
+from hashstore.utils.file_types import (BINARY, guess_name, file_types)
 from hashstore.utils.hashing import SaltedSha
 from hashstore.bakery.cake_tree import CakeTree
 from hashstore.utils.db import MultiSessionContextManager
@@ -435,8 +433,7 @@ class PrivilegedAccess(GuestAccess):
         if cake_path.relative():
             raise ValueError('cake_path has to be absolute: %r'
                              % cake_path)
-        assert_key_structure(CakeType.VTREE,
-                             cake_path.root.type)
+        CakeType.VTREE.assert_equals(cake_path.root.type)
         return cake_path
 
     def _read_vtree(self, cake_path, asof_dt=None):

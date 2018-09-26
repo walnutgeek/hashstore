@@ -43,63 +43,25 @@ class EventState(utils.CodeEnum):
     FAIL = enum.auto()
 
 
-class Event(SmAttr):
-    '''
-    >>> EventState.NEW
-    <EventState.NEW: 1>
-    >>> EventState("IN_PROCESS")
-    <EventState.IN_PROCESS: 2>
-    >>> EventState(2)
-    <EventState.IN_PROCESS: 2>
-    >>> EventState("Q")
-    Traceback (most recent call last):
-    ...
-    KeyError: 'Q'
-    >>> e = Event()
-    >>> e.to_json()
-    {'state': 'NEW', 'input': {}, 'output': {}, 'codebase': None, 'additional_data': None}
-    >>> q = Event(e.to_json())
-    >>> q.state
-    <EventState.NEW: 1>
-    >>> str(q)
-    '{"additional_data": null, "codebase": null, "input": {}, "output": {}, "state": "NEW"}'
-    '''
-    state: EventState = EventState.NEW
-    input: Dict[str,Any]
-    output: Dict[str,Any]
-    codebase: Optional[str]
-    additional_data: Optional[str]
-
-
 _IS_PORTAL, _IS_VTREE, _IS_RESOLVED = (
     "is_portal", "is_vtree", "is_resolved" )
 
 
 class CakeType(utils.CodeEnum):
-    INLINE = (0, None, None)
-    SHA256 = (1, None, None, _IS_RESOLVED)
-    PORTAL = (2, None, None, _IS_PORTAL)
-    VTREE = (3, None, None, _IS_VTREE)
-    DMOUNT = (4, None, None, _IS_PORTAL)
-    EVENT = (5, CakeRole.SYNAPSE, Event, _IS_RESOLVED)
-    DAG_STATE = (6, CakeRole.NEURON, None, _IS_VTREE)
-    JSON_WRAP = (7, CakeRole.SYNAPSE, JsonWrap, _IS_RESOLVED )
+    INLINE = (0, )
+    SHA256 = (1, _IS_RESOLVED)
+    PORTAL = (2, _IS_PORTAL)
+    VTREE = (3, _IS_VTREE)
+    DMOUNT = (4, _IS_PORTAL)
 
-    def __init__(self,
-                 code:int,
-                 implied_role:Optional[CakeRole],
-                 json_type:Optional[type],
-                 *modifiers:str) -> None:
+    def __init__(self, code:int, *modifiers:str) -> None:
         utils.CodeEnum.__init__(self, code)
-        self.implied_role = implied_role
-        self.json_type = json_type
         self.is_vtree = _IS_VTREE in modifiers
         self.is_portal = self.is_vtree or _IS_PORTAL in modifiers
         self.is_resolved = _IS_RESOLVED in modifiers
 
 
-
-def portal_from_name(n):
+def portal_from_name(n:Optional[str])->CakeType:
     """
     >>> portal_from_name('')
     <CakeType.PORTAL: 2>
@@ -122,10 +84,56 @@ def portal_from_name(n):
     raise ValueError('not a portal type:'+n)
 
 
-def assert_key_structure(expected, type):
-    if type != expected:
-        raise AssertionError("has to be %r and not %r"
-                             % (expected, type))
+class EventEdge(SmAttr):
+    vars: Dict[str, Any]
+    dt: datetime
+
+
+class Event(SmAttr):
+    '''
+    >>> EventState.NEW
+    <EventState.NEW: 1>
+    >>> EventState("IN_PROCESS")
+    <EventState.IN_PROCESS: 2>
+    >>> EventState(2)
+    <EventState.IN_PROCESS: 2>
+    >>> EventState("Q")
+    Traceback (most recent call last):
+    ...
+    KeyError: 'Q'
+    >>> e = Event(function=portal_from_name)
+    >>> e.to_json()
+    {'state': 'NEW', 'function': 'hashstore.bakery:portal_from_name', 'input_edge': None, 'output_edge': None, 'error_edge': None, 'codebase': None, 'additional_data': None}
+    >>> q = Event(e.to_json())
+    >>> q.state
+    <EventState.NEW: 1>
+    >>> str(q)
+    '{"additional_data": null, "codebase": null, "error_edge": null, "function": "hashstore.bakery:portal_from_name", "input_edge": null, "output_edge": null, "state": "NEW"}'
+
+    '''
+    state: EventState = EventState.NEW
+    function: utils.GlobalRef
+    input_edge: Optional[EventEdge]
+    output_edge: Optional[EventEdge]
+    error_edge: Optional[EventEdge]
+    codebase: Optional[str]
+    additional_data: Optional[str]
+
+
+class CakeClass(utils.CodeEnum):
+    NO_CLASS = (0, None, None)
+    EVENT = (1, CakeRole.SYNAPSE, Event)
+    DAG_STATE = (2, CakeRole.NEURON, None)
+    JSON_WRAP = (3, CakeRole.SYNAPSE, JsonWrap )
+
+    def __init__(self,
+                 code:int,
+                 implied_role:Optional[CakeRole],
+                 json_type:Optional[type]
+                 ) -> None:
+        utils.CodeEnum.__init__(self, code)
+        self.implied_role = implied_role
+        self.json_type = json_type
 
 
 inline_max_bytes=32
@@ -143,14 +151,30 @@ def nop_on_chunk(chunk:bytes)->None:
     pass
 
 
-def _header(type, role):
+def _header(type:CakeType, role:CakeRole, cclass:CakeClass):
     """
-    >>> _header(CakeType.INLINE,CakeRole.SYNAPSE)
+    >>> _header(CakeType.INLINE,CakeRole.SYNAPSE, CakeClass.NO_CLASS)
     0
-    >>> _header(CakeType.SHA256,CakeRole.NEURON)
+    >>> _header(CakeType.SHA256,CakeRole.NEURON, CakeClass.NO_CLASS)
     3
+    >>> _header(CakeType.VTREE,CakeRole.NEURON, CakeClass.DAG_STATE)
+    39
     """
-    return (type.code << 1)|role.code
+    return ((cclass.code&15) << 4)|((type.code&7) << 1)|(role.code&1)
+
+def _unpack(header:int)->Tuple[CakeType,CakeRole,CakeClass]:
+    """
+    >>> _unpack(0)
+    (<CakeType.INLINE: 0>, <CakeRole.SYNAPSE: 0>, <CakeClass.NO_CLASS: 0>)
+    >>> _unpack(3)
+    (<CakeType.SHA256: 1>, <CakeRole.NEURON: 1>, <CakeClass.NO_CLASS: 0>)
+    >>> _unpack(39)
+    (<CakeType.VTREE: 3>, <CakeRole.NEURON: 1>, <CakeClass.DAG_STATE: 2>)
+    """
+    return (
+        CakeType.find_by_code((header >> 1) & 7),
+        CakeRole.find_by_code(header & 1),
+        CakeClass.find_by_code((header >> 4) & 15))
 
 
 def process_stream(fd:IO[bytes],
@@ -199,8 +223,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
     <CakeRole.SYNAPSE: 0>
     >>> list(CakeType) #doctest: +NORMALIZE_WHITESPACE
     [<CakeType.INLINE: 0>, <CakeType.SHA256: 1>, <CakeType.PORTAL: 2>,
-     <CakeType.VTREE: 3>, <CakeType.DMOUNT: 4>, <CakeType.EVENT: 5>,
-     <CakeType.DAG_STATE: 6>, <CakeType.JSON_WRAP: 7>]
+     <CakeType.VTREE: 3>, <CakeType.DMOUNT: 4>]
 
     >>> short_content = b'The quick brown fox jumps over'
     >>> short_k = Cake.from_bytes(short_content)
@@ -247,7 +270,8 @@ class Cake(utils.Stringable, utils.EnsureIt):
                  s:Optional[str],
                  data:Optional[bytes]=None,
                  type:Optional[CakeType]=None,
-                 role:Optional[CakeRole]=None
+                 role:Optional[CakeRole]=None,
+                 cclass:CakeClass=CakeClass.NO_CLASS
                  )->None:
         if type is not None:
             if data is None or role is None:
@@ -256,12 +280,13 @@ class Cake(utils.Stringable, utils.EnsureIt):
             self._data = data
             self.type = type
             self.role = role
+            self.cclass = cclass
         else:
             decoded = B62.decode(utils.ensure_string(s))
             header = decoded[0]
             self._data = decoded[1:]
-            self.type = CakeType.find_by_code(header >> 1)
-            self.role = CakeRole.find_by_code(header & 1)
+            self.type, self.role, self.cclass = _unpack(header)
+
         if not(self.has_data()):
             if len(self._data) != 32:
                 raise AssertionError(f'invalid CAKey: {s}' )
@@ -326,17 +351,21 @@ class Cake(utils.Stringable, utils.EnsureIt):
         return cake
 
     def transform_portal(self,
-                         role:CakeRole=None,
-                         type:CakeType=None
+                         role:Optional[CakeRole]=None,
+                         type:Optional[CakeType]=None,
+                         cclass:Optional[CakeClass]=None
                          )->'Cake':
         self.assert_portal()
         if type is None:
             type = self.type
         if role is None:
             role = self.role
-        if type == self.type and role == self.role:
+        if cclass is None:
+            cclass = self.cclass
+        if (type == self.type and role == self.role and
+                cclass == self.cclass):
             return self
-        return Cake(None, data=self._data, type=type, role=role)
+        return Cake(None, data=self._data, type=type, role=role, cclass=cclass)
 
     def has_data(self)->bool:
         return self.type == CakeType.INLINE
@@ -369,7 +398,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
         return self._data
 
     def __str__(self)->str:
-        return B62.encode( bytes([_header(self.type, self.role)]) +
+        return B62.encode( bytes([_header(self.type, self.role, self.cclass)]) +
                            self._data )
 
     def __repr__(self)->str:
@@ -385,7 +414,8 @@ class Cake(utils.Stringable, utils.EnsureIt):
             return False
         return self._data == other._data and \
                self.type == other.type and \
-               self.role == other.role
+               self.role == other.role and \
+               self.cclass == other.cclass
 
     def __ne__(self, other)->bool:
         return not self.__eq__(other)

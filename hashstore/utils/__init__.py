@@ -156,6 +156,7 @@ def mix_in(mixin:type, target:type) -> List[str]:
                 yield n
     return list(mix())
 
+
 class EnsureIt:
 
     @classmethod
@@ -189,7 +190,6 @@ class Stringable(Str2Bytes):
     '''
     def __repr__(self)->str:
         return f'{type(self).__name__}({repr(str(self))})'
-
 
 
 class StrKeyMixin:
@@ -243,13 +243,16 @@ class StrKeyMixin:
     def __ne__(self, other):
         return not self.__eq__(other)
 
+
 class StrKeyAbcMixin(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def __str__(self):
         raise NotImplementedError('subclasses must override')
 
+
 mix_in(StrKeyMixin, StrKeyAbcMixin)
+
 
 class Jsonable(EnsureIt):
     """
@@ -562,6 +565,10 @@ class CodeEnum(Stringable, enum.Enum):
     @classmethod
     def find_by_code(cls : Type[CodeEnumT], code:int) -> CodeEnumT:
         return cls._value2member_map_[code] # type: ignore
+
+    def assert_equals(self, type):
+        if type != self:
+            raise AssertionError(f"has to be {self} and not {type}")
 
     def __str__(self):
         return self.name
