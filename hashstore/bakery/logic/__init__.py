@@ -1,6 +1,6 @@
 import inspect
 from typing import Union, Callable, List, Optional, \
-    get_type_hints
+    get_type_hints, Any, Dict
 
 from hashstore.utils import GlobalRef
 from hashstore.utils.smattr import (SmAttr, Mold, AttrEntry,
@@ -32,6 +32,9 @@ class Function(SmAttr):
         return cls(ref=ref,
                    in_mold=in_mold,
                    out_mold=out_mold)
+
+    def invoke(self, in_edge:Dict[str,Any])->Dict[str,Any]:
+        pass
 
 
 class TaskVar(object):

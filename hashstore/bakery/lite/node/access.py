@@ -161,19 +161,19 @@ class GuestAccess:
         cake = cake_or_path
         if cake.has_data():
             return Content.from_data_and_role(
-                role=cake.role, data=cake.data())
-        elif cake.type.is_resolved:
+                role=cake.header.role, data=cake.data())
+        elif cake.is_resolved():
             self.authorize(cake_or_path, Permissions.read_data_cake)
             return self.blob_store().get_content(cake_or_path)
-        elif cake.type.is_portal:
+        elif cake.header.type.is_portal:
             self.authorize(cake_or_path, Permissions.read_portal)
-            if cake.type == CakeType.PORTAL :
+            if cake.header.type == CakeType.PORTAL :
                 resolution_stack = dal.resolve_cake_stack(
                     self.ctx.cake_session, cake_or_path)
                 for resolved_portal in resolution_stack[:-1]:
                     self.authorize(cake_or_path, Permissions.read_portal)
                 return self.blob_store().get_content(resolution_stack[-1])
-            elif cake.type in [CakeType.DMOUNT, CakeType.VTREE]:
+            elif cake.header.type in [CakeType.DMOUNT, CakeType.VTREE]:
                 return self.get_content_by_path(CakePath(None, _root=cake, _path=[]))
         else:
             raise AssertionError('should never get here')
@@ -189,9 +189,9 @@ class GuestAccess:
         if cake_path.relative():
             raise AssertionError(f'Has to be absolute: {cake_path}')
         root = cake_path.root
-        if root.type == CakeType.VTREE:
+        if root.header.type == CakeType.VTREE:
             return self._read_vtree(cake_path)
-        elif root.type == CakeType.DMOUNT:
+        elif root.header.type == CakeType.DMOUNT:
             return self._read_dmount(cake_path)
         content=self.get_content(root)
         for next_name in cake_path.path:
@@ -201,7 +201,7 @@ class GuestAccess:
             except:
                 reraise_with_msg(f'{cake_path} {bundle.content()}')
 
-            if next_cake.type.is_resolved:
+            if next_cake.is_resolved():
                 content = self.blob_store().get_content(next_cake)
             else:
                 content = self.get_content(next_cake)
@@ -298,12 +298,12 @@ class PrivilegedAccess(GuestAccess):
 
         for cake_path, dir_cake, dir_contents in directories:
             if cake_path is None or cake_path.root is None \
-                    or cake_path.root.type == CakeType.PORTAL :
+                    or cake_path.root.header.type == CakeType.PORTAL :
                 store_bundle(dir_cake, dir_contents)
                 if cake_path is not None and cake_path.is_root():
                     self.create_portal(portal_id=cake_path.root,
                                        cake=dir_cake)
-            elif cake_path.root.type == CakeType.VTREE:
+            elif cake_path.root.header.type == CakeType.VTREE:
                 path = cake_path.path_join()
                 prev_dir = self._make_bundle(
                     self._query_vtree(cake_path.root, None)(
@@ -315,7 +315,7 @@ class PrivilegedAccess(GuestAccess):
                 unseen_cakes.update(self.edit_portal_tree(patches))
             else:
                 raise AssertionError('cannot store: {cake_path!s} '
-                                     '{cake_path.root.type!s}'
+                                     '{cake_path.root.header.type!s}'
                                      .format(**locals()))
 
         if len(dirs_mismatch_input_cake) > 0: # pragma: no cover
@@ -433,7 +433,7 @@ class PrivilegedAccess(GuestAccess):
         if cake_path.relative():
             raise ValueError('cake_path has to be absolute: %r'
                              % cake_path)
-        CakeType.VTREE.assert_equals(cake_path.root.type)
+        CakeType.VTREE.assert_equals(cake_path.root.header.type)
         return cake_path
 
     def _read_vtree(self, cake_path, asof_dt=None):

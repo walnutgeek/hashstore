@@ -116,8 +116,8 @@ class ServerSetup:
             Cake: None
             ''',save_words=[])
         new_portal = Cake.ensure_it(save_words[0])
-        eq_(new_portal.role, CakeRole.NEURON)
-        eq_(new_portal.type, CakeType.VTREE)
+        eq_(new_portal.header.role, CakeRole.NEURON)
+        eq_(new_portal.header.type, CakeType.VTREE)
 
         self.test.run_script_and_wait(
             f'hsi update_vtree --cake_path /{new_portal!s}/x/y/2 '

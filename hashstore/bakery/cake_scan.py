@@ -274,8 +274,8 @@ def backup(scan_path, access):
                 if not stored.match(h):
                     log.info('path:%s, %s != %s' % (file, h, stored))
                     dir_scan.bundle[name] = Cake(stored.hash_bytes(),
-                                                 h.type,
-                                                 h.role)
+                                                 h.header.type,
+                                                 h.header.role)
                     dir_scan.udk = dir_scan.bundle.cake()
                     store_dir = True
         dir_scan.path.store_remote_path()

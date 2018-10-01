@@ -83,10 +83,10 @@ def ensure_bytes(s:Any)->bytes:
         return s
     if not isinstance(s, str):
         s = str(s)
-    return encode(s)
+    return utf8_encode(s)
 
 
-def encode(s:str)->bytes:
+def utf8_encode(s:str)->bytes:
     return s.encode(ENCODING_USED)
 
 
@@ -94,11 +94,11 @@ def ensure_string(s:Any)->str:
     if isinstance(s, str):
         return s
     if isinstance(s, bytes):
-        return decode(s)
+        return utf8_decode(s)
     return str(s)
 
 
-def decode(s:bytes)->str:
+def utf8_decode(s:bytes)->str:
     return s.decode(ENCODING_USED)
 
 
@@ -263,6 +263,9 @@ class Jsonable(EnsureIt):
 
     def to_json(self):
         raise AssertionError('need to be implemented')
+
+    def __bytes__(self):
+        return utf8_encode(str(self))
 
     def __str__(self):
         return json_encode(self.to_json())

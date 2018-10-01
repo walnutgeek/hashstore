@@ -11,7 +11,7 @@ from hashstore.utils.hashing import SaltedSha
 from hashstore.bakery import (
     cake_or_path, NotAuthorizedError, Content, PathInfo)
 from hashstore.utils import (
-    FileNotFound, ensure_bytes, exception_message, decode, encode,
+    FileNotFound, ensure_bytes, exception_message, utf8_decode, utf8_encode,
     json_encode, json_decode)
 import tornado.web
 import tornado.template
@@ -107,7 +107,7 @@ class GetCakeHandler(_StoreAccessMixin, _ContentHandler):
             return content
         elif 'info/' == prefix:
             return Content(
-                data=encode(json_encode(content.to_json())),
+                data=utf8_encode(json_encode(content.to_json())),
                 mime='application/json')
         else:
             raise AssertionError('Unknown prefix: %s' % prefix)
@@ -134,7 +134,7 @@ class PostHandler(_StoreAccessMixin, tornado.web.RequestHandler):
     SUPPORTED_METHODS = ['POST']
 
     def post(self):
-        req = json_decode(decode(self.request.body))
+        req = json_decode(utf8_decode(self.request.body))
         res = self.access.process_api_call(req['call'], req['msg'])
 
         self.write(json_encode(res))

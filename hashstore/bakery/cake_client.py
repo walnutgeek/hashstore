@@ -92,7 +92,7 @@ class ClientUserSession:
                     if cake_or_path.has_data():
                         return Content.from_data_and_role(
                             data=cake_or_path.data(),
-                            role=cake_or_path.role
+                            role=cake_or_path.header.role
                         )
                 if skinny:
                     info = {'mime': BINARY_MIME }

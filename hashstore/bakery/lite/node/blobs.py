@@ -165,7 +165,7 @@ class BlobStore:
                     yield ContentAddress(f)
 
     def get_content(self, k:Union[Cake,ContentAddress]):
-        role = k.role if isinstance(k, Cake) else CakeRole.SYNAPSE
+        role = k.header.role if isinstance(k, Cake) else CakeRole.SYNAPSE
         return self.lookup(k).content(role)
 
     def lookup(self, cake_or_cadr):

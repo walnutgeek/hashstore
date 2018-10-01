@@ -75,7 +75,7 @@ class Node(HasCake):
         yield # pragma: no cover
 
     def role(self):
-        return self.cake().role
+        return self.cake().header.role
 
 
 class CakeNode(Node):

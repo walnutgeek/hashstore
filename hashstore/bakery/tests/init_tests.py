@@ -57,7 +57,7 @@ def test_CAKe():
     eq_(z != d, False)
     ok_(z != x)
     ok_(d != x)
-    ok_(z.type == d.type)
+    ok_(z.header.type == d.header.type)
     ok_(str(z) == str(d))
 
 

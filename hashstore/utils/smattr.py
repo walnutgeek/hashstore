@@ -303,14 +303,18 @@ class Mold(Jsonable):
             setattr(target, k, v)
 
 
-
-
 class AnnotationsProcessor(type):
     def __init__(cls, name, bases, dct):
         mold = Mold(cls)
         mold.set_defaults(mold.get_defaults_from_cls(cls))
         cls.__mold__ = mold
 
+def combine_vars(vars:Optional[Dict[str,Any]],kwargs:Dict[str,Any]
+                 )->Dict[str,Any]:
+    if vars is None:
+        vars = {}
+    vars.update(kwargs)
+    return vars
 
 class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
     """
@@ -407,8 +411,7 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
 
     def __init__(self, _vals_:Optional[Dict[str, Any]] = None,
                  **kwargs) ->None:
-        if _vals_ is None:
-            _vals_ = dict(kwargs)
+        _vals_ = combine_vars(_vals_, kwargs)
         values = {k: v for k, v in _vals_.items() if v is not None}
         type(self).__mold__.set_attrs(values, self)
 
@@ -419,6 +422,7 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
         else:
             mold = cls.__mold__
         return mold.mold_it(DictLike(self), Conversion.TO_JSON)
+
 
 
 class Row:
