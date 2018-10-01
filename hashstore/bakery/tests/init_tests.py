@@ -50,8 +50,10 @@ def test_CAKe():
     do_test(b'a' * 46, '2lEWHXV2XeYyZnKNyQyGPt4poJhV7VeYCfeszHnLyFtx')
 
     b = bakery
-    d = b.Cake.new_portal(b.CakeRole.NEURON, b.CakeType.DMOUNT)
-    x = b.Cake.new_portal(b.CakeRole.NEURON, b.CakeType.DMOUNT)
+    d = b.Cake.new_portal(role=b.CakeRole.NEURON,
+                          type=b.CakeType.DMOUNT)
+    x = b.Cake.new_portal(role=b.CakeRole.NEURON,
+                          type=b.CakeType.DMOUNT)
     z = b.Cake(str(d))
     ok_(z == d)
     eq_(z != d, False)
@@ -71,7 +73,7 @@ def test_Bundle():
     with open(file_path, 'w') as w:
         w.write(b1.content())
     b2 = bakery.CakeRack().parse(b1.content())
-    u_f = bakery.Cake.from_file(file_path, bakery.CakeRole.NEURON)
+    u_f = bakery.Cake.from_file(file_path, role=bakery.CakeRole.NEURON)
     u2 = b2.cake()
     eq_(u_f, u2)
     eq_(u1,u2)

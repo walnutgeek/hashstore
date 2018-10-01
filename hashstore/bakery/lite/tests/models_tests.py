@@ -25,7 +25,7 @@ def test_glue():
     shard_dbf = Dbf(CakeShardBase.metadata, test.file_path('test_shard.sqlite3'))
     shard_dbf.ensure_db()
     shard_session = shard_dbf.session()
-    joe = User(id=Cake.new_portal(CakeRole.SYNAPSE),
+    joe = User(id=Cake.new_portal(role=CakeRole.SYNAPSE),
                     email='joe@doe.com',
                     user_state=UserState.invitation,
                     passwd=SaltedSha.from_secret('xyz'))

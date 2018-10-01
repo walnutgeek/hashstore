@@ -233,12 +233,6 @@ class CakeHeader(SmAttr):
     role: CakeRole
     cclass: CakeClass = CakeClass.NO_CLASS
 
-    @staticmethod
-    def factory(**kwargs):
-        def build(**kwargs_override):
-            return CakeHeader(kwargs,**kwargs_override)
-        return build
-
     def pack(self):
         return ((self.cclass.code&15) << 4)|\
                ((self.type.code&7) << 1)|\
@@ -313,18 +307,14 @@ class Cake(utils.Stringable, utils.EnsureIt):
     def __init__(self,
                  s:Optional[str],
                  data:Optional[bytes]=None,
-                 type:Optional[CakeType]=None,
-                 role:Optional[CakeRole]=None,
-                 cclass:CakeClass=CakeClass.NO_CLASS
+                 header:Optional[CakeHeader]=None
                  )->None:
-        if type is not None:
-            if data is None or role is None:
-                raise AssertionError(f'data={data} and role={role} '
-                                     f'has to be defined')
+        if s is None:
+            if data is None or header is None :
+                raise AssertionError(
+                    f'both data={data} and header={header} required')
             self._data = data
-            self.header = CakeHeader(type=type,
-                                     role=role,
-                                     cclass=cclass)
+            self.header = header
         else:
             decoded = B62.decode(utils.ensure_string(s))
             self._data = decoded[1:]
@@ -358,57 +348,52 @@ class Cake(utils.Stringable, utils.EnsureIt):
     @staticmethod
     def from_digest_and_inline_data(digest: bytes,
                                     buffer: Optional[bytes],
-                                    role: CakeRole=CakeRole.SYNAPSE
+                                    **ch_kwargs
                                     )->'Cake':
+        if 'role' not in ch_kwargs:
+            ch_kwargs['role'] = CakeRole.SYNAPSE
         if buffer is not None and len(buffer) <= inline_max_bytes:
-            return Cake(None, data=buffer, type=CakeType.INLINE,
-                        role=role)
+            return Cake(None,
+                        data=buffer,
+                        header=CakeHeader(ch_kwargs,
+                                          type=CakeType.INLINE))
         else:
-            return Cake(None, data=digest, type=CakeType.SHA256,
-                        role=role)
+            return Cake(None,
+                        data=digest,
+                        header=CakeHeader(ch_kwargs,
+                                          type=CakeType.SHA256))
 
     @staticmethod
-    def from_stream(fd: IO[bytes],
-                    role: CakeRole=CakeRole.SYNAPSE
-                    )->'Cake':
+    def from_stream(fd: IO[bytes], **ch_kwargs)->'Cake':
         digest, inline_data = process_stream(fd)
         return Cake.from_digest_and_inline_data(digest, inline_data,
-                                                role=role)
+                                                **ch_kwargs)
 
     @staticmethod
-    def from_bytes(s, role: CakeRole=CakeRole.SYNAPSE)->'Cake':
-        return Cake.from_stream(BytesIO(s), role=role)
+    def from_bytes(s, **ch_kwargs)->'Cake':
+        return Cake.from_stream(BytesIO(s), **ch_kwargs)
 
     @staticmethod
-    def from_file(file, role:CakeRole=CakeRole.SYNAPSE)->'Cake':
-        return Cake.from_stream(open(file, 'rb'), role=role)
+    def from_file(file, **ch_kwargs)->'Cake':
+        return Cake.from_stream(open(file, 'rb'), **ch_kwargs)
 
     @staticmethod
-    def new_portal(role:CakeRole=None, type:CakeType=None)->'Cake':
-        if role is None:
-            role = CakeRole.SYNAPSE
-        if type is None:
-            type = CakeType.PORTAL
-        cake = Cake(None, data=os.urandom(32), type=type, role=role)
+    def new_portal(**ch_kwargs)->'Cake':
+        if 'role' not in ch_kwargs:
+            ch_kwargs['role'] = CakeRole.SYNAPSE
+        if 'type' not in ch_kwargs:
+            ch_kwargs['type'] = CakeType.PORTAL
+        cake = Cake(None, data=os.urandom(32),
+                    header=CakeHeader(**ch_kwargs))
         cake.assert_portal()
         return cake
 
-    def transform_portal(self,
-                         role:Optional[CakeRole]=None,
-                         type:Optional[CakeType]=None,
-                         cclass:Optional[CakeClass]=None
-                         )->'Cake':
+    def transform_portal(self, **kwargs)->'Cake':
         self.assert_portal()
-        if type is None:
-            type = self.header.type
-        if role is None:
-            role = self.header.role
-        if cclass is None:
-            cclass = self.header.cclass
-        if (type == self.header.type and role == self.header.role and
-                cclass == self.header.cclass):
+        new_header = CakeHeader(self.header.to_json(), **kwargs)
+        if (new_header == self.header):
             return self
-        return Cake(None, data=self._data, type=type, role=role, cclass=cclass)
+        return Cake(None, data=self._data, header=new_header)
 
     def has_data(self)->bool:
         return self.header.type == CakeType.INLINE
@@ -444,8 +429,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
         return self._data
 
     def __str__(self)->str:
-        header_byte = self.header.pack()
-        return B62.encode(bytes([header_byte]) + self._data)
+        return B62.encode(bytes([(self.header.pack())]) + self._data)
 
     def __repr__(self)->str:
         return f"Cake({str(self)!r})"
@@ -494,7 +478,8 @@ class RackRow(SmAttr):
     cake: Optional[Cake]
 
     def role(self)->CakeRole:
-        return CakeRole.NEURON if self.cake is None else self.cake.header.role
+        return CakeRole.NEURON if self.cake is None \
+            else self.cake.header.role
 
 
 class CakeRack(utils.Jsonable):

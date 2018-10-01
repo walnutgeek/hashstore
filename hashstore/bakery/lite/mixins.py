@@ -29,15 +29,15 @@ class CakePk:
     id = Column(StringCast(Cake), primary_key=True)
 
 
-def make_portal_pk_type(cr:CakeRole=None, ct:CakeType=None)->Any:
+def make_portal_pk_type(**ch_kwargs)->Any:
     class PortalPk:
         id = Column(StringCast(Cake), primary_key=True,
-                    default=lambda : Cake.new_portal(cr, ct))
+                    default=lambda : Cake.new_portal(**ch_kwargs))
     return PortalPk
 
 
 PortalPkWithSynapseDefault:Any = make_portal_pk_type(
-    CakeRole.SYNAPSE, CakeType.PORTAL)
+    role=CakeRole.SYNAPSE, type=CakeType.PORTAL)
 
 
 class Cdt:
@@ -56,8 +56,8 @@ class ServersMixin(NameIt, Cdt, Udt):
     secret = Column(StringCast(SaltedSha), nullable=False)
 
 
-def new_singleton(ks=CakeType.PORTAL):
-    new_dmount = lambda: Cake.new_portal(CakeRole.NEURON, ks)
+def new_singleton(**ch_kwargs):
+    new_dmount = lambda: Cake.new_portal(**ch_kwargs)
 
     class NewSingleton(NameIt, ReprIt):
         single = Column(Integer, primary_key=True, default=1)
@@ -67,4 +67,4 @@ def new_singleton(ks=CakeType.PORTAL):
 
 Singleton = new_singleton()
 
-DirSingleton = new_singleton(CakeType.DMOUNT)
+DirSingleton = new_singleton(type=CakeType.DMOUNT)
