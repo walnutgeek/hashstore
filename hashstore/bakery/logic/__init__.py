@@ -3,38 +3,12 @@ from typing import Union, Callable, List, Optional, \
     get_type_hints, Any, Dict
 
 from hashstore.utils import GlobalRef
+from hashstore.utils.event import Function
 from hashstore.utils.smattr import (SmAttr, Mold, AttrEntry,
     typing_factory)
 from hashstore.utils.time import CronExp, TimeZone
 
 
-class Function(SmAttr):
-    ref: GlobalRef
-    in_mold: Mold
-    out_mold: Mold
-
-    @classmethod
-    def parse(cls, fn, ref=None):
-        if ref is None:
-            ref = GlobalRef(fn)
-        annotations=dict(get_type_hints(fn))
-        return_type = annotations['return']
-        del annotations['return']
-        in_mold = Mold(annotations)
-        in_mold.set_defaults(in_mold.get_defaults_from_fn(fn))
-        out_mold = Mold()
-        if return_type is not None:
-            out_hints = get_type_hints(return_type)
-            if len(out_hints) > 0:
-                out_mold.add_hints(out_hints)
-            else:
-                out_mold.add_entry(AttrEntry("return", return_type))
-        return cls(ref=ref,
-                   in_mold=in_mold,
-                   out_mold=out_mold)
-
-    def invoke(self, in_edge:Dict[str,Any])->Dict[str,Any]:
-        pass
 
 
 class TaskVar(object):
@@ -67,7 +41,7 @@ class Task:
                  _name_: Optional[str] = None,
                  **in_vars_values) -> None:
         self.name = _name_
-        self.fn = _fn_ if isinstance(_fn_, Function) else Function.parse(_fn_)
+        self.fn = Function.ensure_it(_fn_)
         self.variables:List[TaskVar] = []
         self.output = EdgeMold(
             self.fn.out_mold, ['output'], self.variables)

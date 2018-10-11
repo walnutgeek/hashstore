@@ -40,12 +40,15 @@ class ClassRef(Stringable, StrKeyMixin, EnsureIt):
             cls_or_str = GlobalRef(cls_or_str).get_instance()
 
         self.cls = cls_or_str
+        self.primitive = self.cls.__module__ == 'builtins'
         if self.cls == Any:
             self._from_json = identity
         elif self.cls is date:
+            self.primitive = True
             self._from_json = lazy_factory(
                 self.cls, lambda v: dt_parse(v).date())
         elif self.cls is datetime:
+            self.primitive = True
             self._from_json = lazy_factory(
                 self.cls, lambda v: dt_parse(v))
         elif hasattr(self.cls, '__args__'):

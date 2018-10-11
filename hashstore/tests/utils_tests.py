@@ -1,10 +1,12 @@
+from typing import Any
+
 from nose.tools import eq_,ok_,with_setup
 import sys
 from hashstore.tests import TestSetup, assert_text
 import hashstore.utils as u
-
-
+from hashstore.utils.event import Function, EventState
 from hashstore.utils.args import CommandArgs
+from hashstore.utils.smattr import SmAttr
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log
@@ -17,8 +19,9 @@ def test_docs():
     import hashstore.utils.ignore_file as ignore_file
     import hashstore.utils.time as time
     import hashstore.utils.template as template
+    import hashstore.utils.event as event
     import hashstore.utils.hashing as hashing
-    for t in (utils, ignore_file, time, template, hashing):
+    for t in (utils, ignore_file, time, template, hashing, event):
         r = doctest.testmod(t)
         ok_(r.attempted > 0, f'There is not doctests in module {t}')
         eq_(r.failed,0)
@@ -195,3 +198,64 @@ def test_mix_in():
     retest(B3)
     retest(B4, ( True, True, False, False) )
     retest(B5)
+
+class ComplexInput(SmAttr):
+    q: int
+    a: str
+
+class ComplexOut(SmAttr):
+    z: str
+    v: ComplexInput
+
+
+def fn1(z:int, x:bytes, y:ComplexInput)->ComplexOut:
+    return ComplexOut(z=f'z={z}', v=y)
+
+
+def fn2(z:int, x:bytes, y:ComplexInput)->ComplexOut:
+    raise AttributeError(f'z={z}')
+
+def fn3(z:int, x:bytes, y:ComplexInput)->None:
+    pass
+
+_INDEX=0
+def test_events():
+    cache={}
+
+    def flattener(v:Any)->str:
+        global _INDEX
+        k=str(_INDEX)
+        cache[k]=v
+        _INDEX += 1
+        return k
+
+    def dereferencer(k:str)->Any:
+        return cache[k]
+
+    ffn1 = Function.parse(fn1)
+    ffn2 = Function.parse(fn2)
+    ffn3 = Function.parse(fn3)
+    eq_(str(ffn3),
+        '{"in_mold": ["z:Required[int]", "x:Required[bytes]", '
+        '"y:Required[hashstore.tests.utils_tests:ComplexInput]"], '
+        '"out_mold": [], "ref": "hashstore.tests.utils_tests:fn3"}')
+
+    do_run_events(ffn1, ffn2, dereferencer, flattener)
+    do_run_events(ffn3, ffn2, dereferencer, flattener)
+    do_run_events(Function.ensure_it(ffn1.to_json()),
+                  Function.ensure_it(ffn2.to_json()), dereferencer, flattener)
+
+
+def do_run_events(ffn1, ffn2, dereferencer, flattener):
+    complex_input = ComplexInput(q=7, a='bc')
+
+    e1 = list(ffn1.invoke(
+        u.quict(z=5, x=b'0123456789ABCDFG',
+                y=complex_input.to_json()),
+        flattener, dereferencer))
+    eq_(e1[1].state, EventState.SUCCESS)
+    e2 = list(ffn2.invoke(
+        u.quict(z=5, x=b'0123456789ABCDFG',
+                y=complex_input.to_json()),
+        flattener, dereferencer))
+    eq_(e2[1].state, EventState.FAIL)

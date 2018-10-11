@@ -1,7 +1,9 @@
-from typing import (Any, Dict, List, Optional, get_type_hints, Union)
+from typing import (Any, Dict, List, Optional, get_type_hints, Union,
+                    Callable, Tuple)
 from inspect import getfullargspec
-from . import ( Jsonable, GlobalRef, Stringable, EnsureIt, json_decode,
-                json_encode, not_zero_len, ensure_string)
+from . import (Jsonable, GlobalRef, Stringable, EnsureIt, json_decode,
+               json_encode, not_zero_len, ensure_string,
+               reraise_with_msg)
 from .template import ClassRef, Conversion, Template
 
 
@@ -17,14 +19,18 @@ class Typing(Stringable, EnsureIt):
     def factory(cls):
         return typing_factory
 
-    def __init__(self, val_cref):
+    def __init__(self, val_cref, collection=False):
         self.val_cref = ClassRef.ensure_it(val_cref)
+        self.collection=collection
+
+    def is_primitive(self)->bool:
+        return not(self.collection) and self.val_cref.primitive
 
     def convert(self, v: Any, direction:Conversion)->Any:
         return self.val_cref.convert(v, direction)
 
     def default(self):
-        raise AssertionError(f'no default for {str(self)}')
+        raise AttributeError(f'no default for {str(self)}')
 
     @classmethod
     def name(cls):
@@ -52,7 +58,7 @@ class RequiredTyping(Typing):
 class DictTyping(Typing):
 
     def __init__(self, val_cref, key_cref):
-        Typing.__init__(self, val_cref)
+        Typing.__init__(self, val_cref, collection=True)
         self.key_cref = ClassRef.ensure_it(key_cref)
 
     def convert(self, in_v:Any, direction:Conversion)->Dict[Any, Any]:
@@ -71,6 +77,8 @@ class DictTyping(Typing):
 
 
 class ListTyping(Typing):
+    def __init__(self, val_cref):
+        Typing.__init__(self, val_cref, collection=True)
 
     def convert(self, in_v: Any, direction:Conversion)->List[Any]:
         return [self.val_cref.convert(v, direction) for v in in_v]
@@ -123,20 +131,38 @@ class AttrEntry(EnsureIt, Stringable):
             self.default = self.typing.convert(
                 json_decode(default_s), Conversion.TO_OBJECT)
 
-    def convert(self, v: Any, direction: Conversion)->Any:
-        if Conversion.TO_OBJECT == direction:
-            if v is None:
-                if self.default is not None:
-                    return self.default
-                else:
-                    return self.typing.default()
-            else:
-                return self.typing.convert(v, Conversion.TO_OBJECT)
+    def is_primitive(self)->bool:
+        return self.typing.is_primitive()
+
+    def inflate(self, v, dereferencer):
+        if self.is_primitive() or not(isinstance(v, str)):
+            return v
         else:
-            if v is None:
-                return None
+            return dereferencer(v)
+
+    def flatten(self, v, flattener):
+        if self.is_primitive() or isinstance(v, str):
+            return v
+        else:
+            return flattener(v)
+
+    def convert(self, v: Any, direction: Conversion)->Any:
+        try:
+            if Conversion.TO_OBJECT == direction:
+                if v is None:
+                    if self.default is not None:
+                        return self.default
+                    else:
+                        return self.typing.default()
+                else:
+                    return self.typing.convert(v, Conversion.TO_OBJECT)
             else:
-                return self.typing.convert(v, Conversion.TO_JSON)
+                if v is None:
+                    return None
+                else:
+                    return self.typing.convert(v, Conversion.TO_JSON)
+        except:
+            reraise_with_msg(f'error in {self}')
 
     def validate(self, v:Any)->bool:
         return self.typing.validate(v)
@@ -462,7 +488,8 @@ class MoldedTable(metaclass=Template):
     >>> t.add_row([None,None,None,None,None])
     Traceback (most recent call last):
     ...
-    AssertionError: no default for Required[int]
+    AttributeError: no default for Required[int]
+    error in i:Required[int]
     >>> str(t)
     '#{"columns": ["i", "s", "d", "z", "y"]}\\n[5, "abc", null, [], {}]\\n[7, "xyz", "2018-08-10T00:00:00", [], {}]\\n'
     >>> t = MoldedTable(str(t),A)

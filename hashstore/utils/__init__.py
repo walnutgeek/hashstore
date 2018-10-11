@@ -279,6 +279,8 @@ class Jsonable(EnsureIt):
     def __ne__(self, other):
         return not(self.__eq__(other))
 
+def jsonify(v:Any)->Any:
+    return adjust_for_json(v, v)
 
 def adjust_for_json(v: Any, default: Any = None)->Any:
     if isinstance(v, (datetime, date)):
@@ -385,7 +387,7 @@ def _camel2var(c):
     return c if c.islower() else '_' + c.lower()
 
 
-def from_camel_case_to_underscores(s):
+def from_camel_case_to_underscores(s:str)->str:
     '''
     >>> from_camel_case_to_underscores('CamelCase')
     'camel_case'

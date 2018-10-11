@@ -7,6 +7,7 @@ import threading
 from datetime import datetime
 
 from hashstore.utils import Jsonable
+from hashstore.utils.event import Event
 from io import BytesIO
 import os
 import hashstore.utils as utils
@@ -77,78 +78,6 @@ def portal_from_name(n:Optional[str])->CakeType:
     raise ValueError('not a portal type:'+n)
 
 
-class EventState(utils.CodeEnum):
-    NEW = enum.auto()
-    IN_PROCESS = enum.auto()
-    SUCCESS = enum.auto()
-    FAIL = enum.auto()
-
-
-class EdgeType(utils.CodeEnum):
-    INPUT = enum.auto()
-    OUTPUT = enum.auto()
-    ERROR = enum.auto()
-
-
-class EventEdge(SmAttr):
-    type: EdgeType
-    vars: Dict[str, Any]
-    dt: datetime
-
-    @staticmethod
-    def edge(type, in_vars:Dict[str,Any])->'EventEdge':
-        return EventEdge(type=type,
-                         in_vars=in_vars,
-                         dt=datetime.utcnow())
-
-    @staticmethod
-    def input(_vars_:Optional[Dict[str,Any]],**kwargs:Any):
-        return EventEdge.edge(EdgeType.INPUT,
-                              combine_vars(_vars_,kwargs))
-
-    @staticmethod
-    def output(_vars_:Optional[Dict[str,Any]],**kwargs:Any):
-        return EventEdge.edge(EdgeType.OUTPUT,
-                              combine_vars(_vars_,kwargs))
-
-    @staticmethod
-    def error(_vars_:Optional[Dict[str,Any]],**kwargs:Any):
-        return EventEdge.edge(EdgeType.ERROR,
-                              combine_vars(_vars_,kwargs))
-
-
-class Event(SmAttr):
-    '''
-    >>> EventState.NEW
-    <EventState.NEW: 1>
-    >>> EventState("IN_PROCESS")
-    <EventState.IN_PROCESS: 2>
-    >>> EventState(2)
-    <EventState.IN_PROCESS: 2>
-    >>> EventState("Q")
-    Traceback (most recent call last):
-    ...
-    KeyError: 'Q'
-    >>> e = Event(function=portal_from_name,
-    ...    input_edge=EventEdge(
-    ...        type=EdgeType.INPUT,
-    ...        dt=datetime(2018,9,28)))
-    >>> e.to_json()
-    {'state': 'NEW', 'function': 'hashstore.bakery:portal_from_name', 'input_edge': {'type': 'INPUT', 'vars': {}, 'dt': '2018-09-28T00:00:00'}, 'output_edge': None, 'error_edge': None, 'codebase': None, 'additional_data': None}
-    >>> q = Event(e.to_json())
-    >>> q.state
-    <EventState.NEW: 1>
-    >>> str(q)
-    '{"additional_data": null, "codebase": null, "error_edge": null, "function": "hashstore.bakery:portal_from_name", "input_edge": {"dt": "2018-09-28T00:00:00", "type": "INPUT", "vars": {}}, "output_edge": null, "state": "NEW"}'
-
-    '''
-    state: EventState = EventState.NEW
-    function: utils.GlobalRef
-    input_edge: EventEdge
-    output_edge: Optional[EventEdge]
-    error_edge: Optional[EventEdge]
-    codebase: Optional[str]
-    additional_data: Optional[str]
 
 
 class CakeClass(utils.CodeEnum):
