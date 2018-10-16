@@ -18,7 +18,7 @@ ca = CommandArgs()
 USER='email or guid of user'
 
 
-@ca.app('hsd - hashstore server')
+@ca.app('hashstore server subcomands')
 class DaemonApp():
 
     @ca.command(
@@ -102,14 +102,13 @@ class DaemonApp():
     @ca.command('start server')
     def start(self):
         server = CakeServer(self.store)
-        server.shutdown(True)
+        server.shutdown(wait_until_down=True)
         server.run_server()
-
 
     @ca.command('stop server')
     def stop(self):
         server = CakeServer(self.store)
-        server.shutdown(False)
+        server.shutdown(wait_until_down=False)
 
 
 main = ca.main

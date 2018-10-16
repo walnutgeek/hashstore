@@ -10,8 +10,8 @@ def py_files(filename):
 
 
 run_envs = ['py6', 'py7']
-mypy_modules = ['hashstore.bakery.tests.logic_test_module',
-                'hashstore.hsi', 'hashstore.hsd']
+mypy_modules = [
+    'hashstore.bakery.tests.logic_test_module', 'hashstore.hs']
 
 def run(case, envs=run_envs, html=False):
     html = 'coverage html;' if html else ''

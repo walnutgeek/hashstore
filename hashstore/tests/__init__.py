@@ -107,20 +107,6 @@ class TestSetup:
     def run_script_in_bg(self, cmd, log_file=None):
         p_id = self.counter
         self.counter += 1
-
-        if cmd[:4] in ('hsi ','hsd '):
-            executable = cmd[:3]
-            if not(self.script_mode):
-                executable = 'hashstore.'+executable
-            cmd = cmd[4:]
-        else:
-            if self.script_mode:
-                raise ValueError("Cannot run in script mode")
-            executable = 'hashstore.shash'
-            if 'd ' == cmd[:2]:
-                cmd = cmd[2:]
-                executable = 'hashstore.shashd'
-
         if log_file is None:
             cmd_name = next(n for n in (cmd+' log').split()
                             if not('-' in n or '/' in n or '.' in n))
@@ -129,7 +115,7 @@ class TestSetup:
             path = log_file
         else:
             path = self.file_path(log_file)
-        popen = run_bg(executable, cmd.split(), self.home, path,
+        popen = run_bg(cmd.split(), self.home, path,
                        script_mode=self.script_mode)
         self.processes[p_id] = (popen, cmd ,path)
         return p_id
@@ -290,14 +276,14 @@ def ensure_no_dir(dir):
                 break
 
 
-def run_bg(module, args=[], home=None, outfile=None, script_mode = False):
+def run_bg(args=[], home=None, outfile=None, script_mode = False):
     from subprocess import STDOUT
     env = None
     if home is not None:
         env = os.environ
         env['HOME'] = home
-    command = [] if script_mode else ['coverage', 'run', '-p', '-m']
-    command.append(module)
+    command = ['hs'] if script_mode else [
+        'coverage', 'run', '-p', '-m', 'hashstore.hs']
     for arg in args:
         if arg is not None and arg.strip() != '':
             command.append(arg)

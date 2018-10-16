@@ -31,7 +31,7 @@ class ServerSetup:
 
     def do_shutdown(self):
         test.run_script_and_wait(
-            f'hsd --store_dir {self.store} stop',
+            f'server --store_dir {self.store} stop',
             expect_rc=0)
 
     def run_server_tests(self):
@@ -45,7 +45,7 @@ class ServerSetup:
         pwdssha = str(SaltedSha.from_secret(pwd))
 
         test.run_script_and_wait(
-            f'hsd --store_dir {self.store} initdb '
+            f'server --store_dir {self.store} initdb '
             f'--port 7623',
             expect_rc=0, expect_read='')
 
@@ -56,7 +56,7 @@ class ServerSetup:
         server_id = server_key[0][1]
 
         test.run_script_and_wait(
-            f'hsd --store_dir {self.store} initdb '
+            f'server --store_dir {self.store} initdb '
             f'--port {self.port}',
             expect_rc=0, expect_read='')
 
@@ -66,17 +66,17 @@ class ServerSetup:
         eq_(server_id, server_key[0][1])
 
         server_id = self.test.run_script_in_bg(
-            f'hsd --debug --store_dir {self.store} start')
+            f'server --debug --store_dir {self.store} start')
 
         prep_mount(files, file_set1)
         self.test.run_script_and_wait(
-            f'hsd --store_dir {self.store} add_user '
+            f'server --store_dir {self.store} add_user '
             f'--email {email} --password {pwdssha}',
             expect_rc=0, expect_read='')
         acl = 'Create_Portals+'
 
         self.test.run_script_and_wait(
-            f'hsd --store_dir {self.store} acl '
+            f'server --store_dir {self.store} acl '
             f'--user {email} --acl {acl}',
             expect_rc=0, expect_read='''
                                     User: jon@doe.edu
@@ -101,7 +101,7 @@ class ServerSetup:
         cake1, cake2 = fileset1_cake, fileset2_cake
 
         self.test.run_script_and_wait(
-            'hsi login --url http://localhost:{self.port} '
+            'login --url http://localhost:{self.port} '
             '--dir {mount} --email {email} '
             '--passwd {pwd} --default'.format(**locals()),
             expect_rc=0,
@@ -110,7 +110,7 @@ class ServerSetup:
                         "UserSession: ... ")
 
         _, save_words = self.test.run_script_and_wait(
-            'hsi create_portal --portal_type VTREE '
+            'create_portal --portal_type VTREE '
             '--portal_role NEURON', expect_rc=0,
             expect_read='''Portal: ...
             Cake: None
@@ -120,16 +120,16 @@ class ServerSetup:
         eq_(new_portal.header.type, CakeType.VTREE)
 
         self.test.run_script_and_wait(
-            f'hsi update_vtree --cake_path /{new_portal!s}/x/y/2 '
+            f'update_vtree --cake_path /{new_portal!s}/x/y/2 '
             f'--cake 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4'
             , expect_rc=0, expect_read=
-                    'WARNING:__main__:Server does not have '
-                    '2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4 stored.\n'
-                    'CPath: ...\n'
-                    'Cake: 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4')
+                'WARNING:hs: Server does not have '
+                '2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4 stored.\n'
+                'CPath: ...\n'
+                'Cake: 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4')
 
         self.test.run_script_and_wait(
-            f'hsi update_vtree --cake_path /{new_portal!s}/x/y/2 '
+            f'update_vtree --cake_path /{new_portal!s}/x/y/2 '
             f'--file {files!s}/x/y/2',
             expect_rc=0, expect_read=
                     'CPath: ...\n'
@@ -137,7 +137,7 @@ class ServerSetup:
         rpaths = []
         for portal_type in [ 'VTREE', 'PORTAL' ]:
             _, save_words = self.test.run_script_and_wait(
-                'hsi backup --dir {files} --portal_type {portal_type}'
+                'backup --dir {files} --portal_type {portal_type}'
                     .format(**locals()), expect_rc=0,
                 expect_read=f'''....
                 DirId: ...
@@ -150,7 +150,7 @@ class ServerSetup:
         for i,rpath in enumerate(rpaths):
             stored = rpath.root
             self.test.run_script_and_wait(
-                f'hsi backup --dir {files} --remote_path {rpath!s}',
+                f'backup --dir {files} --remote_path {rpath!s}',
                 expect_rc=0,
                 expect_read='''....
                 DirId: {dirId!s}
@@ -160,18 +160,18 @@ class ServerSetup:
             outx = os.path.join(mount, 'out%d' % i)
             match_cake = cake2 if i == 1 else 'None'
             self.test.run_script_and_wait(
-                f'hsi pull --cake {stored!s} --dir {outx}',
+                f'pull --cake {stored!s} --dir {outx}',
                 expect_rc=0,
                 expect_read='From: ...\n'
                             f'Cake: {match_cake}\n')
 
             self.test.run_script_and_wait(
-                f'hsi scan --dir {outx}',
+                f'scan --dir {outx}',
                 expect_rc=0,
                 expect_read=fileset2_cake)
 
         self.test.run_script_and_wait(
-            'hsi update_vtree '
+            'update_vtree '
             '--cake_path /{new_portal!s}/x/y/1 '
             '--file {files!s}/x/y/1'
                 .format(**locals()), expect_rc=0, expect_read=
@@ -179,7 +179,7 @@ class ServerSetup:
                     'Cake: 2S5IatGd3u7Z7u5cptzH3SXhru9ACPGJgdT32QduZ8Df')
 
         self.test.run_script_and_wait(
-            'hsi update_vtree '
+            'update_vtree '
             '--cake_path /{new_portal!s}/x/y/1 '
             '--file {files!s}/x/y/3'
                 .format(**locals()), expect_rc=0, expect_read=
@@ -187,7 +187,7 @@ class ServerSetup:
                     'Cake: 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4')
 
         self.test.run_script_and_wait(
-            'hsi update_vtree '
+            'update_vtree '
             '--cake_path /{new_portal!s}/x/z/3 '
             '--file {files!s}/x/y/3'
                 .format(**locals()), expect_rc=0, expect_read=
@@ -195,18 +195,18 @@ class ServerSetup:
                     'Cake: 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4')
 
         self.test.run_script_and_wait(
-            'hsi delete_in_vtree --cake_path /{new_portal!s}/x/y/2 '
+            'delete_in_vtree --cake_path /{new_portal!s}/x/y/2 '
                 .format(**locals()), expect_rc=0, expect_read=
                     'Deleted: /{new_portal!s}/x/y/2'.format(**locals()))
 
 
         self.test.run_script_and_wait(
-            'hsi delete_in_vtree --cake_path /{new_portal!s}/x/z'
+            'delete_in_vtree --cake_path /{new_portal!s}/x/z'
                 .format(**locals()), expect_rc=0, expect_read=
                     'Deleted: /{new_portal!s}/x/z'.format(**locals()))
 
         self.test.run_script_and_wait(
-            'hsi delete_in_vtree --cake_path /{new_portal!s}/x/z'
+            'delete_in_vtree --cake_path /{new_portal!s}/x/z'
                 .format(**locals()), expect_rc=0, expect_read=
                     'Not there: /{new_portal!s}/x/z'.format(**locals()))
 

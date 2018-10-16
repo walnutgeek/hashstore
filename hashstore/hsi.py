@@ -11,12 +11,12 @@ from hashstore.utils.args import CommandArgs, Switch
 from hashstore.utils import print_pad, exception_message
 import hashstore.bakery.cake_scan as cscan
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("hs")
 
 ca = CommandArgs()
 
 
-@ca.app('hsi - hashstore client')
+@ca.app('hashstore')
 class ClientApp:
 
     @ca.command(
@@ -194,7 +194,7 @@ class ClientApp:
                 raise AssertionError('{cake} != {cake_to_write}'
                                      .format(**locals()))
             elif file is None:
-                log.warning('Server does not have %s stored.'%cake)
+                log.warning(' Server does not have %s stored.'%cake)
             else:
                 fp = open(file, 'rb')
                 stored = self.remote().write_content(fp)
@@ -207,6 +207,11 @@ class ClientApp:
         self._check_cu_session(dir)
         deleted = self.remote().delete_in_portal_tree(cake_path=cake_path)
         print(('Deleted: ' if deleted else 'Not there: ') + cake_path)
+
+
+    @ca.command('Server subcommands...')
+    def server(self):
+        raise AssertionError('should never get here')
 
 main = ca.main
 
