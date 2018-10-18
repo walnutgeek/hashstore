@@ -17,7 +17,7 @@ import enum
 from typing import (
     Union, Optional, Any, Callable, Tuple, List, Iterable, Dict, IO)
 import logging
-from hashstore.utils import path_split_all
+from hashstore.utils.fio import path_split_all
 from hashstore.utils.file_types import (
     guess_name, file_types, HSB, BINARY)
 from hashstore.utils.smattr import (JsonWrap, SmAttr, combine_vars)

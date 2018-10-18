@@ -5,12 +5,13 @@ from sqlalchemy import desc
 from hashstore.bakery import RemoteError, Cake, Content
 from hashstore.bakery.lite.node import ContentAddress
 from hashstore.utils.file_types import BINARY_MIME
+from hashstore.utils.fio import is_file_in_directory
 from hashstore.utils.hashing import SaltedSha
 from hashstore.utils.db import Dbf
 from hashstore.bakery.lite.client import ClientConfigBase, \
     ClientKey, Server, MountSession
-from hashstore.utils import json_encoder, normalize_url, \
-    is_file_in_directory, json_decode
+from hashstore.utils import (
+    json_encoder, normalize_url, json_decode)
 import logging
 log = logging.getLogger(__name__)
 

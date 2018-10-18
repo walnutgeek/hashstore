@@ -4,13 +4,14 @@ from nose.tools import eq_,ok_,with_setup
 import sys
 from hashstore.tests import TestSetup, assert_text
 import hashstore.utils as u
+import hashstore.utils.fio as fio
 from hashstore.utils.event import Function, EventState
 from hashstore.utils.args import CommandArgs
 from hashstore.utils.smattr import SmAttr
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log
-u.ensure_directory(test.dir)
+fio.ensure_directory(test.dir)
 
 
 def test_docs():
@@ -23,26 +24,8 @@ def test_docs():
     import hashstore.utils.hashing as hashing
     for t in (utils, ignore_file, time, template, hashing, event):
         r = doctest.testmod(t)
-        ok_(r.attempted > 0, f'There is not doctests in module {t}')
+        ok_(r.attempted > 0, f'There is no doctests in module {t}')
         eq_(r.failed,0)
-
-
-def test_split_all():
-    eq_(u.path_split_all('/a/b/c'), ['/', 'a', 'b', 'c'])
-    eq_(u.path_split_all('/a/b/c/'), ['/', 'a', 'b', 'c', ''])
-    eq_(u.path_split_all('/a/b/c', True), ['/', 'a', 'b', 'c', ''])
-    eq_(u.path_split_all('/a/b/c/', True), ['/', 'a', 'b', 'c', ''])
-    eq_(u.path_split_all('/a/b/c', False), ['/', 'a', 'b', 'c'])
-    eq_(u.path_split_all('/a/b/c/', False), ['/', 'a', 'b', 'c'])
-    eq_(u.path_split_all('a/b/c'), ['a', 'b', 'c'])
-    eq_(u.path_split_all('a/b/c/'), ['a', 'b', 'c', ''])
-    eq_(u.path_split_all('a/b/c', True), ['a', 'b', 'c', ''])
-    eq_(u.path_split_all('a/b/c/', True), ['a', 'b', 'c', ''])
-    eq_(u.path_split_all('a/b/c', False), ['a', 'b', 'c'])
-    eq_(u.path_split_all('a/b/c/', False), ['a', 'b', 'c'])
-
-
-read_count = 0
 
 
 def test_reraise():

@@ -40,6 +40,24 @@ class FileType(enum.Enum):
         return self.name
 
 
+# class DirKey(DirSingleton, ScanBase):
+#     last_backup_path = Column(StringCast(CakePath), nullable=True)
+#
+# class DirPath(ScanBase):
+#     id = Column(Integer, primary_key=True)
+#     path = Column(String, nullable=False)
+#     cake_path = Column(StringCast(CakePath), nullable=False)
+#     cake = Column(StringCast(Cake), nullable=True)
+#
+# class DirEntry(NameIt, ReprIt, ScanBase):
+#     path_id = Column(None, ForeignKey('dir_path.id'), primary_key=True)
+#     name = Column(String, primary_key=True)
+#     file_type = Column(IntCast(FileType), nullable=False)
+#     cake = Column(StringCast(Cake), nullable=False)
+#     size = Column(Integer, nullable=True)
+#     modtime = Column(Integer, nullable=True)
+
+
 class DirKey(DirSingleton, ScanBase):
     last_backup_path = Column(StringCast(CakePath), nullable=True)
 

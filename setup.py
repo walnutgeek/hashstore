@@ -33,10 +33,7 @@ setup(name='hashstore',
                          'bakery/app/fonts/*']},
       cmdclass={'sdist': MySdistCommand},
       entry_points={
-          'console_scripts': [
-              '%s=hashstore.%s:main' % (n, n)
-              for n in ('hs', 'hsi','hsd')
-          ],
+          'console_scripts': [ 'hs=hashstore.hs:main' ],
       },
       install_requires=install_requires,
       zip_safe=False)

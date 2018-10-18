@@ -1,6 +1,6 @@
 import fnmatch
 import codecs
-from hashstore.utils import path_split_all
+from hashstore.utils.fio import path_split_all
 import os
 
 import logging

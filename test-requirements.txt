@@ -5,3 +5,5 @@ coverage
 codecov
 numpy
 mypy
+wheel<=0.31.1
+xar

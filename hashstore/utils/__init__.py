@@ -73,11 +73,6 @@ def reraise_with_msg(msg, exception=None):
     raise new_exception.with_traceback(traceback)
 
 
-def ensure_directory(directory: str):
-    if not (os.path.isdir(directory)):
-        os.makedirs(directory)
-
-
 def ensure_bytes(s:Any)->bytes:
     if isinstance(s, bytes):
         return s
@@ -104,41 +99,6 @@ def utf8_decode(s:bytes)->str:
 
 utf8_reader = codecs.getreader(ENCODING_USED)
 
-
-def path_split_all(path: str, ensure_trailing_slash: bool = None):
-    '''
-    >>> path_split_all('/a/b/c')
-    ['/', 'a', 'b', 'c']
-    >>> path_split_all('/a/b/c/' )
-    ['/', 'a', 'b', 'c', '']
-    >>> path_split_all('/a/b/c', ensure_trailing_slash=True)
-    ['/', 'a', 'b', 'c', '']
-    >>> path_split_all('/a/b/c/', ensure_trailing_slash=True)
-    ['/', 'a', 'b', 'c', '']
-    >>> path_split_all('/a/b/c/', ensure_trailing_slash=False)
-    ['/', 'a', 'b', 'c']
-    >>> path_split_all('/a/b/c', ensure_trailing_slash=False)
-    ['/', 'a', 'b', 'c']
-    '''
-    def tails(head):
-        while(True):
-            head,tail = os.path.split(head)
-            if head == '/' and tail == '':
-                yield head
-                break
-            yield tail
-            if head == '':
-                break
-    parts = list(tails(path))
-    parts.reverse()
-    if ensure_trailing_slash is not None:
-        if ensure_trailing_slash :
-            if parts[-1] != '':
-                parts.append('')
-        else:
-            if parts[-1] == '':
-                parts = parts[:-1]
-    return parts
 
 def mix_in(mixin:type, target:type) -> List[str]:
     """
@@ -320,19 +280,6 @@ def json_decode(text: str):
         reraise_with_msg(f'text={text}')
 
 
-def read_in_chunks(fp, chunk_size=65535):
-    while True:
-        data = fp.read(chunk_size)
-        if not data:
-            break
-        yield data
-
-
-class FileNotFound(Exception):
-    def __init__(self, path):
-        super(FileNotFound, self).__init__(path)
-
-
 def print_pad(data, columns, get = None):
     if get is None:
         get = lambda r,c: r[c]
@@ -350,37 +297,6 @@ def print_pad(data, columns, get = None):
                 srow += s
                 pad = max_lens[icol]-len(s) + 2
             print(srow)
-
-
-def is_file_in_directory(file, dir):
-    '''
-    >>> is_file_in_directory('/a/b/c.txt', '/a')
-    True
-    >>> is_file_in_directory('/a/b/c.txt', '/a/')
-    True
-    >>> is_file_in_directory('/a/b/', '/a/b/')
-    True
-    >>> is_file_in_directory('/a/b/', '/a/b')
-    True
-    >>> is_file_in_directory('/a/b', '/a/b/')
-    True
-    >>> is_file_in_directory('/a/b', '/a/b')
-    True
-    >>> is_file_in_directory('/a/b', '/a//b')
-    True
-    >>> is_file_in_directory('/a//b', '/a/b')
-    True
-    >>> is_file_in_directory('/a/b/c.txt', '/')
-    True
-    >>> is_file_in_directory('/a/b/c.txt', '/aa')
-    False
-    >>> is_file_in_directory('/a/b/c.txt', '/b')
-    False
-    '''
-    realdir = os.path.realpath(dir)
-    dir = os.path.join(realdir, '')
-    file = os.path.realpath(file)
-    return file == realdir or os.path.commonprefix([file, dir]) == dir
 
 
 def _camel2var(c):

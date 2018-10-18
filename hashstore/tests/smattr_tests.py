@@ -4,6 +4,7 @@ from typing import Optional, List, Dict
 from nose.tools import eq_,ok_,with_setup
 from hashstore.tests import TestSetup, assert_text
 import hashstore.utils as u
+from hashstore.utils.fio import ensure_directory
 
 from hashstore.utils.smattr import (
     SmAttr, JsonWrap, MoldedTable, typing_factory)
@@ -13,7 +14,7 @@ test = TestSetup(__name__,ensure_empty=True)
 log = test.log
 
 
-u.ensure_directory(test.dir)
+ensure_directory(test.dir)
 
 
 def test_docs():
