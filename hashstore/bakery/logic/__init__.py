@@ -1,11 +1,8 @@
 import inspect
-from typing import Union, Callable, List, Optional, \
-    get_type_hints, Any, Dict
-
+from typing import Union, Callable, List, Optional, Dict
 from hashstore.utils import GlobalRef
 from hashstore.utils.event import Function
-from hashstore.utils.smattr import (SmAttr, Mold, AttrEntry,
-    typing_factory)
+from hashstore.utils.smattr import (SmAttr, Mold, typing_factory)
 from hashstore.utils.time import CronExp, TimeZone
 
 

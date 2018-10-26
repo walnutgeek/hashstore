@@ -5,14 +5,29 @@ from typing import Optional
 
 import os
 
-def ensure_directory(directory: str)->None:
+
+def ensure_directory(directory: str)->bool:
+    """
+    Ensure that directory exists.
+
+    :param directory:
+    :return: True if directory was created
+    """
     if not (os.path.isdir(directory)):
         os.makedirs(directory)
+        return True
+    return False
 
 
 class ConfigDir:
-    def __init__(self, path:str, dir_name:str)->None:
+    """
+    search for config directory in parent directories
+    (simular pattern like .git directory)
+    """
+    def __init__(self, path:str, dir_name:Optional[str]=None)->None:
         self.path = path
+        if dir_name is None:
+            dir_name = type(self).__dir_name__ #type:ignore
         self.dir_name = dir_name
 
     def dir_path(self)->str:
@@ -23,20 +38,25 @@ class ConfigDir:
 
     def build(self)->None:
         """
-        build necessary files in config directory
+        Build necessary files in config directory.
         """
         pass
 
     def ensure(self):
-        ensure_directory(self.dir_path())
+        if ensure_directory(self.dir_path()):
+            self.build()
 
 
     @classmethod
-    def lookup_up(cls:type, path:str, dir_name:str
+    def lookup_up(cls: type,
+                  path: str,
+                  dir_name: Optional[str]=None
                   ) -> Optional['ConfigDir']:
         """
         Lookup for `dir_name` up directory tree
         """
+        if dir_name is None:
+            dir_name = cls.__dir_name__ #type:ignore
         while True:
             config_dir = cls(path, dir_name)
             if config_dir.exists():
@@ -122,9 +142,4 @@ def path_split_all(path: str, ensure_trailing_slash: bool = None):
             if parts[-1] == '':
                 parts = parts[:-1]
     return parts
-
-
-class FileNotFound(Exception):
-    def __init__(self, path):
-        super(FileNotFound, self).__init__(path)
 

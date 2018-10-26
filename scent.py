@@ -35,6 +35,7 @@ def run(case, envs=run_envs, html=False):
 @runnable
 def execute_one_test(*args):
     case = ''
+    case += ' hashstore.tests.utils_auto_wire_tests'
     case += ' hashstore.tests.smattr_tests'
     case += ' hashstore.bakery.tests.init_tests'
     case += ' hashstore.bakery.tests.logic_tests'
@@ -42,10 +43,12 @@ def execute_one_test(*args):
     case += ' hashstore.bakery.lite.tests.backend_tests'
     case += ' hashstore.bakery.lite.tests.models_tests'
     case += ' hashstore.tests.db_tests'
+    case += ' hashstore.tests.utils_fio_tests'
     case += ' hashstore.tests.utils_tests'
     case += ' hashstore.tests.utils_file_types_tests'
     case += ' hashstore.tests.base_x_tests'
 
+    #=== slow tests
     # case += ' hashstore.tests.doc_tests'
     # case += ' hashstore.bakery.tests.cli_tests'
     # case += ' hashstore.bakery.tests.server_tests'

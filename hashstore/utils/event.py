@@ -10,6 +10,8 @@ from .smattr import SmAttr, combine_vars, Mold, AttrEntry, DictLike
 from . import GlobalRef, CodeEnum
 import traceback
 
+SINGLE_RETURN = 'single_return'
+
 
 class EventState(CodeEnum):
     NEW = enum.auto()
@@ -81,7 +83,7 @@ class Event(SmAttr):
     ...             .invoke({"s":"CamelCase"}, lambda a: "", lambda s: None))
     >>> len(events)
     2
-    >>> events[1].output_edge.vars['return']
+    >>> events[1].output_edge.vars['single_return']
     'camel_case'
     >>>
 
@@ -127,14 +129,14 @@ class Function(SmAttr):
             if len(out_hints) > 0:
                 out_mold.add_hints(out_hints)
             else:
-                out_mold.add_entry(AttrEntry("return", return_type))
+                out_mold.add_entry(AttrEntry(SINGLE_RETURN, return_type))
         return cls(ref=ref,
                    in_mold=in_mold,
                    out_mold=out_mold)
 
     def is_single_return(self)->bool:
         return len(self.out_mold.keys) == 1 \
-               and self.out_mold.keys[0] == 'return'
+               and self.out_mold.keys[0] == SINGLE_RETURN
 
     def invoke(self,
                flaten_in_vars:Dict[str, Any],
@@ -154,7 +156,7 @@ class Function(SmAttr):
                 input_edge=input_edge)
             result = self.ref.get_instance()(**inflated_objs)
             if self.is_single_return():
-                result = {'return': result}
+                result = {SINGLE_RETURN: result}
             else:
                 result = DictLike(result)
             err_info.inflated_output = self.out_mold.mold_it(

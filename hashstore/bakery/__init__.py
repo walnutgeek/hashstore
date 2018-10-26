@@ -695,9 +695,8 @@ class CakePath(utils.Stringable, utils.EnsureIt):
         if self.relative():
             path = list(current_cake_path.path)
             path.extend(self.path)
-            return CakePath( None ,
-                             _root=current_cake_path.root,
-                             _path=path)
+            return CakePath(
+                None ,_root=current_cake_path.root, _path=path)
         else:
             return self
 
@@ -860,6 +859,8 @@ class Content(PathInfo):
 
     @classmethod
     def from_file(cls, file):
+        if not(os.path.exists(file)):
+            raise FileNotFoundError()
         file_type = guess_name(file)
         return cls(file=file,
                    file_type=file_type,

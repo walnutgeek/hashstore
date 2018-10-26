@@ -7,7 +7,6 @@ import time
 import signal
 from hashstore.bakery.lite.node.access import (
     StoreContext, GuestAccess, FROM_COOKIE)
-from hashstore.utils.fio import FileNotFound
 from hashstore.utils.hashing import SaltedSha
 from hashstore.bakery import (
     cake_or_path, NotAuthorizedError, Content, PathInfo)
@@ -83,7 +82,7 @@ class _ContentHandler(tornado.web.RequestHandler):
         except NotAuthorizedError:
             self.write(exception_message())
             self.send_error(403)
-        except FileNotFound:
+        except FileNotFoundError:
             self.send_error(404)
         except:
             log.exception('error')

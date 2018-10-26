@@ -26,8 +26,10 @@ def fn3(n:Cake, i:int = 5)->Cake :
     return n
 
 class DagFn(Dag):
+
     z = TaskVar(int)
     task1 = Task(fn2)
     task2 = Task(fn, n=task1.output.x, i=z)
+
 
 

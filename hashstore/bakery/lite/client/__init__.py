@@ -14,8 +14,10 @@ import enum
 
 ClientConfigBase:Any = declarative_base(name='ClientConfigBase')
 
+
 class ClientKey(Singleton, Cdt, Udt, ClientConfigBase):
     pass
+
 
 class Server(ServersMixin, ClientConfigBase):
     pass
@@ -26,7 +28,6 @@ class MountSession(NameIt, CakePk, Cdt, Udt, ClientConfigBase):
     username = Column(String, nullable=False)
     server_id = Column(None, ForeignKey('server.id'), nullable=False)
     default = Column(Boolean, default=False)
-
 
 
 ScanBase:Any = declarative_base(name='ScanBase')
