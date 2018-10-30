@@ -35,10 +35,10 @@ def run(case, envs=run_envs, html=False):
 @runnable
 def execute_one_test(*args):
     case = ''
+    case += ' hashstore.bakery.tests.logic_tests'
     case += ' hashstore.tests.utils_auto_wire_tests'
     case += ' hashstore.tests.smattr_tests'
     case += ' hashstore.bakery.tests.init_tests'
-    case += ' hashstore.bakery.tests.logic_tests'
     case += ' hashstore.bakery.tests.cake_tree_tests'
     case += ' hashstore.bakery.lite.tests.backend_tests'
     case += ' hashstore.bakery.lite.tests.models_tests'

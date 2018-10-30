@@ -5,7 +5,7 @@ import sys
 from hashstore.tests import TestSetup, assert_text
 import hashstore.utils.fio as fio
 from hashstore.utils import exception_message
-from hashstore.utils.auto_wire import AutoWire, AutoWireRoot
+from hashstore.utils.auto_wire import AutoWire, AutoWireRoot, wire_names
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log
@@ -32,7 +32,7 @@ def test_wiring():
 
     z = x.y.z
     eq_(z._root(), None)
-    eq_([p._name for p in z._path()], [None, 'y','z'])
+    eq_(wire_names(z._path()), ['', 'y','z'])
 
     class Dag(metaclass=AutoWireRoot):
         x=3
@@ -41,8 +41,8 @@ def test_wiring():
         task2 = Dependencies().add(task1.input.v)
         output= Dependencies().add(task2.output.x)
 
-    eq_([p._name for p in Dag.input.a._path()], ['input', 'a'])
-    eq_([p._name for p in Dag.task1.input.v._path()], ['task1', 'input', 'v'])
+    eq_(wire_names(Dag.input.a._path()), ['input', 'a'])
+    eq_(wire_names(Dag.task1.input.v._path()), ['task1', 'input', 'v'])
 
     eq_(Dag.input.a._root(), Dag)
     eq_(Dag.task1.input.v._root(), Dag)

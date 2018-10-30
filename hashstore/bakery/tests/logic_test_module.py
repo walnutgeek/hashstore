@@ -1,7 +1,7 @@
 from typing import NamedTuple
 
 from hashstore.bakery import Cake
-from hashstore.bakery.logic import Task, Dag, TaskVar
+from hashstore.bakery.logic import Task, DagMeta, EdgeMold
 
 
 def fn(n:Cake, i:int)->Cake :
@@ -25,11 +25,11 @@ def fn3(n:Cake, i:int = 5)->Cake :
     print(f'fn3 n:{n} i:{i}')
     return n
 
-class DagFn(Dag):
 
-    z = TaskVar(int)
+class Dag(metaclass=DagMeta):
+    input = EdgeMold()
     task1 = Task(fn2)
-    task2 = Task(fn, n=task1.output.x, i=z)
+    task2 = Task(fn, n=task1.output.x, i=input.z)
 
 
 

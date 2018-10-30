@@ -146,6 +146,13 @@ class AttrEntry(EnsureIt, Stringable):
         else:
             return flattener(v)
 
+    def required(self):
+        try:
+            self.convert(None, Conversion.TO_OBJECT)
+            return False
+        except AttributeError:
+            return True
+
     def convert(self, v: Any, direction: Conversion)->Any:
         try:
             if Conversion.TO_OBJECT == direction:
