@@ -7,7 +7,7 @@ import hashstore.utils as u
 import hashstore.utils.fio as fio
 from hashstore.utils.event import Function, EventState
 from hashstore.utils.args import CommandArgs
-from hashstore.utils.smattr import SmAttr
+from hashstore.utils.smattr import SmAttr, ReferenceResolver
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log
@@ -20,9 +20,8 @@ def test_docs():
     import hashstore.utils.ignore_file as ignore_file
     import hashstore.utils.time as time
     import hashstore.utils.template as template
-    import hashstore.utils.event as event
     import hashstore.utils.hashing as hashing
-    for t in (utils, ignore_file, time, template, hashing, event):
+    for t in (utils, ignore_file, time, template, hashing):
         r = doctest.testmod(t)
         ok_(r.attempted > 0, f'There is no doctests in module {t}')
         eq_(r.failed,0)
@@ -201,19 +200,21 @@ def fn2(z:int, x:bytes, y:ComplexInput)->ComplexOut:
 def fn3(z:int, x:bytes, y:ComplexInput)->None:
     pass
 
-_INDEX=0
-def test_events():
-    cache={}
+class CacheResover(ReferenceResolver):
+    def __init__(self):
+        self.index=0
+        self.cache={}
 
-    def flattener(v:Any)->str:
-        global _INDEX
-        k=str(_INDEX)
-        cache[k]=v
-        _INDEX += 1
+    def flatten(self, v:Any) -> str:
+        k=str(self.index)
+        self.cache[k]=v
+        self.index += 1
         return k
 
-    def dereferencer(k:str)->Any:
-        return cache[k]
+    def dereference(self, s:str) -> Any:
+        return self.cache[s]
+
+def test_events():
 
     ffn1 = Function.parse(fn1)
     ffn2 = Function.parse(fn2)
@@ -222,23 +223,23 @@ def test_events():
         '{"in_mold": ["z:Required[int]", "x:Required[bytes]", '
         '"y:Required[hashstore.tests.utils_tests:ComplexInput]"], '
         '"out_mold": [], "ref": "hashstore.tests.utils_tests:fn3"}')
-
-    do_run_events(ffn1, ffn2, dereferencer, flattener)
-    do_run_events(ffn3, ffn2, dereferencer, flattener)
+    resolver = CacheResover()
+    do_run_events(ffn1, ffn2, resolver)
+    do_run_events(ffn3, ffn2, resolver)
     do_run_events(Function.ensure_it(ffn1.to_json()),
-                  Function.ensure_it(ffn2.to_json()), dereferencer, flattener)
+                  Function.ensure_it(ffn2.to_json()), resolver)
 
 
-def do_run_events(ffn1, ffn2, dereferencer, flattener):
+def do_run_events(ffn1, ffn2, resolver):
     complex_input = ComplexInput(q=7, a='bc')
 
     e1 = list(ffn1.invoke(
         u.quict(z=5, x=b'0123456789ABCDFG',
                 y=complex_input.to_json()),
-        flattener, dereferencer))
+        resolver))
     eq_(e1[1].state, EventState.SUCCESS)
     e2 = list(ffn2.invoke(
         u.quict(z=5, x=b'0123456789ABCDFG',
                 y=complex_input.to_json()),
-        flattener, dereferencer))
+        resolver))
     eq_(e2[1].state, EventState.FAIL)

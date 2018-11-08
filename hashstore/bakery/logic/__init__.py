@@ -1,46 +1,13 @@
 import inspect
-from typing import Union, Callable, List, Optional, Dict
-from hashstore.utils import GlobalRef, CodeEnum
+from typing import Union, Callable, List, Optional
+from hashstore.utils import GlobalRef
 from hashstore.utils.auto_wire import AutoWire, wire_names, AutoWireRoot
 from hashstore.utils.event import Function
+from hashstore.utils.log_box import LogBox
 from hashstore.utils.smattr import (SmAttr, AttrEntry)
 from hashstore.utils.time import CronExp, TimeZone
 
 
-class LogLevel(CodeEnum):
-    INFO = 0
-    WARN = 1
-    ERROR = 2
-
-
-class LogEntry(SmAttr):
-    level: LogLevel
-    msg:str
-
-    def __str__(self):
-        return f"{self.level.name()} {self.msg}\n"
-
-
-class LogBox(SmAttr):
-    entries: List[LogEntry]
-
-    def add(self, level:LogLevel, msg:str):
-        self.entries.append(LogEntry(level=level, msg=msg))
-
-    def info(self, msg: str):
-        self.add(LogLevel.INFO, msg)
-
-    def warn(self, msg: str):
-        self.add(LogLevel.WARN, msg)
-
-    def error(self, msg: str):
-        self.add(LogLevel.ERROR, msg)
-
-    def has_errors(self):
-        return any(e.level == LogLevel.ERROR for e in self.entries)
-
-    def __str__(self):
-        return ''.join( map(str, self.entries))
 
 
 class MoldVar(AutoWire):

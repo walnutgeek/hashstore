@@ -1,3 +1,4 @@
+import abc
 from typing import (Any, Dict, List, Optional, get_type_hints, Union,
                     Callable, Tuple)
 from inspect import getfullargspec
@@ -89,6 +90,23 @@ class ListTyping(Typing):
     def default(self):
         return []
 
+class ReferenceResolver(metaclass=abc.ABCMeta):
+
+    @abc.abstractmethod
+    def flatten(self, v:Any) -> str:
+        raise NotImplementedError('subclasses must override')
+
+    @abc.abstractmethod
+    def dereference(self, s:str) -> Any:
+        raise NotImplementedError('subclasses must override')
+
+class NoResolver(ReferenceResolver):
+
+    def flatten(self, v:Any) -> str:
+        return str(v)
+
+    def dereference(self, s:str) -> Any:
+        return s
 
 class AttrEntry(EnsureIt, Stringable):
     """
@@ -134,17 +152,17 @@ class AttrEntry(EnsureIt, Stringable):
     def is_primitive(self)->bool:
         return self.typing.is_primitive()
 
-    def inflate(self, v, dereferencer):
+    def inflate(self, v:Any, resover:ReferenceResolver)->Any:
         if self.is_primitive() or not(isinstance(v, str)):
             return v
         else:
-            return dereferencer(v)
+            return resover.dereference(v)
 
-    def flatten(self, v, flattener):
+    def flatten(self, v:Any, resover:ReferenceResolver)->Any:
         if self.is_primitive() or isinstance(v, str):
             return v
         else:
-            return flattener(v)
+            return resover.flatten(v)
 
     def required(self):
         try:
@@ -289,6 +307,19 @@ class Mold(Jsonable):
         entry.index = len(self.attrs)
         self.keys.append(entry.name)
         self.attrs[entry.name] = entry
+
+    def inflate(self,
+                flaten_vars: Dict[str,Any],
+                resolver:ReferenceResolver) -> Dict[str,Any]:
+        return {k: self.attrs[k].inflate(v, resolver)
+                for k, v in flaten_vars.items()}
+
+    def flatten(self,
+                inflated_vars: Dict[str,Any],
+                resolver: ReferenceResolver) -> Dict[str,Any]:
+        return {
+            k: self.attrs[k].flatten(v, resolver)
+            for k, v in inflated_vars.items()}
 
     def to_json(self):
         return [str(ae) for ae in self.attrs.values()]

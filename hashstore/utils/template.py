@@ -78,27 +78,22 @@ class ClassRef(Stringable, StrKeyMixin, EnsureIt):
         return str(GlobalRef(self.cls))
 
 class Template(type):
-    """
-    Todos:
-      [x] test POC
-      [ ] make CRef to parse and display template classes properly
-      [ ] control __name__ and __qualname__
-
-    >>>
-    """
     def __init__(cls, name, bases, dct):
         if _GLOBAL_REF not in dct:
             cls.__cache__ = {}
 
+    def __build_klass__(cls, item_cref, global_ref):
+        class Klass(cls):
+            __item_cref__ = item_cref
+            __global_ref__ = global_ref
+        return Klass
 
-    def __getitem__(self, item):
+    def __getitem__(cls, item):
         item_cref = ClassRef.ensure_it(item)
         k = str(item_cref)
-        if k in self.__cache__:
-            return self.__cache__[k]
-        class Klass(self):
-            __item_cref__ = item_cref
-            __global_ref__ = GlobalRef(self, str(item_cref))
-        self.__cache__[k] = Klass
-        return Klass
+        if k in cls.__cache__:
+            return cls.__cache__[k]
+        global_ref = GlobalRef(cls, str(item_cref))
+        cls.__cache__[k]=cls.__build_klass__(item_cref, global_ref)
+        return cls.__cache__[k]
 

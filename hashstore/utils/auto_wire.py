@@ -1,5 +1,6 @@
 from typing import Optional, Union, List, Iterable
 
+
 class AutoWireRoot(type):
     def __init__(cls, name, bases, dct):
         for k, v in dct.items():

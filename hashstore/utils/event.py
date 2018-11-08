@@ -4,9 +4,9 @@ from datetime import datetime
 from typing import Optional, Dict, Any, get_type_hints, Generator, \
     Callable
 
-from hashstore.utils import jsonify
 from hashstore.utils.template import Conversion
-from .smattr import SmAttr, combine_vars, Mold, AttrEntry, DictLike
+from .smattr import SmAttr, combine_vars, Mold, AttrEntry, DictLike, \
+    ReferenceResolver
 from . import GlobalRef, CodeEnum
 import traceback
 
@@ -79,8 +79,9 @@ class Event(SmAttr):
     <EventState.NEW: 1>
     >>> str(q)
     '{"error_edge": null, "function": "hashstore.utils:from_camel_case_to_underscores", "input_edge": {"dt": "2018-09-28T00:00:00", "type": "INPUT", "vars": {"s": "CamelCase"}}, "output_edge": null, "state": "NEW"}'
+    >>> from hashstore.utils.smattr import NoResolver
     >>> events = list(Function.parse(from_camel_case_to_underscores)
-    ...             .invoke({"s":"CamelCase"}, lambda a: "", lambda s: None))
+    ...             .invoke({"s":"CamelCase"}, NoResolver()))
     >>> len(events)
     2
     >>> events[1].output_edge.vars['single_return']
@@ -98,7 +99,6 @@ class InvocationError(SmAttr):
     inflated_input: Dict[str,Any]
     inflated_output: Dict[str,Any]
     traceback: Optional[str]
-
 
 class Function(SmAttr):
     ref: GlobalRef
@@ -138,22 +138,23 @@ class Function(SmAttr):
         return len(self.out_mold.keys) == 1 \
                and self.out_mold.keys[0] == SINGLE_RETURN
 
+    # flattener: Callable[[Any], str],
+    # dereferencer: Callable[[str], Any]
+
     def invoke(self,
                flaten_in_vars:Dict[str, Any],
-               flattener: Callable[[Any], str],
-               dereferencer: Callable[[str], Any]
+               resover: ReferenceResolver
                )->Generator[Event, None, None]:
         err_info = InvocationError()
         input_edge = EventEdge.input(flaten_in_vars)
+        yield Event(state=EventState.NEW,
+                    function=self.ref,
+                    input_edge=input_edge)
         try:
-            err_info.inflated_input ={
-                k: self.in_mold.attrs[k].inflate(v, dereferencer)
-                for k, v in flaten_in_vars.items()}
+            err_info.inflated_input =self.in_mold.inflate(
+                flaten_in_vars, resover)
             inflated_objs = self.in_mold.mold_it(
                 err_info.inflated_input, Conversion.TO_OBJECT)
-            yield Event( state=EventState.NEW,
-                function=self.ref,
-                input_edge=input_edge)
             result = self.ref.get_instance()(**inflated_objs)
             if self.is_single_return():
                 result = {SINGLE_RETURN: result}
@@ -161,9 +162,8 @@ class Function(SmAttr):
                 result = DictLike(result)
             err_info.inflated_output = self.out_mold.mold_it(
                 result, Conversion.TO_JSON)
-            flatten_result ={
-                k: self.out_mold.attrs[k].flatten(v, flattener)
-                for k, v in err_info.inflated_output.items()}
+            flatten_result = self.out_mold.flatten(
+                err_info.inflated_output, resover)
             yield Event(
                 state=EventState.SUCCESS,
                 function=self.ref,
@@ -179,4 +179,25 @@ class Function(SmAttr):
                             err_info.to_json()))
 
 
+EDGE_CLS_NAMES = {'Input', 'Output'}
+
+
+def mold_name(cls_name):
+    return f'{cls_name[:-3].lower()}_mold'
+
+
+EDGE_MOLDS = set(mold_name(cls_name) for cls_name
+                 in EDGE_CLS_NAMES)
+
+
+class ExecutibleMeta(type):
+    def __init__(cls, name, bases, dct):
+        defined_vars=set(dct)
+        if not defined_vars.issuperset(EDGE_MOLDS):
+            if defined_vars.issuperset(EDGE_CLS_NAMES):
+                for cls_name in EDGE_CLS_NAMES:
+                    setattr(
+                        cls, mold_name(cls_name), Mold(dct[cls_name]))
+        if any(not(hasattr(cls, s)) for s in EDGE_MOLDS):
+            raise AttributeError(f'Undefined: {EDGE_MOLDS}')
 
