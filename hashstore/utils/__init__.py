@@ -1,7 +1,6 @@
 from types import ModuleType
 import abc
-import inspect
-import os
+from inspect import isfunction, isclass, ismodule
 import json
 import sys
 import enum
@@ -100,21 +99,34 @@ def utf8_decode(s:bytes)->str:
 utf8_reader = codecs.getreader(ENCODING_USED)
 
 
-def mix_in(mixin:type, target:type) -> List[str]:
+def mix_in(source:type,
+           target:type,
+           overwrite:bool = True
+           ) -> List[str]:
     """
     Copy all defined functions from mixin into target. It could be
     usefull when you cannot inherit from mixin because incompatible
-    metaclass.
+    metaclass. It does not copy abstract functions. If `source` is
+    `ABCMeta`, will register `target` with it.
 
     Returns list of copied methods.
     """
     def mix():
-        for n in dir(mixin):
-            fn = getattr(mixin, n)
-            if inspect.isfunction(fn):
-                setattr(target, n, fn)
-                yield n
-    return list(mix())
+        try:
+            abstract_methods = source.__abstractmethods__
+        except AttributeError:
+            abstract_methods = set()
+        target_members = dir(target)
+        for n in dir(source):
+            if overwrite or n not in target_members:
+                fn = getattr(source, n)
+                if isfunction(fn) and n not in abstract_methods:
+                    setattr(target, n, fn)
+                    yield n
+    mixed_in_methods = list(mix())
+    if isinstance(source, abc.ABCMeta):
+        source.register(target)
+    return mixed_in_methods
 
 
 class EnsureIt:
@@ -431,9 +443,9 @@ class GlobalRef(Stringable, EnsureIt, StrKeyMixin):
         if hasattr(s, _GLOBAL_REF):
             that = getattr(s, _GLOBAL_REF)
             self.module, self.name, self.item = ( that.module, that.name, that.item)
-        elif inspect.ismodule(s):
+        elif ismodule(s):
                 self.module,self.name = s.__name__,''
-        elif inspect.isclass(s) or inspect.isfunction(s):
+        elif isclass(s) or isfunction(s):
             self.module, self.name = s.__module__, s.__name__
         else:
             if s[-1] == ']' :

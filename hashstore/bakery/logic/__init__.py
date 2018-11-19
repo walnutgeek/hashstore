@@ -152,9 +152,7 @@ class HashLogic(SmAttr):
             if n[:1] != '_' :
                 fn = getattr(module, n)
                 if inspect.isfunction(fn):
-                    logic.methods.append(
-                        Function.parse(fn,GlobalRef(
-                            f'{logic.name}:{n}')))
+                    logic.methods.append(Function.parse(fn))
         return logic
 
 

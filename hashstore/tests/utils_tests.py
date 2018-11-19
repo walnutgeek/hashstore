@@ -5,9 +5,8 @@ import sys
 from hashstore.tests import TestSetup, assert_text
 import hashstore.utils as u
 import hashstore.utils.fio as fio
-from hashstore.utils.event import Function, EventState
 from hashstore.utils.args import CommandArgs
-from hashstore.utils.smattr import SmAttr, ReferenceResolver
+
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log
@@ -178,68 +177,6 @@ def test_mix_in():
     retest(B1)
     retest(B2)
     retest(B3)
-    retest(B4, ( True, True, False, False) )
+    retest(B4, (True, True, False, False))
     retest(B5)
 
-class ComplexInput(SmAttr):
-    q: int
-    a: str
-
-class ComplexOut(SmAttr):
-    z: str
-    v: ComplexInput
-
-
-def fn1(z:int, x:bytes, y:ComplexInput)->ComplexOut:
-    return ComplexOut(z=f'z={z}', v=y)
-
-
-def fn2(z:int, x:bytes, y:ComplexInput)->ComplexOut:
-    raise AttributeError(f'z={z}')
-
-def fn3(z:int, x:bytes, y:ComplexInput)->None:
-    pass
-
-class CacheResover(ReferenceResolver):
-    def __init__(self):
-        self.index=0
-        self.cache={}
-
-    def flatten(self, v:Any) -> str:
-        k=str(self.index)
-        self.cache[k]=v
-        self.index += 1
-        return k
-
-    def dereference(self, s:str) -> Any:
-        return self.cache[s]
-
-def test_events():
-
-    ffn1 = Function.parse(fn1)
-    ffn2 = Function.parse(fn2)
-    ffn3 = Function.parse(fn3)
-    eq_(str(ffn3),
-        '{"in_mold": ["z:Required[int]", "x:Required[bytes]", '
-        '"y:Required[hashstore.tests.utils_tests:ComplexInput]"], '
-        '"out_mold": [], "ref": "hashstore.tests.utils_tests:fn3"}')
-    resolver = CacheResover()
-    do_run_events(ffn1, ffn2, resolver)
-    do_run_events(ffn3, ffn2, resolver)
-    do_run_events(Function.ensure_it(ffn1.to_json()),
-                  Function.ensure_it(ffn2.to_json()), resolver)
-
-
-def do_run_events(ffn1, ffn2, resolver):
-    complex_input = ComplexInput(q=7, a='bc')
-
-    e1 = list(ffn1.invoke(
-        u.quict(z=5, x=b'0123456789ABCDFG',
-                y=complex_input.to_json()),
-        resolver))
-    eq_(e1[1].state, EventState.SUCCESS)
-    e2 = list(ffn2.invoke(
-        u.quict(z=5, x=b'0123456789ABCDFG',
-                y=complex_input.to_json()),
-        resolver))
-    eq_(e2[1].state, EventState.FAIL)

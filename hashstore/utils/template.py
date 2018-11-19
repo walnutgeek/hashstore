@@ -82,18 +82,15 @@ class Template(type):
         if _GLOBAL_REF not in dct:
             cls.__cache__ = {}
 
-    def __build_klass__(cls, item_cref, global_ref):
-        class Klass(cls):
-            __item_cref__ = item_cref
-            __global_ref__ = global_ref
-        return Klass
-
     def __getitem__(cls, item):
         item_cref = ClassRef.ensure_it(item)
         k = str(item_cref)
         if k in cls.__cache__:
             return cls.__cache__[k]
         global_ref = GlobalRef(cls, str(item_cref))
-        cls.__cache__[k]=cls.__build_klass__(item_cref, global_ref)
-        return cls.__cache__[k]
+        class Klass(cls):
+            __item_cref__ = item_cref
+            __global_ref__ = global_ref
+        cls.__cache__[k]= Klass
+        return Klass
 

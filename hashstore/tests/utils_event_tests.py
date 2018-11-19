@@ -1,8 +1,10 @@
+from typing import Any
+
 from nose.tools import eq_,ok_,with_setup
 from hashstore.tests import TestSetup, assert_text
 import hashstore.utils.fio as fio
-from hashstore.utils import exception_message
-from hashstore.utils.smattr import Mold
+from hashstore.utils import exception_message, quict
+from hashstore.utils.smattr import Mold, SmAttr, ReferenceResolver
 
 test = TestSetup(__name__,ensure_empty=True)
 log = test.log
@@ -48,3 +50,74 @@ def test_wiring():
         out_mold = Mold(['d:Required[int]', 'e:Required[float]', 'f:Required[str]'])
 
     ok_(AbcDef.in_mold == AbcDef2.in_mold)
+
+
+class ComplexInput(SmAttr):
+    q: int
+    a: str
+
+class ComplexOut(SmAttr):
+    z: str
+    v: ComplexInput
+
+
+def fn1(z:int, x:bytes, y:ComplexInput)->ComplexOut:
+    return ComplexOut(z=f'z={z} y.a={y.a}', v=y)
+
+
+def fn2(z:int, x:bytes, y:ComplexInput)->ComplexOut:
+    raise AttributeError(f'z={z} y.a={y.a}')
+
+def fn3(z:int, x:bytes, y:ComplexInput)->None:
+    pass
+
+class CacheResover(ReferenceResolver):
+    def __init__(self):
+        self.index=0
+        self.cache={}
+
+    def flatten(self, v:Any) -> str:
+        k=str(self.index)
+        self.cache[k]=v
+        self.index += 1
+        return k
+
+    def dereference(self, s:str) -> Any:
+        return self.cache[s]
+
+BCFDLJLDFK = 'bcfdljldfk'
+
+
+def test_events():
+
+    ffn1 = e.Function.parse(fn1)
+    ffn2 = e.Function.parse(fn2)
+    ffn3 = e.Function.parse(fn3)
+    eq_(str(ffn3),
+        '{"in_mold": ["z:Required[int]", "x:Required[bytes]", '
+        '"y:Required[hashstore.tests.utils_event_tests:ComplexInput]"], '
+        '"out_mold": [], "ref": "hashstore.tests.utils_event_tests:fn3"}')
+    resolver = CacheResover()
+
+    e1,e2 = do_run_events(ffn1, ffn2, resolver)
+    ok_(BCFDLJLDFK in e1[1].output_edge.vars['z'])
+    ok_(BCFDLJLDFK in e2[1].error_edge.vars['traceback'])
+
+    do_run_events(ffn3, ffn2, resolver)
+    do_run_events(e.Function.ensure_it(ffn1.to_json()),
+                  e.Function.ensure_it(ffn2.to_json()), resolver)
+
+
+def do_run_events(ffn1, ffn2, resolver):
+    complex_input = ComplexInput(q=7, a=BCFDLJLDFK)
+    ref = resolver.flatten(complex_input)
+    ok_(isinstance(ref,str))
+    e1 = list(ffn1.invoke(
+        quict(z=5, x=b'0123456789ABCDFG', y=ref),
+        resolver))
+    eq_(e1[1].state, e.EventState.SUCCESS)
+    e2 = list(ffn2.invoke(
+        quict(z=5, x=b'0123456789ABCDFG', y=ref),
+        resolver))
+    eq_(e2[1].state, e.EventState.FAIL)
+    return e1, e2

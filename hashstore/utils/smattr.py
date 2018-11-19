@@ -253,10 +253,14 @@ class DictLike:
         return getattr(self.o, item)
 
 
+SINGLE_RETURN_VALUE = 'srv_'
+
+
 class Mold(Jsonable):
 
     def __init__(self, o=None):
         self.keys: List[str] = []
+        self.cls : Optional[type] = None
         self.attrs: Dict[str, AttrEntry] = {}
         if o is not None:
             if isinstance(o, list):
@@ -265,6 +269,8 @@ class Mold(Jsonable):
             elif isinstance(o, dict):
                 self.add_hints(o)
             else:
+                if isinstance(o, type):
+                    self.cls = o
                 self.add_hints(get_type_hints(o))
 
     @classmethod
@@ -365,6 +371,64 @@ class Mold(Jsonable):
     def set_attrs(self, values, target):
         for k, v in self.build_val_dict(values).items():
             setattr(target, k, v)
+
+    def wrap_input(self, v):
+        v_dct = self.mold_it(v, Conversion.TO_OBJECT)
+        if self.cls is not None:
+            return self.cls(v_dct)
+        return v_dct
+
+    def output_json(self, v):
+        if self.is_single_return():
+            result = {SINGLE_RETURN_VALUE: v}
+        else:
+            result = DictLike(v)
+        return self.mold_it(result, Conversion.TO_JSON)
+
+    def is_single_return(self)->bool:
+        return self.keys == [SINGLE_RETURN_VALUE]
+
+    def is_empty(self)->bool:
+        return len(self.keys) == 0
+
+
+def extract_molds_from_function(fn):
+    """
+    >>> def a(i:int)->None:
+    ...     pass
+    ...
+    >>> in_a, out_a = extract_molds_from_function(a)
+    >>> out_a.is_empty()
+    True
+    >>> out_a.is_single_return()
+    False
+    >>>
+    >>> def b(i:int)->str:
+    ...     return f'i={i}'
+    ...
+    >>> in_b, out_b = extract_molds_from_function(b)
+    >>> out_b.is_empty()
+    False
+    >>> out_b.is_single_return()
+    True
+    >>>
+    """
+    annotations = dict(get_type_hints(fn))
+    return_type = annotations['return']
+    del annotations['return']
+    in_mold = Mold(annotations)
+    in_mold.set_defaults(in_mold.get_defaults_from_fn(fn))
+    out_mold = Mold()
+    if return_type != type(None):
+        out_hints = get_type_hints(return_type)
+        if len(out_hints) > 0:
+            out_mold.add_hints(out_hints)
+        else:
+            ae = AttrEntry(SINGLE_RETURN_VALUE, return_type)
+            out_mold.add_entry(ae)
+    return in_mold, out_mold
+
+
 
 
 class AnnotationsProcessor(type):
