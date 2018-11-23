@@ -1,6 +1,7 @@
 const webpack = require('webpack');
 const path = require('path');
 const TransferWebpackPlugin = require('transfer-webpack-plugin');
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 
 const config = {
   entry: {
@@ -10,6 +11,7 @@ const config = {
         './src/app.js',
     ],
   },
+  mode: 'production',
   // Render source-map file for final build
   devtool: 'source-map',
   // output config
@@ -18,16 +20,27 @@ const config = {
     filename: 'app.js', // Name of output file
       publicPath: '/-/app/'
   },
+  optimization: {
+    minimizer: [
+      // we specify a custom UglifyJsPlugin here to get source maps in production
+      new UglifyJsPlugin({
+        cache: true,
+        parallel: true,
+        uglifyOptions: {
+          compress: false,
+          ecma: 6,
+          mangle: true
+        },
+        sourceMap: true
+      })
+    ]
+  },
   plugins: [
     // Define production build to allow React to strip out unnecessary checks
     new webpack.DefinePlugin({
       'process.env':{
         'NODE_ENV': JSON.stringify('production')
       }
-    }),
-    // Minify the bundle
-    new webpack.optimize.UglifyJsPlugin({
-      sourceMap: true,
     }),
     // Transfer Files
     new TransferWebpackPlugin([
@@ -60,6 +73,7 @@ const config = {
 
       },
       {
+        type: 'javascript/auto',
         test: /\.json$/,
         use: [
           {

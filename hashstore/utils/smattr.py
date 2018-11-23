@@ -1,6 +1,5 @@
 import abc
-from typing import (Any, Dict, List, Optional, get_type_hints, Union,
-                    Callable, Tuple)
+from typing import (Any, Dict, List, Optional, get_type_hints, Union)
 from inspect import getfullargspec
 from . import (Jsonable, GlobalRef, Stringable, EnsureIt, json_decode,
                json_encode, not_zero_len, ensure_string,
@@ -24,6 +23,9 @@ class Typing(Stringable, EnsureIt):
         self.val_cref = ClassRef.ensure_it(val_cref)
         self.collection=collection
 
+    def is_required(self):
+        return False
+
     def is_primitive(self)->bool:
         return not(self.collection) and self.val_cref.primitive
 
@@ -31,7 +33,10 @@ class Typing(Stringable, EnsureIt):
         return self.val_cref.convert(v, direction)
 
     def default(self):
-        raise AttributeError(f'no default for {str(self)}')
+        if self.is_required():
+            raise AttributeError(f'no default for {str(self)}')
+        else:
+            return None
 
     @classmethod
     def name(cls):
@@ -54,6 +59,9 @@ class RequiredTyping(Typing):
 
     def validate(self, v):
         return self.val_cref.matches(v)
+
+    def is_required(self):
+        return self.val_cref.cls != Any
 
 
 class DictTyping(Typing):
@@ -333,8 +341,7 @@ class Mold(Jsonable):
     def check_overlaps(self, values):
         missing = set(
             ae.name for ae in self.attrs.values()
-            if isinstance(ae.typing, RequiredTyping)
-            and ae.default is None
+            if ae.typing.is_required() and ae.default is None
         ) - values.keys()
         if len(missing) > 0:
             raise AttributeError(f'Required : {missing}')
@@ -372,11 +379,16 @@ class Mold(Jsonable):
         for k, v in self.build_val_dict(values).items():
             setattr(target, k, v)
 
+    def pull_attrs(self, from_obj:Any)->Dict[str,Any]:
+        return { k: getattr(from_obj, k)
+                 for k in self.keys if hasattr(from_obj, k) }
+
     def wrap_input(self, v):
         v_dct = self.mold_it(v, Conversion.TO_OBJECT)
         if self.cls is not None:
             return self.cls(v_dct)
         return v_dct
+
 
     def output_json(self, v):
         if self.is_single_return():
@@ -437,7 +449,8 @@ class AnnotationsProcessor(type):
         mold.set_defaults(mold.get_defaults_from_cls(cls))
         cls.__mold__ = mold
 
-def combine_vars(vars:Optional[Dict[str,Any]],kwargs:Dict[str,Any]
+def combine_vars(vars:Optional[Dict[str,Any]],
+                 kwargs:Dict[str,Any]
                  )->Dict[str,Any]:
     if vars is None:
         vars = {}

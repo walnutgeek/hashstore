@@ -22,14 +22,15 @@ def test_docs():
 
 def test_wiring():
     try:
-        class Abc(metaclass=e.ExecutibleMeta):
+        class Abc(metaclass=e.InOutMeta):
             pass
         ok_(False)
     except AttributeError :
         ok_(all( s in exception_message() for s in
                   ("Undefined:", "'in_mold'", "'out_mold'")))
 
-    class AbcDef(metaclass=e.ExecutibleMeta):
+
+    class AbcDef(metaclass=e.InOutMeta):
         class Input:
             a:int
             b:str
@@ -38,6 +39,7 @@ def test_wiring():
             d:int
             e:float
             f:str
+    ok_(isinstance(AbcDef, e.InOutMeta))
 
     eq_(AbcDef.in_mold.to_json(),
         ['a:Required[int]', 'b:Required[str]', 'c:Required[bool]'])
@@ -45,7 +47,7 @@ def test_wiring():
     eq_(AbcDef.out_mold.to_json(),
         ['d:Required[int]', 'e:Required[float]', 'f:Required[str]'])
 
-    class AbcDef2(metaclass=e.ExecutibleMeta):
+    class AbcDef2(metaclass=e.InOutMeta):
         in_mold = Mold(['a:Required[int]', 'b:Required[str]', 'c:Required[bool]'])
         out_mold = Mold(['d:Required[int]', 'e:Required[float]', 'f:Required[str]'])
 
@@ -55,6 +57,7 @@ def test_wiring():
 class ComplexInput(SmAttr):
     q: int
     a: str
+
 
 class ComplexOut(SmAttr):
     z: str
@@ -68,8 +71,31 @@ def fn1(z:int, x:bytes, y:ComplexInput)->ComplexOut:
 def fn2(z:int, x:bytes, y:ComplexInput)->ComplexOut:
     raise AttributeError(f'z={z} y.a={y.a}')
 
+
 def fn3(z:int, x:bytes, y:ComplexInput)->None:
     pass
+
+
+class InOut(metaclass=e.InOutMeta):
+    Input = ComplexInput
+    out_mold = Mold(ComplexOut)
+
+
+class Fn1Match(metaclass=e.InOutMeta):
+
+    class Input(SmAttr):
+        z: int
+        x: bytes
+        y: ComplexInput
+
+    out_mold = Mold(ComplexOut)
+
+
+class Fn1Match2(metaclass=e.InOutMeta):
+    in_mold = Mold(Fn1Match.Input)
+    Output = ComplexOut
+
+
 
 class CacheResover(ReferenceResolver):
     def __init__(self):
@@ -85,12 +111,18 @@ class CacheResover(ReferenceResolver):
     def dereference(self, s:str) -> Any:
         return self.cache[s]
 
+
 BCFDLJLDFK = 'bcfdljldfk'
 
 
 def test_events():
 
     ffn1 = e.Function.parse(fn1)
+    eq_(ffn1.in_mold, Fn1Match.in_mold)
+    eq_(ffn1.out_mold, Fn1Match.out_mold)
+    eq_(ffn1.in_mold, Fn1Match2.in_mold)
+    eq_(ffn1.out_mold, Fn1Match2.out_mold)
+
     ffn2 = e.Function.parse(fn2)
     ffn3 = e.Function.parse(fn3)
     eq_(str(ffn3),
