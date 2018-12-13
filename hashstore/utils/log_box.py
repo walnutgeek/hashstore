@@ -14,11 +14,28 @@ class LogEntry(SmAttr):
     level: LogLevel
     msg:str
 
-    def __str__(self):
-        return f"{self.level.name()} {self.msg}\n"
-
 
 class LogBox(SmAttr):
+    """
+    >>> lb = LogBox()
+    >>> lb.has_level(LogLevel.INFO)
+    False
+    >>> lb.info('info message')
+    >>> lb.has_errors()
+    False
+    >>> lb.has_level(LogLevel.INFO)
+    True
+    >>> lb.warn('warn message')
+    >>> lb.has_errors()
+    False
+    >>> lb.error('error message')
+    >>> lb.has_errors()
+    True
+    >>> lb.to_json() #doctest: +NORMALIZE_WHITESPACE
+    {'entries': [{'level': 'INFO', 'msg': 'info message'},
+        {'level': 'WARN', 'msg': 'warn message'},
+        {'level': 'ERROR', 'msg': 'error message'}]}
+    """
     entries: List[LogEntry]
 
     def add(self, level:LogLevel, msg:str):
@@ -34,7 +51,8 @@ class LogBox(SmAttr):
         self.add(LogLevel.ERROR, msg)
 
     def has_errors(self):
-        return any(e.level == LogLevel.ERROR for e in self.entries)
+        return self.has_level(LogLevel.ERROR)
 
-    def __str__(self):
-        return ''.join( map(str, self.entries))
+    def has_level(self, level):
+        return any(e.level == level for e in self.entries)
+

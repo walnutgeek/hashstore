@@ -12,6 +12,27 @@ from hashstore.utils import print_pad, exception_message
 import hashstore.bakery.cake_scan as cscan
 
 log = logging.getLogger("hs")
+"""
+
+Event log
+---------
+
+What event is?
+   * Store file
+   * Ensure cake
+   * Log cake in portal
+   * Vtree operation
+   * edge ivets of executible
+
+Executible
+==========
+   * permissions (are you allowed to run)
+   * locality (where to run)
+   * scheduling and sequencing (when to run and what data feed 
+       from one to another) 
+"""
+
+
 
 ca = CommandArgs()
 

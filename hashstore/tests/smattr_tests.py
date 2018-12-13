@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 
 from nose.tools import eq_,ok_,with_setup
 from hashstore.tests import TestSetup, assert_text
@@ -7,7 +7,8 @@ import hashstore.utils as u
 from hashstore.utils.fio import ensure_directory
 
 from hashstore.utils.smattr import (
-    SmAttr, JsonWrap, MoldedTable, typing_factory)
+    SmAttr, JsonWrap, MoldedTable, typing_factory,
+    extract_molds_from_function)
 
 test = TestSetup(__name__,ensure_empty=True)
 
@@ -26,11 +27,39 @@ def test_docs():
 
 
 class A(SmAttr):
+    """ An example of SmAttr usage
+
+    Attributes:
+       i: integer
+       s: string with
+          default
+       d: optional datetime
+
+       attribute contributed
+    """
     i:int
     s:str = 'xyz'
     d:Optional[datetime]
     z:List[datetime]
     y:Dict[str,str]
+
+
+def pack_wolves(i:int, s:str='xyz')-> Tuple[int,str]:
+    """ Greeting protocol
+
+    Args:
+       s: string with
+          default
+
+    Returns:
+        num_of_wolves: Pack size
+        pack_name: Name of the pack
+    """
+    return i, s
+
+def test_extract_molds_from_function():
+    in_mold, out_mold = extract_molds_from_function(pack_wolves)
+    eq_(str(out_mold),'["num_of_wolves:Required[int]", "pack_name:Required[str]"]')
 
 def test_gref_with_molded_table():
     ATable = MoldedTable[A]

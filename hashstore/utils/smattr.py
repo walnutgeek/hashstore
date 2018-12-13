@@ -1,16 +1,15 @@
 import abc
-from typing import (Any, Dict, List, Optional, get_type_hints, Union)
+from typing import (Any, Dict, List, Optional, get_type_hints, Union,
+                    Set, Tuple, Callable)
 from inspect import getfullargspec
+
+from hashstore.utils.docs import DocStringTemplate
 from . import (Jsonable, GlobalRef, Stringable, EnsureIt, json_decode,
                json_encode, not_zero_len, ensure_string,
                reraise_with_msg)
 from .template import ClassRef, Conversion, Template
+from .typings import is_optional, is_tuple, is_list, is_dict, get_args
 
-
-def get_args(cls, default=None):
-    if hasattr(cls, '__args__'):
-        return cls.__args__
-    return default
 
 
 class Typing(Stringable, EnsureIt):
@@ -98,6 +97,7 @@ class ListTyping(Typing):
     def default(self):
         return []
 
+
 class ReferenceResolver(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
@@ -108,6 +108,7 @@ class ReferenceResolver(metaclass=abc.ABCMeta):
     def dereference(self, s:str) -> Any:
         raise NotImplementedError('subclasses must override')
 
+
 class NoResolver(ReferenceResolver):
 
     def flatten(self, v:Any) -> str:
@@ -115,6 +116,7 @@ class NoResolver(ReferenceResolver):
 
     def dereference(self, s:str) -> Any:
         return s
+
 
 class AttrEntry(EnsureIt, Stringable):
     """
@@ -142,8 +144,9 @@ class AttrEntry(EnsureIt, Stringable):
     ...
     AttributeError: 'int' object has no attribute 'split'
     """
-    def __init__(self, name, typing=None, default=None, index=None):
+    def __init__(self, name, typing=None, default=None, ):
         self.default = default
+        self._doc = None
         self.index = None
         default_s = None
         if typing is None:
@@ -239,11 +242,11 @@ def typing_factory(o):
         args = get_args(o, [])
         if len(args) == 0:
             return RequiredTyping(o)
-        elif Optional[args[0]] == o:
+        elif is_optional(o,args):
             return OptionalTyping(args[0])
-        elif List[args[0]] == o:
+        elif is_list(o,args):
             return ListTyping(args[0])
-        elif Dict[args[0], args[1]] == o:
+        elif is_dict(o,args):
             return DictTyping(args[1], args[0])
         else:
             raise AssertionError(
@@ -261,15 +264,16 @@ class DictLike:
         return getattr(self.o, item)
 
 
-SINGLE_RETURN_VALUE = 'srv_'
+SINGLE_RETURN_VALUE = '_'
 
 
 class Mold(Jsonable):
 
     def __init__(self, o=None):
         self.keys: List[str] = []
-        self.cls : Optional[type] = None
+        self.cls: Optional[type] = None
         self.attrs: Dict[str, AttrEntry] = {}
+        self._doc = '{Attributes}\n'
         if o is not None:
             if isinstance(o, list):
                 for ae in map(AttrEntry.ensure_it, o):
@@ -277,9 +281,18 @@ class Mold(Jsonable):
             elif isinstance(o, dict):
                 self.add_hints(o)
             else:
+                self.add_hints(get_type_hints(o))
                 if isinstance(o, type):
                     self.cls = o
-                self.add_hints(get_type_hints(o))
+                    self.set_attr_docs(o.__doc__, "Attributes")
+
+    def set_attr_docs(self, docstring, section_name):
+        self._doc = DocStringTemplate(docstring, {section_name})
+        groups = self._doc.var_groups
+        if section_name in groups:
+            attr_docs = groups[section_name]
+            for k in attr_docs.keys():
+                self.attrs[k]._doc = str(attr_docs[k].content)
 
     @classmethod
     def factory(cls):
@@ -318,6 +331,8 @@ class Mold(Jsonable):
                 if k in self.attrs}
 
     def add_entry(self, entry:AttrEntry):
+        if entry.index is not None:
+            raise AssertionError(f'Same entry reused: {entry}')
         entry.index = len(self.attrs)
         self.keys.append(entry.name)
         self.attrs[entry.name] = entry
@@ -404,8 +419,16 @@ class Mold(Jsonable):
         return len(self.keys) == 0
 
 
-def extract_molds_from_function(fn):
+def extract_molds_from_function(fn:Callable[...,Any]
+                                )->Tuple[Mold,Mold]:
     """
+    Args:
+        fn: function inspected
+
+    Returns:
+        in_mold: `Mold` of function input
+        out_mold: `Mold` of function output
+
     >>> def a(i:int)->None:
     ...     pass
     ...
@@ -425,22 +448,32 @@ def extract_molds_from_function(fn):
     True
     >>>
     """
+    dst = DocStringTemplate(fn.__doc__, {"Args", "Returns"})
+
     annotations = dict(get_type_hints(fn))
     return_type = annotations['return']
     del annotations['return']
     in_mold = Mold(annotations)
     in_mold.set_defaults(in_mold.get_defaults_from_fn(fn))
     out_mold = Mold()
+
     if return_type != type(None):
-        out_hints = get_type_hints(return_type)
-        if len(out_hints) > 0:
-            out_mold.add_hints(out_hints)
+
+        if is_tuple(return_type):
+            args = get_args(return_type)
+            keys = [f"v{i}" for i in range(len(args))]
+            if "Returns" in dst.var_groups:
+                for i,k in enumerate(dst.var_groups["Returns"].keys()):
+                    keys[i] = k
+            out_mold.add_hints(dict(zip(keys, args)))
         else:
-            ae = AttrEntry(SINGLE_RETURN_VALUE, return_type)
-            out_mold.add_entry(ae)
+            out_hints = get_type_hints(return_type)
+            if len(out_hints) > 0:
+                out_mold.add_hints(out_hints)
+            else:
+                ae = AttrEntry(SINGLE_RETURN_VALUE, return_type)
+                out_mold.add_entry(ae)
     return in_mold, out_mold
-
-
 
 
 class AnnotationsProcessor(type):
@@ -448,6 +481,7 @@ class AnnotationsProcessor(type):
         mold = Mold(cls)
         mold.set_defaults(mold.get_defaults_from_cls(cls))
         cls.__mold__ = mold
+
 
 def combine_vars(vars:Optional[Dict[str,Any]],
                  kwargs:Dict[str,Any]

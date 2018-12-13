@@ -1,7 +1,7 @@
 from typing import Any
 
-from nose.tools import eq_,ok_,with_setup
-from hashstore.tests import TestSetup, assert_text
+from nose.tools import eq_,ok_
+from hashstore.tests import TestSetup
 import hashstore.utils.fio as fio
 from hashstore.utils import exception_message, quict
 from hashstore.utils.smattr import Mold, SmAttr, ReferenceResolver
@@ -22,7 +22,7 @@ def test_docs():
 
 def test_wiring():
     try:
-        class Abc(metaclass=e.InOutMeta):
+        class Abc(metaclass=e.ExecutibleFactory):
             pass
         ok_(False)
     except AttributeError :
@@ -30,7 +30,7 @@ def test_wiring():
                   ("Undefined:", "'in_mold'", "'out_mold'")))
 
 
-    class AbcDef(metaclass=e.InOutMeta):
+    class AbcDef(metaclass=e.ExecutibleFactory):
         class Input:
             a:int
             b:str
@@ -39,7 +39,7 @@ def test_wiring():
             d:int
             e:float
             f:str
-    ok_(isinstance(AbcDef, e.InOutMeta))
+    ok_(isinstance(AbcDef, e.ExecutibleFactory))
 
     eq_(AbcDef.in_mold.to_json(),
         ['a:Required[int]', 'b:Required[str]', 'c:Required[bool]'])
@@ -47,7 +47,7 @@ def test_wiring():
     eq_(AbcDef.out_mold.to_json(),
         ['d:Required[int]', 'e:Required[float]', 'f:Required[str]'])
 
-    class AbcDef2(metaclass=e.InOutMeta):
+    class AbcDef2(metaclass=e.ExecutibleFactory):
         in_mold = Mold(['a:Required[int]', 'b:Required[str]', 'c:Required[bool]'])
         out_mold = Mold(['d:Required[int]', 'e:Required[float]', 'f:Required[str]'])
 
@@ -76,12 +76,12 @@ def fn3(z:int, x:bytes, y:ComplexInput)->None:
     pass
 
 
-class InOut(metaclass=e.InOutMeta):
+class InOut(metaclass=e.ExecutibleFactory):
     Input = ComplexInput
     out_mold = Mold(ComplexOut)
 
 
-class Fn1Match(metaclass=e.InOutMeta):
+class Fn1Match(metaclass=e.ExecutibleFactory):
 
     class Input(SmAttr):
         z: int
@@ -91,7 +91,7 @@ class Fn1Match(metaclass=e.InOutMeta):
     out_mold = Mold(ComplexOut)
 
 
-class Fn1Match2(metaclass=e.InOutMeta):
+class Fn1Match2(metaclass=e.ExecutibleFactory):
     in_mold = Mold(Fn1Match.Input)
     Output = ComplexOut
 

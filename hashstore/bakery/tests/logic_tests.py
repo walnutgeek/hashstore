@@ -30,7 +30,7 @@ def test_json():
                 '"n:Required[hashstore.bakery:Cake]", ' \
                 '"i:Required[int]"], ' \
             '"out_mold": [' \
-                '"srv_:Required[hashstore.bakery:Cake]"], ' \
+                '"_:Required[hashstore.bakery:Cake]"], ' \
             '"ref": "hashstore.bakery.tests.logic_test_module:fn"}, ' \
             '{"in_mold": [], ' \
             '"out_mold": [' \
@@ -42,7 +42,7 @@ def test_json():
                 '"n:Required[hashstore.bakery:Cake]", ' \
                 '"i:Required[int]=5"], ' \
             '"out_mold": [' \
-                '"srv_:Required[hashstore.bakery:Cake]"], ' \
+                '"_:Required[hashstore.bakery:Cake]"], ' \
             '"ref": "hashstore.bakery.tests.logic_test_module:fn3"}], ' \
         '"name": "hashstore.bakery.tests.logic_test_module"}' \
 

@@ -12,6 +12,7 @@ class EventState(CodeEnum):
     NEW = enum.auto()
     SUCCESS = enum.auto()
     FAIL = enum.auto()
+    # NOT_AUTHORIZED = enum.auto()
 
 
 class EdgeType(CodeEnum):
@@ -79,7 +80,7 @@ class Event(SmAttr):
     ...             .invoke({"s":"CamelCase"}, NoResolver()))
     >>> len(events)
     2
-    >>> events[1].output_edge.vars['srv_']
+    >>> events[1].output_edge.vars['_']
     'camel_case'
     >>>
 
@@ -98,7 +99,7 @@ EDGE_MOLDS = set(mold_name(cls_name) for cls_name in EDGE_CLS_NAMES)
 EXECUTIBLE_TYPE = 'executible_type'
 
 
-class InOutMeta(type):
+class ExecutibleFactory(type):
     def __init__(cls, name, bases, dct):
         defined_vars=set(dct)
         if not defined_vars.issuperset(EDGE_MOLDS):
@@ -148,7 +149,7 @@ class Executible(SmAttr):
                 inst = ref.get_instance()
                 if inspect.isfunction(inst):
                     return Function.parse(inst)
-                if inspect.isclass(inst) and issubclass(inst,InOutMeta):
+                if inspect.isclass(inst) and issubclass(inst, ExecutibleFactory):
                     return inst.exec_factory()
                 raise AttributeError(
                     f'Cannot build `Executible` out: {o}')
@@ -224,6 +225,9 @@ class Function(Executible):
         ref = GlobalRef(fn)
         in_mold, out_mold = extract_molds_from_function(fn)
         return cls(ref=ref, in_mold=in_mold, out_mold=out_mold)
+
+    def __call__(self, *args, **kwargs):
+        return self.ref.get_instance()(*args, **kwargs)
 
     def run(self, ctx:ExecContext):
         ctx.raw_output = self.ref.get_instance()(**ctx.get_raw_input())

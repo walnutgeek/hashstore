@@ -1,5 +1,7 @@
 from typing import Optional, Union, List, Iterable
 
+from hashstore.utils.smattr import SINGLE_RETURN_VALUE
+
 
 class AutoWireRoot(type):
     def __init__(cls, name, bases, dct):
@@ -51,7 +53,7 @@ class AutoWire:
             return [*self._parent._path(), self]
 
     def __getattr__(self, name):
-        if name[:1] == '_':
+        if name != SINGLE_RETURN_VALUE and name[:1] == '_':
             raise AttributeError(f'no privates: {name}')
         path = self._path()
         attr_cls = path[0]._wiring_factory(path, name)

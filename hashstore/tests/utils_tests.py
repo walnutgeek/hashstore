@@ -12,6 +12,8 @@ test = TestSetup(__name__,ensure_empty=True)
 log = test.log
 fio.ensure_directory(test.dir)
 
+import hashstore.utils.docs as docs
+
 
 def test_docs():
     import doctest
@@ -20,7 +22,11 @@ def test_docs():
     import hashstore.utils.time as time
     import hashstore.utils.template as template
     import hashstore.utils.hashing as hashing
-    for t in (utils, ignore_file, time, template, hashing):
+    import hashstore.utils.typings as typings
+    import hashstore.utils.log_box as log_box
+
+    for t in (utils, ignore_file, time, template, hashing, typings,
+              docs, log_box):
         r = doctest.testmod(t)
         ok_(r.attempted > 0, f'There is no doctests in module {t}')
         eq_(r.failed,0)
@@ -180,3 +186,72 @@ def test_mix_in():
     retest(B4, (True, True, False, False))
     retest(B5)
 
+class A:
+    """ An example of SmAttr usage
+
+    Attributes:
+        possible atributes of class
+        i: integer
+        s: string with
+            default
+        d: optional datetime
+
+       attribute contributed
+    """
+    pass
+
+class A_ValueError:
+    """ An example of SmAttr usage
+
+    Attributes:
+        possible atributes of class
+        i: integer
+        s: string with
+            default
+        d: optional datetime
+       attribute contributed
+    """
+    pass
+
+def hello(i:int, s:str='xyz')-> int:
+    """ Greeting protocol
+
+    Args:
+       s: string with
+          default
+
+    Returns:
+        _: very important number
+    """
+    pass
+
+
+def test_doc_str_template():
+    dst = docs.DocStringTemplate(hello.__doc__, {"Args", "Returns"})
+    eq_(dst.var_groups["Args"].keys(),{'s'})
+    eq_(dst.var_groups["Returns"].keys(),{'_'})
+    eq_(list(dst.var_groups["Returns"].format(4)),
+        ['    Returns:', '        _: very important number'])
+    assert_text(dst.doc(),hello.__doc__)
+
+    dst = docs.DocStringTemplate(A.__doc__, {"Attributes"})
+    attributes_ = dst.var_groups["Attributes"]
+    eq_(attributes_.keys(), {'i', 's', 'd'})
+    eq_(list(attributes_.format(4)),
+        ['    Attributes:', '        possible atributes of class',
+         '        i: integer', '        s: string with default',
+         '        d: optional datetime'])
+    eq_(str(attributes_['s'].content),"string with default")
+    assert_text(dst.doc(),A.__doc__)
+
+    attributes_.init_parse() # no harm to call it second time
+
+    try:
+        docs.DocStringTemplate(A_ValueError.__doc__, {"Attributes"})
+        ok_(False)
+    except ValueError as e:
+        eq_(str(e),"Missleading indent=7? var_indent=8 "
+                   "line='attribute contributed' ")
+
+    dstNone = docs.DocStringTemplate(None, {})
+    eq_(dstNone.doc(),"")
