@@ -1,7 +1,7 @@
 const webpack = require('webpack');
 const path = require('path');
 const TransferWebpackPlugin = require('transfer-webpack-plugin');
-const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin')
 
 const config = {
   entry: {
@@ -22,16 +22,11 @@ const config = {
   },
   optimization: {
     minimizer: [
-      // we specify a custom UglifyJsPlugin here to get source maps in production
-      new UglifyJsPlugin({
-        cache: true,
+      new TerserPlugin({
         parallel: true,
-        uglifyOptions: {
-          compress: false,
+        terserOptions: {
           ecma: 6,
-          mangle: true
-        },
-        sourceMap: true
+        }
       })
     ]
   },
