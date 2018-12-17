@@ -448,8 +448,11 @@ class GlobalRef(Stringable, EnsureIt, StrKeyMixin):
         elif isclass(s) or isfunction(s):
             self.module, self.name = s.__module__, s.__name__
         else:
-            if s[-1] == ']' :
-                s, self.item = s[:-1].split('[')
+            try:
+                if s[-1] == ']' :
+                    s, self.item = s[:-1].split('[')
+            except:
+                reraise_with_msg(f'{s}')
             split = s.split(':')
             if len(split) == 1:
                 if not(split[0]):

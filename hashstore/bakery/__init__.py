@@ -827,7 +827,7 @@ class PathInfo(SmAttr):
 
 
 class Content(PathInfo):
-    __to_json__ = PathInfo
+    __serialize_as__ = PathInfo
     data: Optional[bytes]
     stream_fn: Optional[Callable[[],IO[bytes]]]
     file: Optional[str]

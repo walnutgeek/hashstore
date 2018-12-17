@@ -7,7 +7,7 @@ def get_args(cls, default=None):
     return default
 
 
-def is_typeing(tt, t, args):
+def is_typing(tt, t, args):
     if args is None:
         args = get_args(t)
     try:
@@ -29,7 +29,7 @@ def is_tuple(t, args = None):
     (False, False, False, False, True, True)
     >>>
     """
-    return is_typeing(typing.Tuple, t, args)
+    return is_typing(typing.Tuple, t, args)
 
 
 def is_optional(t, args=None):
@@ -66,7 +66,7 @@ def is_list(t,args=None):
     (False, False, True, False, False, False)
     >>>
     """
-    return is_typeing(typing.List, t, args)
+    return is_typing(typing.List, t, args)
 
 
 def is_dict(t,args=None):
@@ -87,4 +87,16 @@ def is_dict(t,args=None):
     >>>
 
     """
-    return is_typeing(typing.Dict, t, args)
+    return is_typing(typing.Dict, t, args)
+
+
+def is_from_typing_module(cls):
+    """
+    >>> is_from_typing_module(typing.Any)
+    True
+    >>> is_from_typing_module(typing.Callable[[],typing.IO[bytes]])
+    True
+    >>> is_from_typing_module(str)
+    False
+    """
+    return cls.__module__ == typing.__name__

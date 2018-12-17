@@ -42,6 +42,12 @@ class Content(Stringable):
     'loer ipsum kot lakrose manta'
     >>> repr(c)
     "Content('loer ipsum kot lakrose manta')"
+    >>> c.insert("abc xyz: ")
+    >>> str(c)
+    'abc xyz: loer ipsum kot lakrose manta'
+    >>> c.end_of_sentence()
+    >>> str(c)
+    'abc xyz: loer ipsum kot lakrose manta.'
     """
     def __init__(self, s=None):
         self.words = []
@@ -49,6 +55,18 @@ class Content(Stringable):
 
     def __len__(self):
         return len(self.words)
+
+    def insert(self, s):
+        if s is not None:
+            s = s.strip()
+            if len(s) > 0:
+                for w in s.split()[::-1]:
+                    self.words.insert(0, w)
+
+    def end_of_sentence(self):
+        if len(self.words) > 0:
+            if self.words[-1][-1:] != '.':
+                self.words[-1] = self.words[-1]+'.'
 
     def append(self, s):
         if s is not None:
@@ -87,6 +105,12 @@ class AbstractDocEntry:
         self.indent = indent
         self.content = Content(content)
         self.unparsed_lines = []
+
+    @classmethod
+    def empty(cls, name):
+        inst = cls(name, 0, "")
+        inst.init_parse()
+        return inst
 
     @classmethod
     def detect_entry(cls, indent, striped, allowed_keys=None):
@@ -189,7 +213,11 @@ class DocStringTemplate:
         self.keys_expected = keys_expected
         self.var_groups: Dict[str,GroupOfVariables] = {}
         self.template: List[Union[Placeholder,str]] = []
-        if doc is not None:
+        if doc is None:
+            for k in keys_expected:
+                self.template.append(Placeholder(0,k))
+                self.template.append("")
+        else:
             curr_group = None
             for l in doc.split('\n'):
                 striped = l.strip()

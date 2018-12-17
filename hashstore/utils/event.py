@@ -224,6 +224,7 @@ class Function(Executible):
     def parse(cls, fn):
         ref = GlobalRef(fn)
         in_mold, out_mold = extract_molds_from_function(fn)
+
         return cls(ref=ref, in_mold=in_mold, out_mold=out_mold)
 
     def __call__(self, *args, **kwargs):

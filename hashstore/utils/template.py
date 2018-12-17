@@ -1,3 +1,4 @@
+from hashstore.utils.typings import is_from_typing_module
 from . import (adjust_for_json, lazy_factory, GlobalRef, Stringable,
                StrKeyMixin, EnsureIt, identity, _GLOBAL_REF,
                reraise_with_msg)
@@ -73,8 +74,8 @@ class ClassRef(Stringable, StrKeyMixin, EnsureIt):
     def __str__(self):
         if self.cls.__module__ == 'builtins':
             return self.cls.__name__
-        elif self.cls == Any:
-            return 'typing:Any'
+        elif is_from_typing_module(self.cls):
+            return str(self.cls)
         return str(GlobalRef(self.cls))
 
 class Template(type):

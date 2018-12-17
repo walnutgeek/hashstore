@@ -3,13 +3,17 @@ from typing import (Any, Dict, List, Optional, get_type_hints, Union,
                     Set, Tuple, Callable)
 from inspect import getfullargspec
 
-from hashstore.utils.docs import DocStringTemplate
+from hashstore.utils.docs import (
+    DocStringTemplate, GroupOfVariables, VariableDocEntry)
 from . import (Jsonable, GlobalRef, Stringable, EnsureIt, json_decode,
                json_encode, not_zero_len, ensure_string,
                reraise_with_msg)
 from .template import ClassRef, Conversion, Template
 from .typings import is_optional, is_tuple, is_list, is_dict, get_args
 
+ATTRIBUTES = "Attributes"
+RETURNS = "Returns"
+ARGS = "Args"
 
 
 class Typing(Stringable, EnsureIt):
@@ -144,7 +148,7 @@ class AttrEntry(EnsureIt, Stringable):
     ...
     AttributeError: 'int' object has no attribute 'split'
     """
-    def __init__(self, name, typing=None, default=None, ):
+    def __init__(self, name, typing=None, default=None):
         self.default = default
         self._doc = None
         self.index = None
@@ -273,7 +277,7 @@ class Mold(Jsonable):
         self.keys: List[str] = []
         self.cls: Optional[type] = None
         self.attrs: Dict[str, AttrEntry] = {}
-        self._doc = '{Attributes}\n'
+        docstring = None
         if o is not None:
             if isinstance(o, list):
                 for ae in map(AttrEntry.ensure_it, o):
@@ -284,15 +288,32 @@ class Mold(Jsonable):
                 self.add_hints(get_type_hints(o))
                 if isinstance(o, type):
                     self.cls = o
-                    self.set_attr_docs(o.__doc__, "Attributes")
+                    self.set_defaults(
+                        self.get_defaults_from_cls(self.cls))
+                    docstring = o.__doc__
+        self._dst = DocStringTemplate(docstring, {ATTRIBUTES})
+        self.syncup_dst_and_attrs(ATTRIBUTES)
+        if self.cls is not None:
+            self.cls.__doc__ = self._dst.doc()
 
-    def set_attr_docs(self, docstring, section_name):
-        self._doc = DocStringTemplate(docstring, {section_name})
-        groups = self._doc.var_groups
-        if section_name in groups:
+    def syncup_dst_and_attrs(self, section_name):
+        groups = self._dst.var_groups
+        if section_name not in groups:
+            groups[section_name] = GroupOfVariables.empty(section_name)
+        else:
             attr_docs = groups[section_name]
             for k in attr_docs.keys():
                 self.attrs[k]._doc = str(attr_docs[k].content)
+        variables = groups[section_name].variables
+        for k in self.keys:
+            if k not in variables:
+                variables[k] = VariableDocEntry.empty(k)
+            content = variables[k].content
+            ae = self.attrs[k]
+            content.insert(str(ae.typing))
+            if ae.default is not None:
+                content.end_of_sentence()
+                content.append(f"Default is: {ae.default!r}.")
 
     @classmethod
     def factory(cls):
@@ -448,7 +469,7 @@ def extract_molds_from_function(fn:Callable[...,Any]
     True
     >>>
     """
-    dst = DocStringTemplate(fn.__doc__, {"Args", "Returns"})
+    dst = DocStringTemplate(fn.__doc__, {ARGS, RETURNS})
 
     annotations = dict(get_type_hints(fn))
     return_type = annotations['return']
@@ -462,8 +483,8 @@ def extract_molds_from_function(fn:Callable[...,Any]
         if is_tuple(return_type):
             args = get_args(return_type)
             keys = [f"v{i}" for i in range(len(args))]
-            if "Returns" in dst.var_groups:
-                for i,k in enumerate(dst.var_groups["Returns"].keys()):
+            if RETURNS in dst.var_groups:
+                for i,k in enumerate(dst.var_groups[RETURNS].keys()):
                     keys[i] = k
             out_mold.add_hints(dict(zip(keys, args)))
         else:
@@ -478,9 +499,7 @@ def extract_molds_from_function(fn:Callable[...,Any]
 
 class AnnotationsProcessor(type):
     def __init__(cls, name, bases, dct):
-        mold = Mold(cls)
-        mold.set_defaults(mold.get_defaults_from_cls(cls))
-        cls.__mold__ = mold
+        cls.__mold__ = Mold(cls)
 
 
 def combine_vars(vars:Optional[Dict[str,Any]],
@@ -591,13 +610,16 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
         type(self).__mold__.set_attrs(values, self)
 
     def to_json(self) -> Dict[str, Any]:
-        cls = type(self)
-        if hasattr(cls, '__to_json__'):
-            mold = Mold.ensure_it(cls.__to_json__) #type: ignore
-        else:
-            mold = cls.__mold__
+        mold = self.get_serialization_mold()
         return mold.mold_it(DictLike(self), Conversion.TO_JSON)
 
+    def get_serialization_mold(self):
+        cls = type(self)
+        if hasattr(cls, '__serialize_as__'):
+            mold = Mold.ensure_it(cls.__serialize_as__)  # type: ignore
+        else:
+            mold = cls.__mold__
+        return mold
 
 
 class Row:
