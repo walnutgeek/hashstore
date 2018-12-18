@@ -291,13 +291,12 @@ class Mold(Jsonable):
                     self.set_defaults(
                         self.get_defaults_from_cls(self.cls))
                     docstring = o.__doc__
-        self._dst = DocStringTemplate(docstring, {ATTRIBUTES})
-        self.syncup_dst_and_attrs(ATTRIBUTES)
-        if self.cls is not None:
-            self.cls.__doc__ = self._dst.doc()
+                    dst = DocStringTemplate(docstring, {ATTRIBUTES})
+                    self.syncup_dst_and_attrs(dst, ATTRIBUTES)
+                    self.cls.__doc__ = dst.doc()
 
-    def syncup_dst_and_attrs(self, section_name):
-        groups = self._dst.var_groups
+    def syncup_dst_and_attrs(self, dst, section_name):
+        groups = dst.var_groups
         if section_name not in groups:
             groups[section_name] = GroupOfVariables.empty(section_name)
         else:
@@ -441,7 +440,7 @@ class Mold(Jsonable):
 
 
 def extract_molds_from_function(fn:Callable[...,Any]
-                                )->Tuple[Mold,Mold]:
+                                )->Tuple[Mold,Mold,DocStringTemplate]:
     """
     Args:
         fn: function inspected
@@ -453,7 +452,7 @@ def extract_molds_from_function(fn:Callable[...,Any]
     >>> def a(i:int)->None:
     ...     pass
     ...
-    >>> in_a, out_a = extract_molds_from_function(a)
+    >>> in_a, out_a,_ = extract_molds_from_function(a)
     >>> out_a.is_empty()
     True
     >>> out_a.is_single_return()
@@ -462,7 +461,7 @@ def extract_molds_from_function(fn:Callable[...,Any]
     >>> def b(i:int)->str:
     ...     return f'i={i}'
     ...
-    >>> in_b, out_b = extract_molds_from_function(b)
+    >>> in_b, out_b,_ = extract_molds_from_function(b)
     >>> out_b.is_empty()
     False
     >>> out_b.is_single_return()
@@ -494,7 +493,9 @@ def extract_molds_from_function(fn:Callable[...,Any]
             else:
                 ae = AttrEntry(SINGLE_RETURN_VALUE, return_type)
                 out_mold.add_entry(ae)
-    return in_mold, out_mold
+    in_mold.syncup_dst_and_attrs(dst, ARGS)
+    out_mold.syncup_dst_and_attrs(dst, RETURNS)
+    return in_mold, out_mold, dst
 
 
 class AnnotationsProcessor(type):

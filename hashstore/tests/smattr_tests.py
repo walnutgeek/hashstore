@@ -58,8 +58,33 @@ def pack_wolves(i:int, s:str='xyz')-> Tuple[int,str]:
     return i, s
 
 def test_extract_molds_from_function():
-    in_mold, out_mold = extract_molds_from_function(pack_wolves)
+    in_mold, out_mold, dst = extract_molds_from_function(pack_wolves)
     eq_(str(out_mold),'["num_of_wolves:Required[int]", "pack_name:Required[str]"]')
+    assert_text(dst.doc(),""" Greeting protocol
+
+    Args:
+        s: Required[str] string with default. Default is: 'xyz'.
+        i: Required[int]
+
+    Returns:
+        num_of_wolves: Required[int] Pack size
+        pack_name: Required[str] Name of the pack
+    
+    """)
+
+def test_docstring():
+    assert_text(A.__doc__, """
+     An example of SmAttr usage
+
+    Attributes:
+        i: Required[int] integer
+        s: Required[str] string with default. Default is: 'xyz'.
+        d: Optional[datetime:datetime] optional datetime
+        z: List[datetime:datetime]
+        y: Dict[str,str]
+
+       attribute contributed
+    """)
 
 def test_gref_with_molded_table():
     ATable = MoldedTable[A]

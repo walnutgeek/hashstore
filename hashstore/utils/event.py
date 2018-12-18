@@ -223,9 +223,10 @@ class Function(Executible):
     @classmethod
     def parse(cls, fn):
         ref = GlobalRef(fn)
-        in_mold, out_mold = extract_molds_from_function(fn)
-
-        return cls(ref=ref, in_mold=in_mold, out_mold=out_mold)
+        in_mold, out_mold, dst = extract_molds_from_function(fn)
+        inst = cls(ref=ref, in_mold=in_mold, out_mold=out_mold)
+        inst.__doc__ = dst.doc()
+        return inst
 
     def __call__(self, *args, **kwargs):
         return self.ref.get_instance()(*args, **kwargs)
