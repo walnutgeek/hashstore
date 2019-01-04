@@ -1,7 +1,3 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
 
 trigger:
 - master
@@ -11,14 +7,26 @@ jobs:
     pool:
       vmImage: 'vs2017-win2016'
     steps:
-    - script: echo hello from Windows
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.6'
+          architecture: 'x64'
+      - script: python -V
   - job: macOS
     pool:
       vmImage: 'macOS-10.13'
     steps:
-    - script: echo hello from macOS
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.6'
+          architecture: 'x64'
+      - script: python -V
   - job: Linux
     pool:
       vmImage: 'ubuntu-16.04'
     steps:
-    - script: echo hello from Linux
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.6'
+          architecture: 'x64'
+      - script: python -V
