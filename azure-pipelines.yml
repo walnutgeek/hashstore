@@ -11,7 +11,11 @@ jobs:
         inputs:
           versionSpec: '3.6'
           architecture: 'x64'
-      - script: python -V
+      - script: |
+        python -V
+        pip install -r requirements.txt
+        pip install -r test-requirements.txt
+        python setup.py sdist
   - job: macOS
     pool:
       vmImage: 'macOS-10.13'
@@ -20,7 +24,11 @@ jobs:
         inputs:
           versionSpec: '3.6'
           architecture: 'x64'
-      - script: python -V
+      - script: |
+        python -V
+        pip install -r requirements.txt
+        pip install -r test-requirements.txt
+        python setup.py sdist
   - job: Linux
     pool:
       vmImage: 'ubuntu-16.04'
@@ -29,4 +37,8 @@ jobs:
         inputs:
           versionSpec: '3.6'
           architecture: 'x64'
-      - script: python -V
+      - script: |
+        python -V
+        pip install -r requirements.txt
+        pip install -r test-requirements.txt
+        python setup.py sdist
