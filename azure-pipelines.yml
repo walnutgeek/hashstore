@@ -17,6 +17,7 @@ jobs:
           pip install -r test-requirements.txt
           npm -v
           python -v setup.py sdist
+          dir dist
   - job: macOS
     pool:
       vmImage: 'macOS-10.13'
@@ -30,9 +31,11 @@ jobs:
           pip install -r requirements.txt
           pip install -r test-requirements.txt
           python setup.py sdist
+          ls -l dist
       - task: PublishPipelineArtifact@0
         inputs:
           targetPath: 'dist'
+          artifactName: 'hashstore-linux.tgz'
   - job: Linux
     pool:
       vmImage: 'ubuntu-16.04'
@@ -46,6 +49,8 @@ jobs:
           pip install -r requirements.txt
           pip install -r test-requirements.txt
           python setup.py sdist
+          ls -l dist
       - task: PublishPipelineArtifact@0
         inputs:
           targetPath: 'dist'
+          artifactName: 'hashstore-macos.tgz'
