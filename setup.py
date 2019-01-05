@@ -1,5 +1,6 @@
 from setuptools import setup,find_packages
 from setuptools.command.sdist import sdist
+import os
 
 # MANIFEST.in ensures that requirements are included in `sdist`
 install_requires = open('requirements.txt').read().split()
@@ -9,7 +10,11 @@ version = open('version.txt').read().strip()
 class MySdistCommand(sdist):
     def run(self):
         import subprocess
-        for c in (['npm', 'install'], ['npm', 'run', 'build'] ):
+        npm = 'npm'
+        if os.name == 'nt':
+            npm = 'npm.cmd'
+
+        for c in ([npm, 'install'], [npm, 'run', 'build'] ):
             subprocess.check_call(c, cwd='hashstore/bakery/js')
         sdist.run(self)
 
