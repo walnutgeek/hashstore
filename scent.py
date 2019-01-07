@@ -10,6 +10,7 @@ def py_files(filename):
 
 
 run_envs = ['py6', 'py7']
+
 mypy_modules = [
     'hashstore.bakery.tests.logic_test_module', 'hashstore.hs']
 

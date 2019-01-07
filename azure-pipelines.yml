@@ -15,7 +15,9 @@ jobs:
           python -V
           pip install -r requirements.txt
           pip install -r test-requirements.txt
-          python setup.py sdist
+      - script: python scent.py
+      - script: python setup.py sdist
+      - script: dir dist
       - task: PublishPipelineArtifact@0
         inputs:
           targetPath: 'dist'
@@ -32,8 +34,9 @@ jobs:
           python -V
           pip install -r requirements.txt
           pip install -r test-requirements.txt
-          python setup.py sdist
-          ls -l dist
+      - script: python scent.py
+      - script: python setup.py sdist
+      - script: ls -l dist
       - task: PublishPipelineArtifact@0
         inputs:
           targetPath: 'dist'
@@ -50,8 +53,9 @@ jobs:
           python -V
           pip install -r requirements.txt
           pip install -r test-requirements.txt
-          python setup.py sdist
-          ls -l dist
+      - script: python scent.py
+      - script: python setup.py sdist
+      - script: ls -l dist
       - task: PublishPipelineArtifact@0
         inputs:
           targetPath: 'dist'

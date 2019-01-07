@@ -1,5 +1,6 @@
 .mypy_cache
 .shamo
+.eggs
 .cake_*
 test-out/
 dist
