@@ -16,8 +16,6 @@ jobs:
           pip install -r requirements.txt
           pip install -r test-requirements.txt
         name: requirements
-      - script: python scent.py current
-        name: test
       - script: python setup.py sdist
         name: sdist
       - script: dir dist
@@ -38,10 +36,10 @@ jobs:
           pip install -r requirements.txt
           pip install -r test-requirements.txt
         name: requirements
-      - script: python scent.py current
-        name: test
       - script: python setup.py sdist
         name: sdist
+      - script: python scent.py current
+        name: test
       - script: ls -l dist
       - task: PublishPipelineArtifact@0
         inputs:
@@ -60,10 +58,10 @@ jobs:
           pip install -r requirements.txt
           pip install -r test-requirements.txt
         name: requirements
-      - script: python scent.py current
-        name: test
       - script: python setup.py sdist
         name: sdist
+      - script: python scent.py current
+        name: test
       - script: ls -l dist
       - task: PublishPipelineArtifact@0
         inputs:
