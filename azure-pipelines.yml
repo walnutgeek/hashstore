@@ -11,17 +11,16 @@ jobs:
         inputs:
           versionSpec: '3.6'
           architecture: 'x64'
-      - name: requirements
-        script: |
+      - script: |
           python -V
           pip install -r requirements.txt
           pip install -r test-requirements.txt
-      - name: test
-        script: python scent.py current
-      - name: sdist
-        script: python setup.py sdist
-      - name: list_dist
-        script: dir dist
+        name: requirements
+      - script: python scent.py current
+        name: test
+      - script: python setup.py sdist
+        name: sdist
+      - script: dir dist
       - task: PublishPipelineArtifact@0
         inputs:
           targetPath: 'dist'
@@ -34,17 +33,16 @@ jobs:
         inputs:
           versionSpec: '3.6'
           architecture: 'x64'
-      - name: requirements
-        script: |
+      - script: |
           python -V
           pip install -r requirements.txt
           pip install -r test-requirements.txt
-      - name: test
-        script: python scent.py current
-      - name: sdist
-        script: python setup.py sdist
-      - name: list_dist
-        script: ls -l dist
+        name: requirements
+      - script: python scent.py current
+        name: test
+      - script: python setup.py sdist
+        name: sdist
+      - script: ls -l dist
       - task: PublishPipelineArtifact@0
         inputs:
           targetPath: 'dist'
@@ -57,17 +55,16 @@ jobs:
         inputs:
           versionSpec: '3.6'
           architecture: 'x64'
-      - name: requirements
-        script: |
+      - script: |
           python -V
           pip install -r requirements.txt
           pip install -r test-requirements.txt
-      - name: test
-        script: python scent.py current
-      - name: sdist
-        script: python setup.py sdist
-      - name: list_dist
-        script: ls -l dist
+        name: requirements
+      - script: python scent.py current
+        name: test
+      - script: python setup.py sdist
+        name: sdist
+      - script: ls -l dist
       - task: PublishPipelineArtifact@0
         inputs:
           targetPath: 'dist'
