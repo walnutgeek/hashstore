@@ -11,13 +11,17 @@ jobs:
         inputs:
           versionSpec: '3.6'
           architecture: 'x64'
-      - script: |
+      - name: requirements
+        script: |
           python -V
           pip install -r requirements.txt
           pip install -r test-requirements.txt
-      - script: python scent.py
-      - script: python setup.py sdist
-      - script: dir dist
+      - name: test
+        script: python scent.py current
+      - name: sdist
+        script: python setup.py sdist
+      - name: list_dist
+        script: dir dist
       - task: PublishPipelineArtifact@0
         inputs:
           targetPath: 'dist'
@@ -30,13 +34,17 @@ jobs:
         inputs:
           versionSpec: '3.6'
           architecture: 'x64'
-      - script: |
+      - name: requirements
+        script: |
           python -V
           pip install -r requirements.txt
           pip install -r test-requirements.txt
-      - script: python scent.py
-      - script: python setup.py sdist
-      - script: ls -l dist
+      - name: test
+        script: python scent.py current
+      - name: sdist
+        script: python setup.py sdist
+      - name: list_dist
+        script: ls -l dist
       - task: PublishPipelineArtifact@0
         inputs:
           targetPath: 'dist'
@@ -49,13 +57,17 @@ jobs:
         inputs:
           versionSpec: '3.6'
           architecture: 'x64'
-      - script: |
+      - name: requirements
+        script: |
           python -V
           pip install -r requirements.txt
           pip install -r test-requirements.txt
-      - script: python scent.py
-      - script: python setup.py sdist
-      - script: ls -l dist
+      - name: test
+        script: python scent.py current
+      - name: sdist
+        script: python setup.py sdist
+      - name: list_dist
+        script: ls -l dist
       - task: PublishPipelineArtifact@0
         inputs:
           targetPath: 'dist'
