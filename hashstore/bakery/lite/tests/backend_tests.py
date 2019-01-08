@@ -16,9 +16,9 @@ log = test.log
 
 
 
-inline_udk = 'nxtb5v6xupoxyvbds63goir59wlo9vfa8vk4xgas1a6g4f9bn'
-db_udk = '3no3jb46qaff0a0pwg24lu0y8eq5ldmdich3su14mkcr76m8wo'
-file_udk = '19gglgmrd4vuiagsr2duw9mz6tbdcku5xcawo6bg24k2wuenkl'
+inline_udk = '5vdffgpxyadwoi3y91bhli3azarn3xn1jnm5i1bct2ktl547mi'
+db_udk = '3vww43t0xcq6tq586pdtaapa8ubae45ith1zwyr4jd5oigcflp'
+file_udk = '40b01hzgoes1zkf7p0v5bion6zxtxltu9t39zufamdk5i2ax54'
 
 def test_LiteBackend():
     hs = BlobStore(os.path.join(test.dir, 'test_HashStore'))

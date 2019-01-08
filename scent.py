@@ -18,7 +18,7 @@ mypy_modules = [
 def conda_prefix(e):
     return '' if e == 'current' else f'. activate {e}; '
 
-def run(case, envs, html=False):
+def run_tests(case, envs, html=False):
     html = 'python -m coverage html;' if html else ''
     env_states = [
         0 == os.system(
@@ -66,7 +66,7 @@ def execute_some_tests(*args):
     # case += ' hashstore.tests.doc_tests'
     # case += ' hashstore.bakery.tests.cli_tests'
     # case += ' hashstore.bakery.tests.server_tests'
-    return run(case, run_envs, html=True)
+    return run_tests(case, run_envs, html=True)
 
 
 # #@runnable
@@ -77,5 +77,5 @@ if __name__ == '__main__':
     envs = run_envs
     if len(sys.argv) > 1:
         envs = sys.argv[1:]
-    if not(run('', envs, html=True)):
+    if not(run_tests('', envs, html=True)):
         raise SystemExit(-1)

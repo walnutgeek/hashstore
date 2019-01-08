@@ -121,19 +121,19 @@ class ServerSetup:
 
         self.test.run_script_and_wait(
             f'update_vtree --cake_path /{new_portal!s}/x/y/2 '
-            f'--cake 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4'
+            f'--cake 2IsihvsxHhiUrp5otlJ4f1olJldHAzNHOLaMuIPXnm9P'
             , expect_rc=0, expect_read=
                 'WARNING:hs: Server does not have '
-                '2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4 stored.\n'
+                '2IsihvsxHhiUrp5otlJ4f1olJldHAzNHOLaMuIPXnm9P stored.\n'
                 'CPath: ...\n'
-                'Cake: 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4')
+                'Cake: 2IsihvsxHhiUrp5otlJ4f1olJldHAzNHOLaMuIPXnm9P')
 
         self.test.run_script_and_wait(
             f'update_vtree --cake_path /{new_portal!s}/x/y/2 '
             f'--file {files!s}/x/y/2',
             expect_rc=0, expect_read=
                     'CPath: ...\n'
-                    'Cake: 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4')
+                    'Cake: 2IsihvsxHhiUrp5otlJ4f1olJldHAzNHOLaMuIPXnm9P')
         rpaths = []
         for portal_type in [ 'VTREE', 'PORTAL' ]:
             _, save_words = self.test.run_script_and_wait(
@@ -152,10 +152,10 @@ class ServerSetup:
             self.test.run_script_and_wait(
                 f'backup --dir {files} --remote_path {rpath!s}',
                 expect_rc=0,
-                expect_read='''....
+                expect_read=f'''....
                 DirId: {dirId!s}
                 RemotePath: /{stored!s}/
-                Cake: {cake2}'''.format(**locals()))
+                Cake: {cake2}''')
 
             outx = os.path.join(mount, 'out%d' % i)
             match_cake = cake2 if i == 1 else 'None'
@@ -176,7 +176,7 @@ class ServerSetup:
             '--file {files!s}/x/y/1'
                 .format(**locals()), expect_rc=0, expect_read=
                     'CPath: ...\n'
-                    'Cake: 2S5IatGd3u7Z7u5cptzH3SXhru9ACPGJgdT32QduZ8Df')
+                    'Cake: 2f3WYb52iUTL1WqN55lZ6Md8zl9Rk7vNlSs0nzECYQmh')
 
         self.test.run_script_and_wait(
             'update_vtree '
@@ -184,7 +184,7 @@ class ServerSetup:
             '--file {files!s}/x/y/3'
                 .format(**locals()), expect_rc=0, expect_read=
                     'CPath: ...\n'
-                    'Cake: 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4')
+                    'Cake: 2IsihvsxHhiUrp5otlJ4f1olJldHAzNHOLaMuIPXnm9P')
 
         self.test.run_script_and_wait(
             'update_vtree '
@@ -192,7 +192,7 @@ class ServerSetup:
             '--file {files!s}/x/y/3'
                 .format(**locals()), expect_rc=0, expect_read=
                     'CPath: ...\n'
-                    'Cake: 2qt2ruOzhiWD6am3Hmwkh6B7aLEe77u9DbAYoLTAHeO4')
+                    'Cake: 2IsihvsxHhiUrp5otlJ4f1olJldHAzNHOLaMuIPXnm9P')
 
         self.test.run_script_and_wait(
             'delete_in_vtree --cake_path /{new_portal!s}/x/y/2 '

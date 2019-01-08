@@ -7,6 +7,9 @@ import subprocess
 from nose.tools import eq_,ok_
 import sys
 from doctest import testmod
+import random
+import time
+
 
 pyenv = 'py%d' % sys.version_info.minor
 
@@ -159,16 +162,17 @@ def make_recursive_link(dir, path, abs_path):
     except:
         os.system('ls -l %s' % os.path.dirname(abs_path))
 
-import random 
-import time
-
 
 def randint_repeat(start, end, repeat):
     return (random.randint(start, end) for _ in range(repeat))
 
-random_bytes = lambda l: bytes(randint_repeat(0,255,l))
 
-reseed_random = lambda : int(time.clock() * 1000)
+def random_bytes(l):
+    return bytes(randint_repeat(0,255,l))
+
+
+def reseed_random():
+    return int(time.clock() * 1000)
 
 
 def seed(a):
@@ -202,7 +206,7 @@ def random_small_caps(l):
 
     >>> seed(0)
     >>> random_small_caps(5)
-    'mpvad'
+    'mynbi'
 
     :param l: length
     :return:
@@ -260,8 +264,8 @@ def update_mount(dir, file_set):
 
 fileset1_udk = 'X7cb3ecebc582de3d18c6d12fb6109402718cf11ad06cb4ec4c1d7be23998f60f'
 fileset2_udk = 'Xf4eec87b810074535c8be8624ebb72129446c7936f10e62643f2e16e6fe081f7'
-fileset1_cake = '3tnIwEY98PfZdgrbqxJEZNWLB6BX1MilETHoLWQx8Mlr' #'hozMa8oJozEdgOSKXayFcrEwuGaGfW2rxBUeS6MKEdaK'
-fileset2_cake = '3voFwCqsrej3kvrUktlIXal1iNFVrEdTKZOGBrnwqMhV'#'hAHMGpM0Etn1TGntqB434ckKJzQKUxwLDvfnjz9feiqk'
+fileset1_cake = '379d7vSiMyDQdNF4aTI9leckwVafthEoGK4ioSAR8Qws' #'hozMa8oJozEdgOSKXayFcrEwuGaGfW2rxBUeS6MKEdaK'
+fileset2_cake = '3evUZ7xNg2E3qvndSLZu8EfIuGK9KoljwwlJbl6mKClH'#'hAHMGpM0Etn1TGntqB434ckKJzQKUxwLDvfnjz9feiqk'
 
 
 def ensure_dir(d):

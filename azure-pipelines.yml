@@ -18,6 +18,8 @@ jobs:
         name: requirements
       - script: python setup.py sdist
         name: sdist
+      - script: python scent.py current
+        name: test
       - script: dir dist
       - task: PublishPipelineArtifact@0
         inputs:

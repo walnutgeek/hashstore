@@ -96,17 +96,17 @@ def test_scan_ls():
         total_size: 119498
         ''' % fileset1_cake)
 
-    find_it = '2bg6Kulsn2wvvHOasBTQDI7qES4cgQUkB4GUgOIYs9Oa'
-    test.run_script_and_wait('ls --cake --dir %s/x' % files,
+    find_it = '28VxrZSjbhxhbfSZNhM1HR81FUi8obg2HsVCuTkUmG2N'
+    test.run_script_and_wait(f'ls --cake --dir {files}/x' ,
                              expect_rc=0,
-                             expect_read='''
+                             expect_read=f'''
         DirId: ...
-        Cake: 34XHLt5jTMO6ALkRX1fvVE7CU0wAUu2nRbe3BasjZXHz
+        Cake: 3t6iQ6UmthrzTUPp16Lcsmtw0SmCeCCysZ3D1s6NX1kt
         
-          DIR   1220  3kBWUQBPWaAakYFtDxdYBvLWkX3TWSguqVaY3OMyDz1Q  y
+          DIR   1220  3PGmS7PsZPSSP4wMgh3owhuXVamM17mAd4E0yM2YHtPL  y
           FILE  555   {find_it}  1
         total_size: 1775
-        '''.format(**locals()))
+        ''')
 
     test.run_script_and_wait('find --cake {find_it} --dir {files}'
                              .format(**locals()) ,
