@@ -23,7 +23,7 @@ jobs:
       - script: dir dist
       - task: PublishPipelineArtifact@0
         name: publish_test_out
-        conditions: or(failed(), canceled())
+        condition: or(failed(), canceled())
         inputs:
           targetPath: 'test-out'
           artifactName: 'test-out-win'
@@ -52,7 +52,7 @@ jobs:
       - script: ls -l dist
       - task: PublishPipelineArtifact@0
         name: publish_test_out
-        conditions: or(failed(), canceled())
+        condition: or(failed(), canceled())
         inputs:
           targetPath: 'test-out'
           artifactName: 'test-out-linux'
@@ -81,7 +81,7 @@ jobs:
       - script: ls -l dist
       - task: PublishPipelineArtifact@0
         name: publish_test_out
-        conditions: or(failed(), canceled())
+        condition: or(failed(), canceled())
         inputs:
           targetPath: 'test-out'
           artifactName: 'test-out-macos'
