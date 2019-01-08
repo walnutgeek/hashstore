@@ -28,6 +28,7 @@ jobs:
           targetPath: 'test-out'
           artifactName: 'test-out-win'
       - task: PublishPipelineArtifact@0
+        name: publish_dist
         inputs:
           targetPath: 'dist'
           artifactName: 'hashstore-win.tgz'
@@ -56,6 +57,7 @@ jobs:
           targetPath: 'test-out'
           artifactName: 'test-out-linux'
       - task: PublishPipelineArtifact@0
+        name: publish_dist
         inputs:
           targetPath: 'dist'
           artifactName: 'hashstore-linux.tgz'
