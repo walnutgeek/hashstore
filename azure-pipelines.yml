@@ -22,14 +22,8 @@ jobs:
         condition: always()
       - script: python scent.py current
         name: test
-      - script: dir test-out\\current
+      - script: dir /s
         condition: always()
-      - task: PublishPipelineArtifact@0
-        name: publish_test_out
-        condition: or(failed(), canceled())
-        inputs:
-          targetPath: 'test-out'
-          artifactName: 'test-out-win'
       - task: PublishPipelineArtifact@0
         name: publish_dist
         inputs:
@@ -54,14 +48,8 @@ jobs:
         condition: always()
       - script: python scent.py current
         name: test
-      - script: ls -l test-out/current
+      - script: find . -ls
         condition: always()
-      - task: PublishPipelineArtifact@0
-        name: publish_test_out
-        condition: or(failed(), canceled())
-        inputs:
-          targetPath: 'test-out'
-          artifactName: 'test-out-linux'
       - task: PublishPipelineArtifact@0
         name: publish_dist
         inputs:
@@ -86,14 +74,8 @@ jobs:
         condition: always()
       - script: python scent.py current
         name: test
-      - script: ls -l test-out/current
+      - script: find . -ls
         condition: always()
-      - task: PublishPipelineArtifact@0
-        name: publish_test_out
-        condition: or(failed(), canceled())
-        inputs:
-          targetPath: 'test-out'
-          artifactName: 'test-out-macos'
       - task: PublishPipelineArtifact@0
         name: publish_dist
         inputs:
