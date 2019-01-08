@@ -18,9 +18,12 @@ jobs:
         name: requirements
       - script: python setup.py sdist
         name: sdist
+      - script: dir dist
+        condition: always()
       - script: python scent.py current
         name: test
-      - script: dir dist
+      - script: dir test-out\\current
+        condition: always()
       - task: PublishPipelineArtifact@0
         name: publish_test_out
         condition: or(failed(), canceled())
@@ -47,9 +50,12 @@ jobs:
         name: requirements
       - script: python setup.py sdist
         name: sdist
+      - script: ls -l dist
+        condition: always()
       - script: python scent.py current
         name: test
-      - script: ls -l dist
+      - script: ls -l test-out/current
+        condition: always()
       - task: PublishPipelineArtifact@0
         name: publish_test_out
         condition: or(failed(), canceled())
@@ -76,9 +82,12 @@ jobs:
         name: requirements
       - script: python setup.py sdist
         name: sdist
+      - script: ls -l dist
+        condition: always()
       - script: python scent.py current
         name: test
-      - script: ls -l dist
+      - script: ls -l test-out/current
+        condition: always()
       - task: PublishPipelineArtifact@0
         name: publish_test_out
         condition: or(failed(), canceled())
