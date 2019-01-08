@@ -22,6 +22,12 @@ jobs:
         name: test
       - script: dir dist
       - task: PublishPipelineArtifact@0
+        name: publish_test_out
+        conditions: or(failed(), canceled())
+        inputs:
+          targetPath: 'test-out'
+          artifactName: 'test-out-win'
+      - task: PublishPipelineArtifact@0
         inputs:
           targetPath: 'dist'
           artifactName: 'hashstore-win.tgz'
@@ -43,6 +49,12 @@ jobs:
       - script: python scent.py current
         name: test
       - script: ls -l dist
+      - task: PublishPipelineArtifact@0
+        name: publish_test_out
+        conditions: or(failed(), canceled())
+        inputs:
+          targetPath: 'test-out'
+          artifactName: 'test-out-linux'
       - task: PublishPipelineArtifact@0
         inputs:
           targetPath: 'dist'
@@ -66,6 +78,13 @@ jobs:
         name: test
       - script: ls -l dist
       - task: PublishPipelineArtifact@0
+        name: publish_test_out
+        conditions: or(failed(), canceled())
+        inputs:
+          targetPath: 'test-out'
+          artifactName: 'test-out-macos'
+      - task: PublishPipelineArtifact@0
+        name: publish_dist
         inputs:
           targetPath: 'dist'
           artifactName: 'hashstore-macos.tgz'
