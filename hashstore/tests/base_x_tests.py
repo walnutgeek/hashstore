@@ -1,5 +1,5 @@
 import hashstore.utils.base_x as bx
-from hashstore.tests import doctest_it
+from hashstore.tests import doctest_it, random_bytes, seed
 from nose.tools import eq_,ok_
 
 b58 = bx.base_x(58)
@@ -23,10 +23,9 @@ def test_nulls():
 def test_randomized():
     all_codecs = [bx.base_x(k) for k in bx.alphabets]
 
-    import numpy.random as rand
-    rand.seed(0)
+    seed(0)
     for sz in [1, 2, 0, 3, 1, 77, 513, 732]:
-        b = rand.bytes(sz)
+        b = random_bytes(sz)
 
         for codec in all_codecs:
             s = codec.encode(b)

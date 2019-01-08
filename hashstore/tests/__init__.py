@@ -159,18 +159,22 @@ def make_recursive_link(dir, path, abs_path):
     except:
         os.system('ls -l %s' % os.path.dirname(abs_path))
 
-import numpy.random as np_rnd
+import random 
 import time
-import array
 
-random_bytes = lambda l: array.array('B', np_rnd.randint(0, 255,l))\
-    .tostring()
+
+def randint_repeat(start, end, repeat):
+    return (random.randint(start, end) for _ in range(repeat))
+
+random_bytes = lambda l: bytes(randint_repeat(0,255,l))
 
 reseed_random = lambda : int(time.clock() * 1000)
 
 
 def seed(a):
-    np_rnd.seed(a)
+    random.seed(a, version=2)
+
+seed(0)
 
 
 def random_content_fn(sz, reset_random):
@@ -203,7 +207,7 @@ def random_small_caps(l):
     :param l: length
     :return:
     '''
-    return ''.join(map(chr, 97 + np_rnd.randint(0, 25, l)))
+    return ''.join(map(chr, randint_repeat(97, 122, l)))
 
 
 def text_fn(content):
