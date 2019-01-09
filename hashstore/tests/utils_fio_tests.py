@@ -16,21 +16,6 @@ def test_docs():
     eq_(r.failed,0)
 
 
-def test_split_all():
-    eq_(fio.path_split_all('/a/b/c'), ['/', 'a', 'b', 'c'])
-    eq_(fio.path_split_all('/a/b/c/'), ['/', 'a', 'b', 'c', ''])
-    eq_(fio.path_split_all('/a/b/c', True), ['/', 'a', 'b', 'c', ''])
-    eq_(fio.path_split_all('/a/b/c/', True), ['/', 'a', 'b', 'c', ''])
-    eq_(fio.path_split_all('/a/b/c', False), ['/', 'a', 'b', 'c'])
-    eq_(fio.path_split_all('/a/b/c/', False), ['/', 'a', 'b', 'c'])
-    eq_(fio.path_split_all('a/b/c'), ['a', 'b', 'c'])
-    eq_(fio.path_split_all('a/b/c/'), ['a', 'b', 'c', ''])
-    eq_(fio.path_split_all('a/b/c', True), ['a', 'b', 'c', ''])
-    eq_(fio.path_split_all('a/b/c/', True), ['a', 'b', 'c', ''])
-    eq_(fio.path_split_all('a/b/c', False), ['a', 'b', 'c'])
-    eq_(fio.path_split_all('a/b/c/', False), ['a', 'b', 'c'])
-
-
 CONF_DIR = ".conf_dlkfjdloeri_dir"
 
 def test_config_dir():
@@ -69,6 +54,7 @@ def test_config_dir():
     eq_(CD.lookup_up(b_x_z).dir_path(),
         b_x_z_cd.dir_path())
 
+
     b_x_x_cd = fio.ConfigDir(b_x_x, CONF_DIR)
     b_x_x_cd.ensure()
     eq_(fio.ConfigDir.lookup_up(b_x_x, CONF_DIR).dir_path(),
@@ -80,5 +66,4 @@ def test_config_dir():
 
     ok_(fio.ConfigDir.lookup_up(c, CONF_DIR) is None)
     ok_(fio.ConfigDir.lookup_up("c", CONF_DIR) is None)
-
 

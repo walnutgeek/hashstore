@@ -1,11 +1,17 @@
 """
 File Input Output Utils
 """
-from typing import Optional
+from typing import Optional,Union
+from pathlib import Path
 
 import os
 
 
+def ensure_path(path:Union[str,Path])->Path:
+    if isinstance(path, Path):
+        return path
+    return Path(path)
+    
 def ensure_directory(directory: str)->bool:
     """
     Ensure that directory exists.
@@ -49,7 +55,7 @@ class ConfigDir:
 
     @classmethod
     def lookup_up(cls: type,
-                  path: str,
+                  path: Union[str,Path],
                   dir_name: Optional[str]=None
                   ) -> Optional['ConfigDir']:
         """
@@ -57,16 +63,12 @@ class ConfigDir:
         """
         if dir_name is None:
             dir_name = cls.__dir_name__ #type:ignore
-        while True:
-            config_dir = cls(path, dir_name)
+        path = ensure_path(path)
+        for p in (path, *path.parents):
+            config_dir = cls(p, dir_name)
             if config_dir.exists():
                 return config_dir
-            if path != '/':
-                head, tail = os.path.split(path)
-                if head != '':
-                    path = head
-                    continue
-            return None
+        return None
 
 
 def read_in_chunks(fp, chunk_size=65535):
@@ -108,38 +110,4 @@ def is_file_in_directory(file, dir):
     return file == realdir or os.path.commonprefix([file, dir]) == dir
 
 
-def path_split_all(path: str, ensure_trailing_slash: bool = None):
-    '''
-    >>> path_split_all('/a/b/c')
-    ['/', 'a', 'b', 'c']
-    >>> path_split_all('/a/b/c/' )
-    ['/', 'a', 'b', 'c', '']
-    >>> path_split_all('/a/b/c', ensure_trailing_slash=True)
-    ['/', 'a', 'b', 'c', '']
-    >>> path_split_all('/a/b/c/', ensure_trailing_slash=True)
-    ['/', 'a', 'b', 'c', '']
-    >>> path_split_all('/a/b/c/', ensure_trailing_slash=False)
-    ['/', 'a', 'b', 'c']
-    >>> path_split_all('/a/b/c', ensure_trailing_slash=False)
-    ['/', 'a', 'b', 'c']
-    '''
-    def tails(head):
-        while(True):
-            head,tail = os.path.split(head)
-            if head == '/' and tail == '':
-                yield head
-                break
-            yield tail
-            if head == '':
-                break
-    parts = list(tails(path))
-    parts.reverse()
-    if ensure_trailing_slash is not None:
-        if ensure_trailing_slash :
-            if parts[-1] != '':
-                parts.append('')
-        else:
-            if parts[-1] == '':
-                parts = parts[:-1]
-    return parts
 

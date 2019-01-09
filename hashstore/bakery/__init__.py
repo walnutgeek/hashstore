@@ -14,10 +14,10 @@ import hashstore.utils as utils
 from hashstore.utils.base_x import base_x
 import json
 import enum
+from pathlib import PurePosixPath
 from typing import (
     Union, Optional, Any, Callable, Tuple, List, Iterable, Dict, IO)
 import logging
-from hashstore.utils.fio import path_split_all
 from hashstore.utils.file_types import (
     guess_name, file_types, HSB, BINARY)
 from hashstore.utils.smattr import (JsonWrap, SmAttr, combine_vars)
@@ -654,7 +654,7 @@ class CakePath(utils.Stringable, utils.EnsureIt):
             self.root = _root
             self.path = _path
         else:
-            split = path_split_all(s, ensure_trailing_slash=False)
+            split = PurePosixPath(s).parts
             if len(split) > 0 and split[0] == '/' :
                 self.root = Cake(split[1])
                 self.path = split[2:]

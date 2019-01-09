@@ -160,7 +160,8 @@ def make_recursive_link(dir, path, abs_path):
     try:
         os.symlink(os.path.dirname(abs_path),abs_path)
     except:
-        os.system('ls -l %s' % os.path.dirname(abs_path))
+        pass
+        #os.system('ls -l %s' % os.path.dirname(abs_path))
 
 
 def randint_repeat(start, end, repeat):
@@ -290,7 +291,7 @@ def run_bg(args=[], home=None, outfile=None, script_mode = False):
     if home is not None:
         env = os.environ
         env['HOME'] = home
-    command = ['hs'] if script_mode else [
+    command = ['hs'] if script_mode else [ 'python', '-m'
         'coverage', 'run', '-p', '-m', 'hashstore.hs']
     for arg in args:
         if arg is not None and arg.strip() != '':
