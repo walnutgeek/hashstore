@@ -218,7 +218,9 @@ class ServerSetup:
 def test_server():
     test = TestSetup(__name__, ensure_empty=False)
     server=ServerSetup(test)
-    server.do_shutdown()
+    # on windows if server kept running you cannot erase dir, 
+    # then uncomment bellow:
+    # server.do_shutdown()
     test.ensure_empty()
     server.run_server_tests()
 
