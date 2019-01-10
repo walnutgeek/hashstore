@@ -298,7 +298,10 @@ def run_bg(args=[], home=None, outfile=None, script_mode = False):
     for arg in args:
         if arg is not None and arg.strip() != '':
             command.append(arg)
-    fp = open(outfile, 'w') if outfile is not None else None
+    
+    fp = None
+    if outfile is not None and os.path.isdir(os.path.dirname(outfile)):
+        fp = open(outfile, 'w')
     return subprocess.Popen(command, env=env, stdout=fp, stderr=STDOUT)
 
 
