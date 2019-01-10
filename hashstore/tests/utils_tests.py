@@ -119,7 +119,7 @@ def test_args():
 
     format_help = ca.get_parser().format_help()
     assert_text(format_help, """
-    usage: python -m nose [-h] {do} ...
+    usage: ... -m nose [-h] {do} ...
     
     test cli
     

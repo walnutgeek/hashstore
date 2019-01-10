@@ -30,7 +30,7 @@ class ServerSetup:
         self.shutdown = shutdown
 
     def do_shutdown(self):
-        test.run_script_and_wait(
+        self.test.run_script_and_wait(
             f'server --store_dir {self.store} stop',
             expect_rc=0)
 
@@ -44,7 +44,7 @@ class ServerSetup:
         pwd = 'abc'
         pwdssha = str(SaltedSha.from_secret(pwd))
 
-        test.run_script_and_wait(
+        self.test.run_script_and_wait(
             f'server --store_dir {self.store} initdb '
             f'--port 7623',
             expect_rc=0, expect_read='')
@@ -55,7 +55,7 @@ class ServerSetup:
         eq_(server_key[0][3:],(None, 7623, 10))
         server_id = server_key[0][1]
 
-        test.run_script_and_wait(
+        self.test.run_script_and_wait(
             f'server --store_dir {self.store} initdb '
             f'--port {self.port}',
             expect_rc=0, expect_read='')
@@ -212,28 +212,28 @@ class ServerSetup:
 
         if self.shutdown:
             self.do_shutdown()
-            self.test.wait_process(server_id, expect_rc=0)
+            self.test.wait_process(server_id, expect_rc=[0,2])
 
+
+def test_server():
+    test = TestSetup(__name__, ensure_empty=False)
+    server=ServerSetup(test)
+    server.do_shutdown()
+    test.ensure_empty()
+    server.run_server_tests()
 
 
 if __name__ == '__main__':
     from sys import argv
     root = argv[1] if len(argv)>=2 else '.'
     port = int(argv[2]) if len(argv)>=3 else None
-    test = TestSetup('server_tests', root=root,
-                     ensure_empty=False, script_mode=True)
-    setup = ServerSetup(test,port,shutdown=False)
+    setup = ServerSetup( 
+        TestSetup('server_tests', root=root, ensure_empty=False, script_mode=True),
+        port, shutdown=False)
     if len(argv)>=4:
         getattr(setup,argv[3])()
     else:
         setup.run_server_tests()
-else:
-    test = TestSetup(__name__, ensure_empty=True)
-
-
-def test_server():
-    ServerSetup(test).run_server_tests()
-
 
 
 

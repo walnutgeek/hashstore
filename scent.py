@@ -15,27 +15,28 @@ run_envs = ['py6', 'py7']
 mypy_modules = [
     'hashstore.bakery.tests.logic_test_module', 'hashstore.hs']
 
-def conda_prefix(e):
-    return '' if e == 'current' else f'. activate {e}; '
+def os_system_in_env(e,cmd):
+    return os.system(cmd if e == 'current' else f'. activate {e}; {cmd}')
 
 def run_tests(case, envs, html=False):
-    html = 'python -m coverage html;' if html else ''
     env_states = [
-        0 == os.system(
-            f'{conda_prefix(e)}'
-            f'python -m coverage run -p -m nose {case}')
+        0 == os_system_in_env(e, f'python -m coverage run -p -m nose {case}')
         for e in envs
     ]
     print(dict(zip(envs, env_states)))
     modules = ' '.join( f'-m {m}' for m in mypy_modules )
-    mypy = 0 == os.system(
-        f'{conda_prefix(envs[0])}'
+    mypy = 0 == os_system_in_env(envs[0],
         f'python -m mypy {modules} --ignore-missing-imports'
     )
-    os.system(
-        f'{conda_prefix(envs[0])}'
-        f'python -m coverage combine; '
-        f'python -m coverage report -m; {html} rm .coverage')
+    cleanup_cmds = [
+        'python -m coverage combine',
+        'python -m coverage report -m'
+    ]
+    if html:
+        cleanup_cmds.append( 'python -m coverage html' )
+    for c in cleanup_cmds:
+        os_system_in_env(envs[0], c)
+    os.unlink('.coverage')
     return all(env_states) and mypy
 
 """

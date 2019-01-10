@@ -72,7 +72,7 @@ class _ContentHandler(tornado.web.RequestHandler):
         try:
             content = self.content(path)
             self.set_header('Content-Type', content.mime)
-            if content.has_file():
+            if content.has_file() and os.name != 'nt':
                 self.stream = PipeIOStream(content.open_fd())
                 self.stream.read_until_close(
                     callback=self.on_file_end,

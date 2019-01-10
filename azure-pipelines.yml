@@ -19,11 +19,13 @@ jobs:
       - script: python setup.py sdist
         name: sdist
       - script: dir dist
-        condition: always()
       - script: python scent.py current
         name: test
-      - script: dir /s
-        condition: always()
+      - task: PublishPipelineArtifact@0
+        name: publish_cov
+        inputs:
+          targetPath: 'coverage_html_report'
+          artifactName: coverage_win'
       - task: PublishPipelineArtifact@0
         name: publish_dist
         inputs:
@@ -45,11 +47,13 @@ jobs:
       - script: python setup.py sdist
         name: sdist
       - script: ls -l dist
-        condition: always()
       - script: python scent.py current
         name: test
-      - script: find . -ls
-        condition: always()
+      - task: PublishPipelineArtifact@0
+        name: publish_cov
+        inputs:
+          targetPath: 'coverage_html_report'
+          artifactName: coverage_linux'
       - task: PublishPipelineArtifact@0
         name: publish_dist
         inputs:
@@ -76,6 +80,11 @@ jobs:
         name: test
       - script: find . -ls
         condition: always()
+      - task: PublishPipelineArtifact@0
+        name: publish_cov
+        inputs:
+          targetPath: 'coverage_html_report'
+          artifactName: coverage_macos'
       - task: PublishPipelineArtifact@0
         name: publish_dist
         inputs:

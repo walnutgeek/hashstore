@@ -90,12 +90,14 @@ class TestSetup:
         self.dir = os.path.join(root, pyenv, name)
         self.home = os.path.join(self.dir, 'home')
         if ensure_empty:
-            ensure_no_dir(self.dir)
-            ensure_dir(self.dir)
-            ensure_dir(self.home)
+            self.ensure_empty()
         self.processes = {}
         self.counter = 0
 
+    def ensure_empty(self):
+        ensure_no_dir(self.dir)
+        ensure_dir(self.dir)
+        ensure_dir(self.home)
 
     def run_script_and_wait(self, cmd, log_file=None, expect_rc=None,
                             expect_read = None, save_words=None):
@@ -138,9 +140,9 @@ class TestSetup:
         rc = p.wait()
         logtext = open(logpath).read()
         if expect_rc is not None:
-            if expect_rc != rc:
-                print(logtext)
-                eq_(expect_rc, rc)
+            if not isinstance(expect_rc,list):
+                expect_rc = [expect_rc]
+            ok_(rc in expect_rc, logtext)
         if expect_read is not None:
             assert_text(logtext, expect_read, save_words=save_words)
         if print_all_logs:
@@ -217,7 +219,7 @@ def random_small_caps(l):
 
 def text_fn(content):
     def do_text_fn(dir, path, abs_path):
-        open(abs_path,'w').write(content)
+        open(abs_path,'wb').write(content)
     return do_text_fn
 
 
@@ -237,7 +239,7 @@ file_set1 = (
     ('q/p/2', random_content_fn(555, None)),
     ('q/z/2', random_content_fn(555, None)),
     ('.svn/q/z/2', random_content_fn(555, None)),
-    ('q/.ignore', text_fn("*.sol\np\nz/\n")),
+    ('q/.ignore', text_fn(b"*.sol\np\nz/\n")),
     ('q/link', make_recursive_link)
 )
 

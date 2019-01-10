@@ -235,7 +235,7 @@ class Progress:
             directory = directory[:look(look(look(0)))]
         except:
             pass
-        output = f'{self.pct_value()} {directory}'
+        output = f'{self.pct_value()}'
         if self._value != output:
             self._value = output
             diff = self.pad_to - len(output)
