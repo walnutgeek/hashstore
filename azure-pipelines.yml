@@ -103,6 +103,6 @@ jobs:
       vmImage: 'ubuntu-16.04'
     condition: ne(variables['Build.SourceBranch'], 'refs/heads/master')
     steps:
-      -script: ls -l
-      -script: echo $(Build.SourceBranchName)
+      - script: ls -l
+      - script: echo $(Build.SourceBranchName)
 
