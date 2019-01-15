@@ -1,6 +1,7 @@
 
 trigger:
 - master
+- releases/*
 
 jobs:
   - job: Windows
@@ -90,3 +91,18 @@ jobs:
         inputs:
           targetPath: dist
           artifactName: hashstore-macos.tgz
+  - job: Release
+    dependencies:
+      Windows: 
+        result: Succeeded
+      macOS: 
+        result: Succeeded
+      Linux: 
+        result: Succeeded
+    pool:
+      vmImage: 'ubuntu-16.04'
+    condition: ne(variables['Build.SourceBranch'], 'refs/heads/master')
+    steps:
+      -script: ls -l
+      -script: echo $(Build.SourceBranchName)
+
