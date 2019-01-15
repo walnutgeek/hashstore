@@ -93,7 +93,7 @@ jobs:
           artifactName: hashstore-macos.tgz
   - job: Release
     condition: ne(variables['Build.SourceBranch'], 'refs/heads/master')
-    dependOn:
+    dependsOn:
       - Windows
       - macOS
       - Linux
