@@ -1,0 +1,15 @@
+steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.6'
+        architecture: 'x64'
+      name: set_py_ver
+    - script: |
+        python -V
+        pip install -r requirements.txt
+        pip install -r test-requirements.txt
+      name: requirements
+    - script: python setup.py sdist
+      name: sdist
+    - script: python scent.py current
+      name: test

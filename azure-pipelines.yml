@@ -6,90 +6,18 @@ jobs:
     pool:
       vmImage: 'vs2017-win2016'
     steps:
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: '3.6'
-          architecture: 'x64'
-      - script: |
-          python -V
-          pip install -r requirements.txt
-          pip install -r test-requirements.txt
-        name: requirements
-      - script: python setup.py sdist
-        name: sdist
-      - script: dir dist
-      - script: python scent.py current
-        name: test
-      - task: PublishPipelineArtifact@0
-        name: publish_cov
-        inputs:
-          targetPath: coverage_html_report
-          artifactName: coverage_win
-      - task: PublishPipelineArtifact@0
-        name: publish_dist
-        inputs:
-          targetPath: dist
-          artifactName: hashstore-win.tgz
+      - template: azure-pybuild.yml
   - job: macOS
     pool:
       vmImage: 'macOS-10.13'
     steps:
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: '3.6'
-          architecture: 'x64'
-      - script: |
-          python -V
-          pip install -r requirements.txt
-          pip install -r test-requirements.txt
-        name: requirements
-      - script: python setup.py sdist
-        name: sdist
-      - script: ls -l dist
-      - script: python scent.py current
-        name: test
-      - task: PublishPipelineArtifact@0
-        name: publish_cov
-        inputs:
-          targetPath: coverage_html_report
-          artifactName: coverage_linux
-      - task: PublishPipelineArtifact@0
-        name: publish_dist
-        inputs:
-          targetPath: dist
-          artifactName: hashstore-linux.tgz
+      - template: azure-pybuild.yml
   - job: Linux
     pool:
       vmImage: 'ubuntu-16.04'
     steps:
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: '3.6'
-          architecture: 'x64'
-      - script: |
-          python -V
-          pip install -r requirements.txt
-          pip install -r test-requirements.txt
-        name: requirements
-      - script: python setup.py sdist
-        name: sdist
-      - script: ls -l dist
-        condition: always()
-      - script: python scent.py current
-        name: test
-      - script: find . -ls
-        condition: always()
-      - task: PublishPipelineArtifact@0
-        name: publish_cov
-        inputs:
-          targetPath: coverage_html_report
-          artifactName: coverage_macos
-      - task: PublishPipelineArtifact@0
-        name: publish_dist
-        inputs:
-          targetPath: dist
-          artifactName: hashstore-macos.tgz
-  - job: Release
+      - template: azure-pybuild.yml
+  - job: Check
     dependsOn:
       - Windows
       - macOS
@@ -101,4 +29,31 @@ jobs:
         inputs:
           versionSpec: '3.6'
           architecture: 'x64'
-      - script: python setup.py release
+      - script: python setup.py release --azure
+        name: release
+  - job: pypitest
+    condition: eq( dependencies.Check.outputs['release.type'], 'minor')
+    dependsOn: Check
+    pool:
+      vmImage: 'ubuntu-16.04'
+    variables:
+      release_type: $[ dependencies.Check.outputs['release.type'] ]
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.6'
+          architecture: 'x64'
+      - script: echo $(release_type)
+  - job: pypi
+    condition: eq( dependencies.Check.outputs['release.type'], 'major')
+    dependsOn: Check
+    pool:
+      vmImage: 'ubuntu-16.04'
+    variables:
+      release_type: $[ dependencies.Check.outputs['release.type'] ]
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.6'
+          architecture: 'x64'
+      - script: echo $(release_type)

@@ -88,21 +88,20 @@ class ReleaseCommand(Command):
         """
 
     user_options = [
+        ('azure', None, "publish azure vars"),
         ('minor', None, "trigger minor release "),
         ('major', None, "trigger major release ")
     ]
 
     def initialize_options(self):
-        self.major = False
-        self.minor = False
+        self.azure = self.minor = self.major = False
 
     def finalize_options(self):
-        """Post-process options."""
-        if self.major != False:
-            self.major = True
-        if self.minor != False:
-            self.minor = True
+        pass
 
+    def publish_var(self,key, value):
+        if self.azure:
+            print(f'##vso[task.setvariable variable={key};isOutput=true]{value}')
 
     def run(self):
         """Run command."""
@@ -123,11 +122,11 @@ class ReleaseCommand(Command):
             except CalledProcessError:
                 print(f'no tag found')
                 match = False
+                self.publish_var('type', 'none')
             if match:
                 print(f'{version.type()} release. Git tag matched.')
-                raise SystemExit(0)
-            else:
-                raise SystemExit(-1)
+                self.publish_var('type', version.type())
+            raise SystemExit(0)
         open(VERSION_TXT, 'wt').write(str(new_ver))
         print(f'New version: {new_ver}')
         tag = f'v{new_ver}'
