@@ -2,10 +2,13 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 from setuptools import setup, find_packages, Command
 from setuptools.command.sdist import sdist
+from subprocess import check_call, check_output, CalledProcessError
 
 import os
 
 # MANIFEST.in ensures that requirements are included in `sdist`
+from hashstore.utils import ensure_string
+
 VERSION_TXT = 'version.txt'
 
 install_requires = open('requirements.txt').read().split()
@@ -33,7 +36,7 @@ class Version:
             if _nums > self.nums:
                 return Version(_nums)
             raise ValueError(
-                f'cannot calc major version from: {current_ver} {now}')
+                f'cannot calc major version from: {self.nums} {now}')
 
     def next_minor(self, now=date.today()):
         last_num = 1
@@ -56,52 +59,88 @@ class Version:
     def is_minor(self):
         return len(self.nums) == 3
 
+    def type(self):
+        return "minor" if self.is_minor() else "major"
+
 
 version = Version(open(VERSION_TXT).read().strip())
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+
+
 class ReleaseCommand(Command):
 
-    description = "Trigger Release, change version, tag and push changes to git."
+    description = f"""
+        Check release:
+            return success errorCode if {VERSION_TXT} match 
+            current tag on branch. 
+        
+        Trigger release:
+            change {VERSION_TXT}, tag and push changes to git.
+            
+        """
 
-    user_options = [ ('major', None, "trigger major release ")]
+    user_options = [
+        ('minor', None, "trigger minor release "),
+        ('major', None, "trigger major release ")
+    ]
 
     def initialize_options(self):
         self.major = False
+        self.minor = False
 
     def finalize_options(self):
         """Post-process options."""
+        print(f'{self.minor} {self.major}')
         if self.major != False:
             self.major = True
+        if self.minor != False:
+            self.minor = True
 
-    def calculate_new_ver(self):
-        if self.major:
-            return version.next_major()
-        else:
-            return version.next_minor()
 
     def run(self):
         """Run command."""
-        new_ver = str(self.calculate_new_ver())
+        new_ver = None
+        if self.major:
+            new_ver = version.next_major()
+        elif self.minor:
+            new_ver = version.next_minor()
+        else:
+            try:
+                tag=check_output(['git', 'describe', '--tags',
+                                  '--exact-match'])
+                print(f'version.txt={version} git={tag}')
+                match = ensure_string(tag) == 'v{version}'
+            except CalledProcessError:
+                print(f'no tag found')
+                match = False
+            if match:
+                print(f'{version.type()} matched git tag')
+                raise SystemExit(0)
+            else:
+                raise SystemExit(-1)
         open(VERSION_TXT, 'wt').write(new_ver)
         print(f'New version: {new_ver}')
-        os.system(f'git add {VERSION_TXT}')
-        os.system(f'git commit -m v{new_ver}')
-        os.system(f'git tag -a v{new_ver} -m new_tag_v{new_ver}')
-        os.system(f'git push origin --tags')
+        tag = f'v{new_ver}'
+        msg = ['-m', tag]
+        check_call(['git', 'add', VERSION_TXT])
+        check_call(['git', 'commit', *msg ])
+        check_call(['git', 'tag', '-a', tag, *msg])
+        # check_call(f'git push origin --tags'.split())
+        check_call('git push --tags origin HEAD'.split())
+        check_call('git push -u origin master'.split())
 
 
 class MySdistCommand(sdist):
     def run(self):
-        import subprocess
         npm = 'npm'
         if os.name == 'nt':
             npm = 'npm.cmd'
 
         for c in ([npm, 'install'], [npm, 'run', 'build'] ):
-            subprocess.check_call(c, cwd='hashstore/bakery/js')
+            check_call(c, cwd='hashstore/bakery/js')
         sdist.run(self)
 
 setup(name='hashstore',

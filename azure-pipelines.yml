@@ -90,7 +90,6 @@ jobs:
           targetPath: dist
           artifactName: hashstore-macos.tgz
   - job: Release
-    condition: ne(variables['Build.SourceBranch'], 'refs/heads/master')
     dependsOn:
       - Windows
       - macOS
@@ -98,5 +97,4 @@ jobs:
     pool:
       vmImage: 'ubuntu-16.04'
     steps:
-      - script: ls -l
-      - script: echo $(Build.SourceBranchName)
+      - script: python setup.py release
