@@ -88,7 +88,7 @@ class ReleaseCommand(Command):
         open(VERSION_TXT, 'wt').write(new_ver)
         print(f'New version: {new_ver}')
         os.system(f'git add {VERSION_TXT}')
-        os.system(f'git tag -a v{new_ver}')
+        os.system(f'git tag -a v{new_ver} -m new_tag_v{new_ver}')
         os.system(f'git commit -m v{new_ver}')
         os.system(f'git push origin --tags')
 
