@@ -97,4 +97,6 @@ jobs:
     pool:
       vmImage: 'ubuntu-16.04'
     steps:
+      - script: ls -l
+      - script: cat version.txt
       - script: python setup.py release
