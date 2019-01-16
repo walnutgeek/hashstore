@@ -5,4 +5,5 @@ coverage
 codecov
 mypy
 wheel<=0.31.1
+twine
 xar
