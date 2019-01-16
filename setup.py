@@ -93,7 +93,6 @@ class ReleaseCommand(Command):
 
     def finalize_options(self):
         """Post-process options."""
-        print(f'{self.minor} {self.major}')
         if self.major != False:
             self.major = True
         if self.minor != False:
@@ -109,8 +108,10 @@ class ReleaseCommand(Command):
             new_ver = version.next_minor()
         else:
             try:
-                tag=check_output(['git', 'describe', '--tags',
-                                  '--exact-match'])
+                tag=ensure_string(
+                    check_output([
+                        'git', 'describe','--tags','--exact-match'])
+                ).strip()
                 print(f'version.txt={version} git={tag}')
                 match = ensure_string(tag) == 'v{version}'
             except CalledProcessError:
