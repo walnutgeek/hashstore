@@ -121,7 +121,7 @@ class ReleaseCommand(Command):
                 raise SystemExit(0)
             else:
                 raise SystemExit(-1)
-        open(VERSION_TXT, 'wt').write(new_ver)
+        open(VERSION_TXT, 'wt').write(str(new_ver))
         print(f'New version: {new_ver}')
         tag = f'v{new_ver}'
         msg = ['-m', tag]
