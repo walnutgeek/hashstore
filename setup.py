@@ -1,5 +1,4 @@
-from datetime import date
-from dateutil.relativedelta import relativedelta
+from datetime import date, timedelta
 from setuptools import setup, find_packages, Command
 from setuptools.command.sdist import sdist
 from subprocess import check_call, check_output, CalledProcessError
@@ -13,6 +12,12 @@ VERSION_TXT = 'version.txt'
 
 install_requires = open('requirements.txt').read().split()
 
+
+def next_month(d):
+    cur_month = d.month
+    while cur_month == d.month:
+        d += timedelta(days=1)
+    return d
 
 class Version:
     def __init__(self, s):
@@ -31,7 +36,7 @@ class Version:
         if _nums > self.nums:
             return Version(_nums)
         else:
-            now += relativedelta(months=1)
+            now = next_month(now)
             _nums = (now.year, now.month)
             if _nums > self.nums:
                 return Version(_nums)
@@ -49,7 +54,7 @@ class Version:
             _nums = (now.year, now.month, 1)
             if _nums > self.nums:
                 return Version(_nums)
-            now += relativedelta(months=1)
+            now = next_month(now)
             _nums = (now.year, now.month, 1)
             if _nums > self.nums:
                 return Version(_nums)
