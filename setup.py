@@ -90,7 +90,7 @@ class ReleaseCommand(Command):
         os.system(f'git add {VERSION_TXT}')
         os.system(f'git tag -a v{new_ver}')
         os.system(f'git commit -m v{new_ver}')
-        os.system(f'git push origin -tags')
+        os.system(f'git push origin --tags')
 
 
 
