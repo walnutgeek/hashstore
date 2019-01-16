@@ -1,7 +1,5 @@
-
 trigger:
-- master
-- releases/*
+  - master
 
 jobs:
   - job: Windows
