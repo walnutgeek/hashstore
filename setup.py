@@ -112,13 +112,14 @@ class ReleaseCommand(Command):
                     check_output([
                         'git', 'describe','--tags','--exact-match'])
                 ).strip()
-                print(f'version.txt={version} git={tag}')
-                match = ensure_string(tag) == 'v{version}'
+                version_ = f'v{version}'
+                print(f'version.txt={repr(version_)} git={repr(tag)}')
+                match = tag == version_
             except CalledProcessError:
                 print(f'no tag found')
                 match = False
             if match:
-                print(f'{version.type()} matched git tag')
+                print(f'{version.type()} release. Git tag matched.')
                 raise SystemExit(0)
             else:
                 raise SystemExit(-1)
