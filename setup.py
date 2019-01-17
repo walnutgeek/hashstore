@@ -99,7 +99,7 @@ class ReleaseCommand(Command):
     def finalize_options(self):
         pass
 
-    def publish_var(self,key, value):
+    def azure_var(self, key, value):
         if self.azure:
             print(f'##vso[task.setvariable variable={key};isOutput=true]{value}')
 
@@ -122,10 +122,10 @@ class ReleaseCommand(Command):
             except CalledProcessError:
                 print(f'no tag found')
                 match = False
-                self.publish_var('type', 'none')
+                self.azure_var('type', 'none')
             if match:
                 print(f'{version.type()} release. Git tag matched.')
-                self.publish_var('type', version.type())
+                self.azure_var('type', version.type())
             raise SystemExit(0)
         open(VERSION_TXT, 'wt').write(str(new_ver))
         print(f'New version: {new_ver}')
