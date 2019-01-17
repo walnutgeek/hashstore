@@ -12,6 +12,7 @@ __pycache__
 *.pyc
 *.log
 .coverage
+coverage.xml
 .coverage.*
 hashstore/bakery/app
 hashstore/app

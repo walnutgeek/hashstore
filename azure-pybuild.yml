@@ -13,3 +13,7 @@ steps:
       name: sdist
     - script: python scent.py current
       name: test
+    - task: PublishCodeCoverageResults@1
+      inputs:
+        codeCoverageTool: cobertura
+        summaryFileLocation: coverage.xml

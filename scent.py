@@ -12,11 +12,14 @@ def py_files(filename):
 
 run_envs = ['py6', 'py7']
 
+
 mypy_modules = [
     'hashstore.bakery.tests.logic_test_module', 'hashstore.hs']
 
+
 def os_system_in_env(e,cmd):
     return os.system(cmd if e == 'current' else f'. activate {e}; {cmd}')
+
 
 def run_tests(case, envs, html=False):
     env_states = [
@@ -30,10 +33,11 @@ def run_tests(case, envs, html=False):
     )
     cleanup_cmds = [
         'python -m coverage combine',
-        'python -m coverage report -m'
+        'python -m coverage report -m',
+        'python -m coverage xml'
     ]
     if html:
-        cleanup_cmds.append( 'python -m coverage html' )
+        cleanup_cmds.append('python -m coverage html')
     for c in cleanup_cmds:
         os_system_in_env(envs[0], c)
     os.unlink('.coverage')
