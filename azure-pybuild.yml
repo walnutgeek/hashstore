@@ -15,5 +15,6 @@ steps:
       name: test
     - task: PublishCodeCoverageResults@1
       inputs:
-        codeCoverageTool: cobertura
-        summaryFileLocation: coverage.xml
+        codeCoverageTool: Cobertura
+        summaryFileLocation: $(Build.Repository.LocalPath)/coverage.xml
+        reportDirectory: $(Build.Repository.LocalPath)/lcov-report
