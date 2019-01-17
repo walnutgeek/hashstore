@@ -17,4 +17,4 @@ steps:
       inputs:
         codeCoverageTool: Cobertura
         summaryFileLocation: $(Build.Repository.LocalPath)/coverage.xml
-        reportDirectory: $(Build.Repository.LocalPath)/lcov-report
+        reportDirectory: $(Build.Repository.LocalPath)/coverage_html_report
