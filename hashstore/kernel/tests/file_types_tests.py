@@ -1,4 +1,4 @@
-from hashstore.kernel.misc.nose import doctest_it, eq_
+from hashstore.build_tools.nose import doctest_it, eq_
 
 
 def test_mymime():

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Tuple
 
 from logging import getLogger
-from hashstore.kernel.misc.nose import eq_,ok_
+from hashstore.build_tools.nose import eq_,ok_
 
 from hashstore.kernel import GlobalRef, exception_message
 from hashstore.tests import assert_text

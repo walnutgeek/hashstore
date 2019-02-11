@@ -1,5 +1,5 @@
 import os
-from hashstore.kernel.misc.nose import eq_,ok_
+from hashstore.build_tools.nose import eq_,ok_
 from hashstore.tests import TestSetup
 import hashstore.utils.fio as fio
 

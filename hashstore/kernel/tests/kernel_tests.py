@@ -1,9 +1,9 @@
 import sys
 import hashstore.kernel as kernel
 import hashstore.kernel.docs as docs
-from hashstore.kernel.misc.nose import assert_text
+from hashstore.build_tools.nose import assert_text
 from logging import getLogger
-from hashstore.kernel.misc.nose import eq_,ok_
+from hashstore.build_tools.nose import eq_,ok_
 
 log = getLogger(__name__)
 

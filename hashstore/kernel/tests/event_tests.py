@@ -1,7 +1,7 @@
 from typing import Any
 import hashstore.kernel.event as e
 from logging import getLogger
-from hashstore.kernel.misc.nose import eq_,ok_
+from hashstore.build_tools.nose import eq_,ok_
 from hashstore.kernel import exception_message, quict
 from hashstore.kernel.smattr import Mold, SmAttr, ReferenceResolver
 
