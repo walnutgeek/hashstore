@@ -1,5 +1,6 @@
 pylru
 croniter
+dateutil
 pytz
 requests
 tornado

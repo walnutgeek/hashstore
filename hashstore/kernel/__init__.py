@@ -1,6 +1,5 @@
 import enum
 from types import ModuleType
-from dateutil.parser import parse as dt_parse
 import abc
 import json
 from typing import Any, List, Type, TypeVar, Optional, Union
@@ -412,6 +411,7 @@ class ClassRef(Stringable, StrKeyMixin, EnsureIt):
 
     def __init__(self,
                  cls_or_str: Union[type, str])->None:
+        from dateutil.parser import parse as dt_parse
         if isinstance(cls_or_str, str):
             if ':' not in cls_or_str:
                 cls_or_str = 'builtins:'+cls_or_str
