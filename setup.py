@@ -6,7 +6,7 @@ from subprocess import check_call, check_output, CalledProcessError
 import os
 
 # MANIFEST.in ensures that requirements are included in `sdist`
-from hashstore.utils import ensure_string
+from hashstore.kernel import ensure_string
 
 VERSION_TXT = 'version.txt'
 
