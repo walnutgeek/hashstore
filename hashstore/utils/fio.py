@@ -11,7 +11,8 @@ def ensure_path(path:Union[str,Path])->Path:
     if isinstance(path, Path):
         return path
     return Path(path)
-    
+
+
 def ensure_directory(directory: str)->bool:
     """
     Ensure that directory exists.
@@ -23,6 +24,7 @@ def ensure_directory(directory: str)->bool:
         os.makedirs(directory)
         return True
     return False
+
 
 
 class ConfigDir:

@@ -1,5 +1,5 @@
 from hashstore.bakery import Cake, CakeRole
-from hashstore.utils.hashing import SaltedSha
+from hashstore.kernel.hashing import SaltedSha
 from hashstore.tests import TestSetup, doctest_it
 
 

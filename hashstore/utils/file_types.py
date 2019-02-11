@@ -1,8 +1,9 @@
 import mimetypes
 from typing import List
 from os.path import join, dirname
-from hashstore.utils import load_json_file
-from hashstore.utils.smattr import SmAttr
+
+from hashstore.kernel import load_json_file
+from hashstore.kernel.smattr import SmAttr
 
 
 class FileType(SmAttr):

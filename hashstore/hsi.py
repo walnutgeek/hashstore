@@ -8,7 +8,7 @@ from hashstore.bakery import (Cake, portal_from_name, CakeRole,
                               ensure_cakepath, PatchAction)
 from hashstore.bakery.lite.client import FileType
 from hashstore.utils.args import CommandArgs, Switch
-from hashstore.utils import print_pad, exception_message
+from hashstore.utils import print_pad
 import hashstore.bakery.cake_scan as cscan
 
 log = logging.getLogger("hs")

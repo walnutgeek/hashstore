@@ -4,14 +4,14 @@ import json
 from sqlalchemy import desc
 from hashstore.bakery import RemoteError, Cake, Content
 from hashstore.bakery.lite.node import ContentAddress
+from hashstore.kernel import json_encoder, json_decode
 from hashstore.utils.file_types import BINARY_MIME
 from hashstore.utils.fio import is_file_in_directory
-from hashstore.utils.hashing import SaltedSha
+from hashstore.kernel.hashing import SaltedSha
 from hashstore.utils.db import Dbf
-from hashstore.bakery.lite.client import ClientConfigBase, \
-    ClientKey, Server, MountSession
-from hashstore.utils import (
-    json_encoder, normalize_url, json_decode)
+from hashstore.bakery.lite.client import (
+    ClientConfigBase, ClientKey, Server, MountSession)
+from hashstore.utils import normalize_url
 import logging
 log = logging.getLogger(__name__)
 
@@ -62,8 +62,6 @@ class CakeClient:
                     default_mount = mount_session
             if default_mount is not None:
                 return client_session(mount_session)
-
-
 
     def logout(self):
         pass
@@ -154,9 +152,10 @@ class ClientUserSession:
     def create_mount_session(self, mount_dir, default=False):
         abspath = os.path.abspath(mount_dir)
         with self.client.client_config_session() as session:
-            session.merge(Server(id=self.server_id,
-                   server_url=self.url,
-                   secret = self.server_secret))
+            session.merge(Server(
+                id=self.server_id,
+                server_url=self.url,
+                secret=self.server_secret))
             mount_session = session.query(MountSession)\
                 .filter(MountSession.path == abspath).one_or_none()
             if mount_session is None:

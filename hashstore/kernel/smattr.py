@@ -1,14 +1,13 @@
 import abc
-from typing import (Any, Dict, List, Optional, get_type_hints, Union,
-                    Set, Tuple, Callable)
+from typing import (
+    Any, Dict, List, Optional, get_type_hints, Union, Tuple, Callable)
 from inspect import getfullargspec
-
-from hashstore.utils.docs import (
+from hashstore.kernel import (
+    reraise_with_msg, EnsureIt, Stringable, ClassRef, Conversion,
+    json_encode, Jsonable, GlobalRef, ensure_string, Template,
+    json_decode, not_zero_len)
+from hashstore.kernel.docs import (
     DocStringTemplate, GroupOfVariables, VariableDocEntry)
-from . import (Jsonable, GlobalRef, Stringable, EnsureIt, json_decode,
-               json_encode, not_zero_len, ensure_string,
-               reraise_with_msg)
-from .template import ClassRef, Conversion, Template
 from .typings import is_optional, is_tuple, is_list, is_dict, get_args
 
 ATTRIBUTES = "Attributes"
@@ -30,7 +29,7 @@ class Typing(Stringable, EnsureIt):
         return False
 
     def is_primitive(self)->bool:
-        return not(self.collection) and self.val_cref.primitive
+        return not self.collection and self.val_cref.primitive
 
     def convert(self, v: Any, direction:Conversion)->Any:
         return self.val_cref.convert(v, direction)
@@ -555,8 +554,8 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
 
     >>> B.__mold__.attrs #doctest: +NORMALIZE_WHITESPACE
     {'x': AttrEntry('x:Required[hashstore.bakery:Cake]'),
-    'aa': AttrEntry('aa:List[hashstore.utils.smattr:A2]'),
-    'dt': AttrEntry('dt:Dict[datetime:datetime,hashstore.utils.smattr:A]')}
+    'aa': AttrEntry('aa:List[hashstore.kernel.smattr:A2]'),
+    'dt': AttrEntry('dt:Dict[datetime:datetime,hashstore.kernel.smattr:A]')}
     >>> b = B({"x":"3X8X3D7svYk0rD1ncTDRTnJ81538A6ZdSPcJVsptDNYt" })
     >>> str(b) #doctest: +NORMALIZE_WHITESPACE
     '{"aa": [], "dt": {}, "x": "3X8X3D7svYk0rD1ncTDRTnJ81538A6ZdSPcJVsptDNYt"}'

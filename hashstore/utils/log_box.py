@@ -1,7 +1,7 @@
 from typing import List
 
-from hashstore.utils import CodeEnum
-from hashstore.utils.smattr import SmAttr
+from hashstore.kernel import CodeEnum
+from hashstore.kernel.smattr import SmAttr
 
 
 class LogLevel(CodeEnum):

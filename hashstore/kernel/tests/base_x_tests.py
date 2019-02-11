@@ -1,4 +1,4 @@
-import hashstore.utils.base_x as bx
+import hashstore.kernel.base_x as bx
 from hashstore.tests import doctest_it, random_bytes, seed
 from nose.tools import eq_,ok_
 

@@ -6,7 +6,7 @@ import datetime
 from sqlalchemy import Column, DateTime, String, Integer
 from sqlalchemy.ext.declarative import declared_attr
 from hashstore.utils import from_camel_case_to_underscores
-from hashstore.utils.hashing import SaltedSha
+from hashstore.kernel.hashing import SaltedSha
 
 
 class ReprIt:

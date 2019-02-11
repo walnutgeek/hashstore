@@ -1,20 +1,15 @@
-from typing import Any
+from logging import getLogger
+from nose.tools import eq_,ok_
+from hashstore.kernel import exception_message
+from hashstore.kernel.auto_wire import (
+    AutoWire, AutoWireRoot, wire_names)
 
-from nose.tools import eq_,ok_,with_setup
-import sys
-from hashstore.tests import TestSetup, assert_text
-import hashstore.utils.fio as fio
-from hashstore.utils import exception_message
-from hashstore.utils.auto_wire import AutoWire, AutoWireRoot, wire_names
-
-test = TestSetup(__name__,ensure_empty=True)
-log = test.log
-fio.ensure_directory(test.dir)
+log = getLogger(__name__)
 
 
 # def test_docs():
 #     import doctest
-#     import hashstore.utils.auto_wire as aw
+#     import hashstore.kernel.auto_wire as aw
 #     r = doctest.testmod(aw)
 #     ok_(r.attempted > 0, f'There is no doctests in module {t}')
 #     eq_(r.failed,0)

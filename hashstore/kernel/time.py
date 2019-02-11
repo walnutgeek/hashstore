@@ -1,7 +1,7 @@
 import pytz
 from croniter import croniter
 
-from hashstore.utils import Stringable, EnsureIt, StrKeyMixin
+from hashstore.kernel import Stringable, EnsureIt, StrKeyMixin
 
 
 class CronExp(Stringable,EnsureIt,StrKeyMixin):

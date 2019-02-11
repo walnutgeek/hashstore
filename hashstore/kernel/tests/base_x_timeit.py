@@ -1,6 +1,6 @@
 import timeit
 from os import urandom
-from hashstore.utils.base_x import base_x
+from hashstore.kernel.base_x import base_x
 B62 = base_x(62)
 encode_samples = [urandom(64) for i in range(100)]
 decode_samples = [B62.encode(s) for s in encode_samples]

@@ -6,7 +6,7 @@ from typing import Union
 import pylru
 from hashstore.utils.db import Dbf
 from hashstore.utils.fio import ensure_directory
-from hashstore.utils.hashing import (is_it_shard, Hasher)
+from hashstore.kernel.hashing import (is_it_shard, Hasher)
 from sqlalchemy import func, select
 from hashstore.bakery import (NotFoundError, CakeRole,
                               Content, Cake)

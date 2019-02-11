@@ -1,16 +1,11 @@
 from typing import Any
-
+import hashstore.kernel.event as e
+from logging import getLogger
 from nose.tools import eq_,ok_
-from hashstore.tests import TestSetup
-import hashstore.utils.fio as fio
-from hashstore.utils import exception_message, quict
-from hashstore.utils.smattr import Mold, SmAttr, ReferenceResolver
+from hashstore.kernel import exception_message, quict
+from hashstore.kernel.smattr import Mold, SmAttr, ReferenceResolver
 
-test = TestSetup(__name__,ensure_empty=True)
-log = test.log
-fio.ensure_directory(test.dir)
-
-import hashstore.utils.event as e
+log = getLogger(__name__)
 
 
 def test_docs():
@@ -127,8 +122,8 @@ def test_events():
     ffn3 = e.Function.parse(fn3)
     eq_(str(ffn3),
         '{"in_mold": ["z:Required[int]", "x:Required[bytes]", '
-        '"y:Required[hashstore.tests.utils_event_tests:ComplexInput]"], '
-        '"out_mold": [], "ref": "hashstore.tests.utils_event_tests:fn3"}')
+        '"y:Required[hashstore.kernel.tests.event_tests:ComplexInput]"], '
+        '"out_mold": [], "ref": "hashstore.kernel.tests.event_tests:fn3"}')
     resolver = CacheResover()
 
     e1,e2 = do_run_events(ffn1, ffn2, resolver)

@@ -3,11 +3,12 @@ import datetime
 from hashstore.bakery import (
     NotAuthorizedError, CredentialsError, Cake, CakeRack,
     CakePath, CakeType, CakeRole, PatchAction, Content)
+from hashstore.kernel import reraise_with_msg, utf8_reader
+from hashstore.utils import tuple_mapper
 from hashstore.utils.file_types import (BINARY, guess_name, file_types)
-from hashstore.utils.hashing import SaltedSha
+from hashstore.kernel.hashing import SaltedSha
 from hashstore.bakery.cake_tree import CakeTree
 from hashstore.utils.db import MultiSessionContextManager
-from hashstore.utils import reraise_with_msg, tuple_mapper, utf8_reader
 import hashstore.bakery.lite.dal as dal
 from sqlalchemy import and_, or_
 

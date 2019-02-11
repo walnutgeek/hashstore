@@ -6,12 +6,13 @@ import abc
 import threading
 from datetime import datetime
 
-from hashstore.utils import Jsonable
-from hashstore.utils.event import Event
+from hashstore.kernel import (
+    Stringable, EnsureIt, utf8_encode, Jsonable, ensure_string,
+    CodeEnum)
+from hashstore.kernel.event import Event
 from io import BytesIO
 import os
-import hashstore.utils as utils
-from hashstore.utils.base_x import base_x
+from hashstore.kernel.base_x import base_x
 import json
 import enum
 from pathlib import PurePosixPath
@@ -20,8 +21,8 @@ from typing import (
 import logging
 from hashstore.utils.file_types import (
     guess_name, file_types, HSB, BINARY)
-from hashstore.utils.smattr import (JsonWrap, SmAttr, combine_vars)
-from hashstore.utils.hashing import (
+from hashstore.kernel.smattr import (JsonWrap, SmAttr)
+from hashstore.kernel.hashing import (
     Hasher, shard_name_int, shard_num, HashBytes)
 
 log = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ B62 = base_x(62)
 MAX_NUM_OF_SHARDS = 8192
 
 
-class CakeRole(utils.CodeEnum):
+class CakeRole(CodeEnum):
     SYNAPSE = (0,)
     NEURON = (1,)
 
@@ -41,7 +42,7 @@ _IS_PORTAL, _IS_VTREE, _IS_RESOLVED = (
     "is_portal", "is_vtree", "is_resolved" )
 
 
-class CakeType(utils.CodeEnum):
+class CakeType(CodeEnum):
     INLINE = (0, )
     SHA256 = (1, _IS_RESOLVED)
     PORTAL = (2, _IS_PORTAL)
@@ -49,7 +50,7 @@ class CakeType(utils.CodeEnum):
     DMOUNT = (4, _IS_PORTAL)
 
     def __init__(self, code:int, *modifiers:str) -> None:
-        utils.CodeEnum.__init__(self, code)
+        CodeEnum.__init__(self, code)
         self.is_vtree = _IS_VTREE in modifiers
         self.is_portal = self.is_vtree or _IS_PORTAL in modifiers
         self.is_resolved = _IS_RESOLVED in modifiers
@@ -78,9 +79,7 @@ def portal_from_name(n:Optional[str])->CakeType:
     raise ValueError('not a portal type:'+n)
 
 
-
-
-class CakeClass(utils.CodeEnum):
+class CakeClass(CodeEnum):
     NO_CLASS = (0, None, None)
     EVENT = (1, CakeRole.SYNAPSE, Event)
     DAG_STATE = (2, CakeRole.NEURON, None)
@@ -91,7 +90,7 @@ class CakeClass(utils.CodeEnum):
                  implied_role:Optional[CakeRole],
                  json_type:Optional[type]
                  ) -> None:
-        utils.CodeEnum.__init__(self, code)
+        CodeEnum.__init__(self, code)
         self.implied_role = implied_role
         self.json_type = json_type
 
@@ -174,7 +173,7 @@ class CakeHeader(SmAttr):
             role=CakeRole.find_by_code(header & 1),
             cclass=CakeClass.find_by_code((header >> 4) & 15))
 
-class Cake(utils.Stringable, utils.EnsureIt):
+class Cake(Stringable, EnsureIt):
     """
     Stands for Content Address Key.
 
@@ -245,7 +244,7 @@ class Cake(utils.Stringable, utils.EnsureIt):
             self._data = data
             self.header = header
         else:
-            decoded = B62.decode(utils.ensure_string(s))
+            decoded = B62.decode(ensure_string(s))
             self._data = decoded[1:]
             self.header = CakeHeader.unpack(decoded[0])
 
@@ -411,7 +410,7 @@ class RackRow(SmAttr):
             else self.cake.header.role
 
 
-class CakeRack(utils.Jsonable):
+class CakeRack(Jsonable):
     """
     sorted dictionary of names and corresponding Cakes
 
@@ -470,7 +469,7 @@ class CakeRack(utils.Jsonable):
 
     def __bytes__(self)->bytes:
         if self._in_bytes is None:
-            self._in_bytes = utils.utf8_encode(self.content())
+            self._in_bytes = utf8_encode(self.content())
         return self._in_bytes
 
     def size(self)->int:
@@ -605,7 +604,7 @@ class HasCakeFromBytesMixin:
         return Cake.from_bytes(bytes(self)) #type: ignore
 
 
-class CakePath(utils.Stringable, utils.EnsureIt):
+class CakePath(Stringable, EnsureIt):
     """
     >>> root = CakePath('/dCYNBHoPFLCwpVdQU5LhiF0i6U60KF')
     >>> root

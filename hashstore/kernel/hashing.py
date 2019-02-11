@@ -1,11 +1,11 @@
 import abc
 from hashlib import sha256, sha1
 from typing import Optional
-from hashstore.utils import (
+from hashstore.kernel import (
     Stringable, EnsureIt, ensure_string, ensure_bytes)
 import os
 
-from hashstore.utils.base_x import base_x
+from hashstore.kernel.base_x import base_x
 import base64
 
 

@@ -7,7 +7,7 @@ from hashstore.bakery.lite.node import (
     UserState, Permission, Portal, ServerKey, PermissionType as PT)
 from hashstore.bakery.lite.node.blobs import BlobStore
 from hashstore.utils.db import Dbf
-from hashstore.utils.hashing import shard_name_int, SaltedSha
+from hashstore.kernel.hashing import shard_name_int, SaltedSha
 
 
 class CakeStore:

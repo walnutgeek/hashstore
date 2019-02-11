@@ -4,18 +4,20 @@ import enum
 from sqlalchemy.orm import relationship
 
 from hashstore.bakery import Cake
+from hashstore.kernel import Stringable, EnsureIt
 from hashstore.utils.db import StringCast, IntCast
-from hashstore.bakery.lite.mixins import ReprIt, NameIt, Cdt, Udt, CakePk, \
-    PortalPkWithSynapseDefault, ServersMixin, Singleton
+from hashstore.bakery.lite.mixins import (
+    ReprIt, NameIt, Cdt, Udt, CakePk,  PortalPkWithSynapseDefault,
+    ServersMixin, Singleton)
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import LargeBinary, Column, Integer, Boolean, \
-    ForeignKey, DateTime, String, Index, and_
+from sqlalchemy import (
+    LargeBinary, Column, Integer, Boolean, ForeignKey, DateTime, String,
+    Index, and_)
 from typing import (Union, Any, Tuple, Set)
 
-from hashstore.utils import (Stringable, EnsureIt)
-from hashstore.utils.hashing import (HashBytes, B36, shard_num,
-                                     shard_name_int, SaltedSha,
-                                     InetAddress)
+from hashstore.kernel.hashing import (
+    HashBytes, B36, shard_num, shard_name_int, SaltedSha, InetAddress)
+
 MAX_NUM_OF_SHARDS = 8192
 
 

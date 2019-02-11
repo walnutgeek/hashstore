@@ -2,9 +2,10 @@ import enum
 import inspect
 from datetime import datetime
 from typing import Optional, Dict, Any, Generator
+
+from hashstore.kernel import CodeEnum, GlobalRef
 from .smattr import (SmAttr, combine_vars, Mold, ReferenceResolver,
                      extract_molds_from_function)
-from . import GlobalRef, CodeEnum
 import traceback
 
 
@@ -75,7 +76,7 @@ class Event(SmAttr):
     <EventState.NEW: 1>
     >>> str(q)
     '{"error_edge": null, "exec_ref": "hashstore.utils:from_camel_case_to_underscores", "input_edge": {"dt": "2018-09-28T00:00:00", "type": "INPUT", "vars": {"s": "CamelCase"}}, "output_edge": null, "state": "NEW"}'
-    >>> from hashstore.utils.smattr import NoResolver
+    >>> from hashstore.kernel.smattr import NoResolver
     >>> events = list(Function.parse(from_camel_case_to_underscores)
     ...             .invoke({"s":"CamelCase"}, NoResolver()))
     >>> len(events)

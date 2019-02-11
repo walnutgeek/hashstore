@@ -4,7 +4,8 @@
 from nose.tools import eq_,ok_
 import hashstore.bakery as bakery
 from io import BytesIO
-from hashstore.utils import utf8_reader
+
+from hashstore.kernel import utf8_reader
 from hashstore.tests import TestSetup, doctest_it
 
 import logging

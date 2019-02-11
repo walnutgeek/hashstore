@@ -1,7 +1,7 @@
 from keyword import iskeyword
-from typing import Optional, Set, Dict, Tuple, List, Union
+from typing import Optional, Set, Dict, List, Union
 
-from hashstore.utils import Stringable
+from hashstore.kernel import Stringable
 
 CUTOFF_WIDTH = 65
 

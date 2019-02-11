@@ -1,11 +1,10 @@
 import inspect
 from typing import Union, Callable, List, Optional
-from hashstore.utils import GlobalRef
-from hashstore.utils.auto_wire import AutoWire, wire_names, AutoWireRoot
-from hashstore.utils.event import Function
+from hashstore.kernel.auto_wire import AutoWire, wire_names, AutoWireRoot
+from hashstore.kernel.event import Function
 from hashstore.utils.log_box import LogBox
-from hashstore.utils.smattr import (SmAttr, AttrEntry)
-from hashstore.utils.time import CronExp, TimeZone
+from hashstore.kernel.smattr import (SmAttr, AttrEntry)
+from hashstore.kernel.time import CronExp, TimeZone
 
 
 

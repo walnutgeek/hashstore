@@ -1,8 +1,8 @@
 from enum import IntEnum
 
-from hashstore.bakery import CakePath, HasCake, Cake, CakeRack, \
-    CakeRole
-from hashstore.utils import Str2Bytes
+from hashstore.bakery import (
+    CakePath, HasCake, Cake, CakeRack, CakeRole)
+from hashstore.kernel import Str2Bytes
 
 
 class NodeState(IntEnum):
@@ -71,6 +71,7 @@ class Node(HasCake):
             yield self
 
     def __iter__(self):
+        """ no children implementation """
         return
         yield # pragma: no cover
 

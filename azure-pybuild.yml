@@ -13,8 +13,3 @@ steps:
       name: sdist
     - script: python scent.py current
       name: test
-    - task: PublishCodeCoverageResults@1
-      inputs:
-        codeCoverageTool: Cobertura
-        summaryFileLocation: $(Build.Repository.LocalPath)/coverage.xml
-        reportDirectory: $(Build.Repository.LocalPath)/coverage_html_report

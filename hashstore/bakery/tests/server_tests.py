@@ -10,7 +10,7 @@ from time import sleep
 import urllib.request
 import logging
 
-from hashstore.utils.hashing import SaltedSha
+from hashstore.kernel.hashing import SaltedSha
 
 log = logging.getLogger(__name__)
 

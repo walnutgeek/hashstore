@@ -5,7 +5,7 @@ from hashstore.bakery.lite.node import PermissionType, Acl
 from hashstore.bakery.lite.node.store import CakeStore
 from hashstore.utils import print_pad
 from hashstore.utils.args import Switch, CommandArgs
-from hashstore.utils.hashing import SaltedSha
+from hashstore.kernel.hashing import SaltedSha
 from hashstore.bakery.cake_scan import pull, backup, ScanPath
 from hashstore.bakery import ensure_cakepath
 import getpass
