@@ -19,7 +19,7 @@ from pathlib import PurePosixPath
 from typing import (
     Union, Optional, Any, Callable, Tuple, List, Iterable, Dict, IO)
 import logging
-from hashstore.utils.file_types import (
+from hashstore.kernel.file_types import (
     guess_name, file_types, HSB, BINARY)
 from hashstore.kernel.smattr import (JsonWrap, SmAttr)
 from hashstore.kernel.hashing import (

@@ -1,6 +1,6 @@
 import hashstore.kernel.base_x as bx
-from hashstore.tests import doctest_it, random_bytes, seed
-from nose.tools import eq_,ok_
+from hashstore.kernel.misc.nose import doctest_it,eq_,ok_
+from hashstore.tests import random_bytes, seed
 
 b58 = bx.base_x(58)
 

@@ -5,7 +5,7 @@ from hashstore.bakery import (Cake, CakeRole, CakeType)
 import datetime
 from sqlalchemy import Column, DateTime, String, Integer
 from sqlalchemy.ext.declarative import declared_attr
-from hashstore.utils import from_camel_case_to_underscores
+from hashstore.kernel import from_camel_case_to_underscores
 from hashstore.kernel.hashing import SaltedSha
 
 

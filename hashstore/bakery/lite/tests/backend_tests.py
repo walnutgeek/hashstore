@@ -5,7 +5,7 @@ from hashstore.bakery.lite.node import ContentAddress
 from hashstore.tests import TestSetup, seed, random_bytes
 from ..node.blobs import BlobStore
 from hashstore.bakery import Cake
-from nose.tools import eq_,ok_,with_setup
+from hashstore.kernel.misc.nose import eq_,ok_
 
 
 # to test if sniffer is not hanging uncomment next line & save

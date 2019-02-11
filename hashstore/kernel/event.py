@@ -61,21 +61,21 @@ class Event(SmAttr):
     Traceback (most recent call last):
     ...
     KeyError: 'Q'
-    >>> from hashstore.utils import from_camel_case_to_underscores
+    >>> from hashstore.kernel import from_camel_case_to_underscores
     >>> e = Event(exec_ref=from_camel_case_to_underscores,
     ...    input_edge=EventEdge(
     ...        type=EdgeType.INPUT,
     ...        vars={"s":"CamelCase"},
     ...        dt=datetime(2018,9,28)))
     >>> e.to_json()
-    {'state': 'NEW', 'exec_ref': 'hashstore.utils:from_camel_case_to_underscores', 'input_edge': {'type': 'INPUT', 'vars': {'s': 'CamelCase'}, 'dt': '2018-09-28T00:00:00'}, 'output_edge': None, 'error_edge': None}
+    {'state': 'NEW', 'exec_ref': 'hashstore.kernel:from_camel_case_to_underscores', 'input_edge': {'type': 'INPUT', 'vars': {'s': 'CamelCase'}, 'dt': '2018-09-28T00:00:00'}, 'output_edge': None, 'error_edge': None}
     >>> str(e)
-    '{"error_edge": null, "exec_ref": "hashstore.utils:from_camel_case_to_underscores", "input_edge": {"dt": "2018-09-28T00:00:00", "type": "INPUT", "vars": {"s": "CamelCase"}}, "output_edge": null, "state": "NEW"}'
+    '{"error_edge": null, "exec_ref": "hashstore.kernel:from_camel_case_to_underscores", "input_edge": {"dt": "2018-09-28T00:00:00", "type": "INPUT", "vars": {"s": "CamelCase"}}, "output_edge": null, "state": "NEW"}'
     >>> q = Event(e.to_json())
     >>> q.state
     <EventState.NEW: 1>
     >>> str(q)
-    '{"error_edge": null, "exec_ref": "hashstore.utils:from_camel_case_to_underscores", "input_edge": {"dt": "2018-09-28T00:00:00", "type": "INPUT", "vars": {"s": "CamelCase"}}, "output_edge": null, "state": "NEW"}'
+    '{"error_edge": null, "exec_ref": "hashstore.kernel:from_camel_case_to_underscores", "input_edge": {"dt": "2018-09-28T00:00:00", "type": "INPUT", "vars": {"s": "CamelCase"}}, "output_edge": null, "state": "NEW"}'
     >>> from hashstore.kernel.smattr import NoResolver
     >>> events = list(Function.parse(from_camel_case_to_underscores)
     ...             .invoke({"s":"CamelCase"}, NoResolver()))

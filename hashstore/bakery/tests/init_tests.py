@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from nose.tools import eq_,ok_
 import hashstore.bakery as bakery
 from io import BytesIO
 
 from hashstore.kernel import utf8_reader
-from hashstore.tests import TestSetup, doctest_it
+from hashstore.tests import TestSetup
+from hashstore.kernel.misc.nose import doctest_it,eq_,ok_
 
 import logging
 logging.basicConfig()

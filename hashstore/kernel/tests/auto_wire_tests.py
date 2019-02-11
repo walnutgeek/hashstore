@@ -1,5 +1,5 @@
 from logging import getLogger
-from nose.tools import eq_,ok_
+from hashstore.kernel.misc.nose import eq_,ok_
 from hashstore.kernel import exception_message
 from hashstore.kernel.auto_wire import (
     AutoWire, AutoWireRoot, wire_names)

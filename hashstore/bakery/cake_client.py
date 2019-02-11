@@ -5,7 +5,7 @@ from sqlalchemy import desc
 from hashstore.bakery import RemoteError, Cake, Content
 from hashstore.bakery.lite.node import ContentAddress
 from hashstore.kernel import json_encoder, json_decode
-from hashstore.utils.file_types import BINARY_MIME
+from hashstore.kernel.file_types import BINARY_MIME
 from hashstore.utils.fio import is_file_in_directory
 from hashstore.kernel.hashing import SaltedSha
 from hashstore.utils.db import Dbf

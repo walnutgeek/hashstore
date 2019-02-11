@@ -1,142 +1,8 @@
-from datetime import date, timedelta
-from setuptools import setup, find_packages, Command
+from setuptools import setup, find_packages
 from setuptools.command.sdist import sdist
-from subprocess import check_call, check_output, CalledProcessError
-
+from subprocess import check_call
 import os
-
-# MANIFEST.in ensures that requirements are included in `sdist`
-from hashstore.kernel import ensure_string
-
-VERSION_TXT = 'version.txt'
-
-install_requires = open('requirements.txt').read().split()
-
-
-def next_month(d):
-    cur_month = d.month
-    while cur_month == d.month:
-        d += timedelta(days=1)
-    return d
-
-class Version:
-    def __init__(self, s):
-        self.nums = s if isinstance(s, tuple) else tuple(map(int, s.split('.')))
-        if len(self.nums) not in (2, 3):
-            raise ValueError(f'version has to have 2 or 3 parts: {s}')
-
-    def __str__(self):
-        return '.'.join(map(str, self.nums))
-
-    def __repr__(self):
-        return f'Version({self.nums})'
-
-    def next_major(self, now=date.today()):
-        _nums = (now.year, now.month)
-        if _nums > self.nums:
-            return Version(_nums)
-        else:
-            now = next_month(now)
-            _nums = (now.year, now.month)
-            if _nums > self.nums:
-                return Version(_nums)
-            raise ValueError(
-                f'cannot calc major version from: {self.nums} {now}')
-
-    def next_minor(self, now=date.today()):
-        last_num = 1
-        if self.is_minor() :
-            last_num = self.nums[2]
-        _nums = (now.year, now.month, last_num)
-        if self.nums == _nums:
-            return Version((now.year, now.month, last_num + 1))
-        else:
-            _nums = (now.year, now.month, 1)
-            if _nums > self.nums:
-                return Version(_nums)
-            now = next_month(now)
-            _nums = (now.year, now.month, 1)
-            if _nums > self.nums:
-                return Version(_nums)
-            raise ValueError(
-                f'cannot calc version from: {self.nums} {now}')
-
-    def is_minor(self):
-        return len(self.nums) == 3
-
-    def type(self):
-        return "minor" if self.is_minor() else "major"
-
-
-version = Version(open(VERSION_TXT).read().strip())
-
-with open("README.md", "r") as fh:
-    long_description = fh.read()
-
-
-
-class ReleaseCommand(Command):
-
-    description = f"""
-        Check release:
-            return success errorCode if {VERSION_TXT} match 
-            current tag on branch. 
-        
-        Trigger release:
-            change {VERSION_TXT}, tag and push changes to git.
-            
-        """
-
-    user_options = [
-        ('azure', None, "publish azure vars"),
-        ('minor', None, "trigger minor release "),
-        ('major', None, "trigger major release ")
-    ]
-
-    def initialize_options(self):
-        self.azure = self.minor = self.major = False
-
-    def finalize_options(self):
-        pass
-
-    def azure_var(self, key, value):
-        if self.azure:
-            print(f'##vso[task.setvariable variable={key};isOutput=true]{value}')
-
-    def run(self):
-        """Run command."""
-        new_ver = None
-        if self.major:
-            new_ver = version.next_major()
-        elif self.minor:
-            new_ver = version.next_minor()
-        else:
-            try:
-                tag=ensure_string(
-                    check_output([
-                        'git', 'describe','--tags','--exact-match'])
-                ).strip()
-                version_ = f'v{version}'
-                print(f'version.txt={repr(version_)} git={repr(tag)}')
-                match = tag == version_
-            except CalledProcessError:
-                print(f'no tag found')
-                match = False
-                self.azure_var('type', 'none')
-            if match:
-                print(f'{version.type()} release. Git tag matched.')
-                self.azure_var('type', version.type())
-            raise SystemExit(0)
-        open(VERSION_TXT, 'wt').write(str(new_ver))
-        print(f'New version: {new_ver}')
-        tag = f'v{new_ver}'
-        msg = ['-m', tag]
-        check_call(['git', 'add', VERSION_TXT])
-        check_call(['git', 'commit', *msg ])
-        check_call(['git', 'tag', '-a', tag, *msg])
-        # check_call(f'git push origin --tags'.split())
-        check_call('git push --tags origin HEAD'.split())
-        check_call('git push -u origin master'.split())
+from hashstore.kernel.misc.setup import get_version_and_add_release_cmd
 
 
 class MySdistCommand(sdist):
@@ -148,6 +14,17 @@ class MySdistCommand(sdist):
         for c in ([npm, 'install'], [npm, 'run', 'build'] ):
             check_call(c, cwd='hashstore/bakery/js')
         sdist.run(self)
+
+cmdclass_dict = {'sdist': MySdistCommand}
+
+
+# MANIFEST.in ensures that requirements are included in `sdist`
+install_requires = open('requirements.txt').read().split()
+
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
+version = get_version_and_add_release_cmd('version.txt', cmdclass_dict)
 
 setup(name='hashstore',
       version=str(version),
@@ -167,9 +44,9 @@ setup(name='hashstore',
       author_email='wg@walnutgeek.com',
       license='Apache 2.0',
       packages=find_packages(exclude=("tests",)),
-      package_data={'': ['utils/file_types.json', 'bakery/app/*',
+      package_data={'': ['kernel/file_types.json', 'bakery/app/*',
                          'bakery/app/fonts/*']},
-      cmdclass={'sdist': MySdistCommand, 'release': ReleaseCommand},
+      cmdclass=cmdclass_dict,
       entry_points={
           'console_scripts': [ 'hs=hashstore.hs:main' ],
       },

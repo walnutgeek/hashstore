@@ -1,6 +1,6 @@
-from nose.tools import eq_,ok_
+from hashstore.kernel.misc.nose import eq_,ok_
 import hashstore.bakery as ids
-from hashstore.tests import TestSetup, doctest_it
+from hashstore.tests import TestSetup
 
 from sqlalchemy import Table, Integer, MetaData, Column, types, select
 

@@ -1,6 +1,6 @@
 from hashstore.bakery import Cake, CakeRole
 from hashstore.kernel.hashing import SaltedSha
-from hashstore.tests import TestSetup, doctest_it
+from hashstore.tests import TestSetup
 
 
 from hashstore.utils.db import Dbf

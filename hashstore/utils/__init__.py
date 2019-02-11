@@ -44,18 +44,6 @@ def print_pad(data, columns, get = None):
             print(srow)
 
 
-def _camel2var(c):
-    return c if c.islower() else '_' + c.lower()
-
-
-def from_camel_case_to_underscores(s:str)->str:
-    '''
-    >>> from_camel_case_to_underscores('CamelCase')
-    'camel_case'
-    '''
-    return ''.join(map(_camel2var, s)).strip('_')
-
-
 class KeyMapper:
     '''
     Mapper that extracts keys out of sequence of values

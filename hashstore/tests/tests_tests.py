@@ -1,5 +1,5 @@
 
-from nose.tools import eq_,ok_
+from hashstore.kernel.misc.nose import eq_,ok_
 
 def test_docs():
     import doctest

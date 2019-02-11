@@ -1,6 +1,6 @@
 import _ from "lodash" ;
 import {ValueEnum} from "./enums";
-import file_types from "../../../../utils/file_types.json";
+import file_types from "../../../../kernel/file_types.json";
 
 
 export const FileTypes = new ValueEnum( file_types,{

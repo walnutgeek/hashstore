@@ -6,6 +6,7 @@ from typing import Any, List, Type, TypeVar, Optional, Union
 from inspect import isfunction, isclass, ismodule
 import codecs
 from datetime import datetime, date
+from dateutil.parser import parse as dt_parse
 from hashstore.kernel.typings import is_from_typing_module
 import sys
 
@@ -36,6 +37,16 @@ def identity(v):
     >>>
     """
     return v
+
+
+def from_camel_case_to_underscores(s:str)->str:
+    '''
+    >>> from_camel_case_to_underscores('CamelCase')
+    'camel_case'
+    '''
+    return ''.join(map(
+        lambda c: c if c.islower() else '_' + c.lower(), s
+    )).strip('_')
 
 
 def lazy_factory(cls, factory):
@@ -411,7 +422,6 @@ class ClassRef(Stringable, StrKeyMixin, EnsureIt):
 
     def __init__(self,
                  cls_or_str: Union[type, str])->None:
-        from dateutil.parser import parse as dt_parse
         if isinstance(cls_or_str, str):
             if ':' not in cls_or_str:
                 cls_or_str = 'builtins:'+cls_or_str
