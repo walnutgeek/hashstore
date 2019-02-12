@@ -1,5 +1,5 @@
 from logging import getLogger
-from hashstore.build_tools.nose import eq_,ok_
+from hs_build_tools.nose import eq_,ok_
 from hashstore.kernel import exception_message
 from hashstore.kernel.auto_wire import (
     AutoWire, AutoWireRoot, wire_names)

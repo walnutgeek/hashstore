@@ -5,7 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
-from hashstore.build_tools.nose import doctest_it,assert_text,eq_,ok_
+from hs_build_tools.nose import doctest_it,assert_text,eq_,ok_
 import random
 import time
 

@@ -1,4 +1,5 @@
 nose
+hs-build-tools
 mock
 sniffer
 coverage
@@ -6,4 +7,3 @@ codecov
 mypy
 wheel<=0.31.1
 twine
-xar

@@ -6,7 +6,7 @@ from io import BytesIO
 
 from hashstore.kernel import utf8_reader
 from hashstore.tests import TestSetup
-from hashstore.build_tools.nose import doctest_it,eq_,ok_
+from hs_build_tools.nose import doctest_it,eq_,ok_
 
 import logging
 logging.basicConfig()

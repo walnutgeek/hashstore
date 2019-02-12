@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 from setuptools.command.sdist import sdist
 from subprocess import check_call
 import os
-from hashstore.build_tools.setup import get_version_and_add_release_cmd
+from hs_build_tools.setup import get_version_and_add_release_cmd
 
 
 class MySdistCommand(sdist):

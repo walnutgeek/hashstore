@@ -1,6 +1,6 @@
 import hashstore.bakery.cake_tree as cake_tree
 from hashstore.tests import TestSetup
-from hashstore.build_tools.nose import doctest_it
+from hs_build_tools.nose import doctest_it
 
 
 test = TestSetup(__name__,ensure_empty=True)

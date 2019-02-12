@@ -63,4 +63,13 @@ jobs:
         inputs:
           versionSpec: '3.6'
           architecture: 'x64'
-      - script: echo $(release_type)
+      - script: |
+          pip install -r requirements.txt
+          pip install -r test-requirements.txt
+          python setup.py sdist bdist_wheel
+        name: dist
+      - task: TwineAuthenticate@0
+        inputs:
+          externalFeeds: pypi
+      - script: twine upload -r pypi --config-file $PYPIRC_PATH dist/*
+        name: twine

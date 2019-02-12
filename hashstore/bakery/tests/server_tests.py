@@ -1,6 +1,6 @@
 import json
 
-from hashstore.build_tools.nose import eq_,ok_
+from hs_build_tools.nose import eq_,ok_
 
 from hashstore.bakery import Cake, CakeRole, CakeType, CakePath
 from hashstore.tests import (sqlite_q, TestSetup, file_set1, file_set2,

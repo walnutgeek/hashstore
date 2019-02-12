@@ -1,4 +1,4 @@
-from hashstore.build_tools.nose import eq_,ok_
+from hs_build_tools.nose import eq_,ok_
 import hashstore.bakery as ids
 from hashstore.tests import TestSetup
 
