@@ -29,7 +29,9 @@ jobs:
         inputs:
           versionSpec: '3.6'
           architecture: 'x64'
-      - script: python setup.py release --azure
+      - script: |
+        pip install -r test-requirements.txt
+        python setup.py release --azure
         name: release
   - job: pypitest
     condition: eq( dependencies.Check.outputs['release.type'], 'minor')
