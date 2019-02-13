@@ -13,8 +13,7 @@ def py_files(filename):
 run_envs = ['py6', 'py7']
 
 
-mypy_modules = [
-    'hashstore.kernel.tests.logic_test_module', 'hashstore.hs']
+mypy_modules = [ 'hashstore.hs']
 
 
 def os_system_in_env(e,cmd):
@@ -51,22 +50,14 @@ Tests to add:
 @runnable
 def execute_some_tests(*args):
     case = ''
-    case += ' hashstore.kernel.tests.kernel_tests'
-    case += ' hashstore.kernel.tests.smattr_tests'
-    case += ' hashstore.kernel.tests.auto_wire_tests'
-    case += ' hashstore.kernel.tests.event_tests'
-    case += ' hashstore.kernel.tests.base_x_tests'
-    case += ' hashstore.kernel.tests.file_types_tests'
-    case += ' hashstore.kernel.tests.bakery_tests'
-    case += ' hashstore.kernel.tests.logic_tests'
 
-    # case += ' hashstore.bakery.tests.cake_tree_tests'
-    # case += ' hashstore.bakery.lite.tests.backend_tests'
-    # case += ' hashstore.bakery.lite.tests.models_tests'
-    #
-    # case += ' hashstore.tests.db_tests'
-    # case += ' hashstore.tests.utils_fio_tests'
-    # case += ' hashstore.tests.utils_tests'
+    case += ' hashstore.bakery.tests.cake_tree_tests'
+    case += ' hashstore.bakery.lite.tests.backend_tests'
+    case += ' hashstore.bakery.lite.tests.models_tests'
+
+    case += ' hashstore.tests.db_tests'
+    case += ' hashstore.tests.utils_fio_tests'
+    case += ' hashstore.tests.utils_tests'
 
     #=== slow tests
     # case += ' hashstore.tests.doc_tests'

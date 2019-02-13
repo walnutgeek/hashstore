@@ -7,11 +7,11 @@ import time
 import signal
 from hashstore.bakery.lite.node.access import (
     StoreContext, GuestAccess, FROM_COOKIE)
-from hashstore.kernel import (
+from hashkernel import (
     exception_message, utf8_encode, json_encode, json_decode,
     utf8_decode, ensure_bytes)
-from hashstore.kernel.hashing import SaltedSha
-from hashstore.kernel.bakery import (
+from hashkernel.hashing import SaltedSha
+from hashkernel.bakery import (
     cake_or_path, NotAuthorizedError, Content, PathInfo)
 import tornado.web
 import tornado.template

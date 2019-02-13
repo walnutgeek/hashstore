@@ -1,4 +1,4 @@
-from hashstore.kernel.bakery import Cake, CakeRole
+from hashkernel.bakery import Cake, CakeRole
 
 from hashstore.bakery.lite.node import (
     User, Permission, UserType, Portal, PortalHistory, VolatileTree)

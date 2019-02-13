@@ -2,12 +2,12 @@ import os
 import requests
 import json
 from sqlalchemy import desc
-from hashstore.kernel.bakery import RemoteError, Cake, Content
+from hashkernel.bakery import RemoteError, Cake, Content
 from hashstore.bakery.lite.node import ContentAddress
-from hashstore.kernel import json_encoder, json_decode
-from hashstore.kernel.file_types import BINARY_MIME
+from hashkernel import json_encoder, json_decode
+from hashkernel.file_types import BINARY_MIME
 from hashstore.utils.fio import is_file_in_directory
-from hashstore.kernel.hashing import SaltedSha
+from hashkernel.hashing import SaltedSha
 from hashstore.utils.db import Dbf
 from hashstore.bakery.lite.client import (
     ClientConfigBase, ClientKey, Server, MountSession)

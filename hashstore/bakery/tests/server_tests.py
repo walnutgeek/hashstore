@@ -2,7 +2,7 @@ import json
 
 from hs_build_tools.nose import eq_,ok_
 
-from hashstore.kernel.bakery import Cake, CakeRole, CakeType, CakePath
+from hashkernel.bakery import Cake, CakeRole, CakeType, CakePath
 from hashstore.tests import (sqlite_q, TestSetup, file_set1, file_set2,
     prep_mount, update_mount, fileset1_cake, fileset2_cake)
 import os
@@ -10,7 +10,7 @@ from time import sleep
 import urllib.request
 import logging
 
-from hashstore.kernel.hashing import SaltedSha
+from hashkernel.hashing import SaltedSha
 
 log = logging.getLogger(__name__)
 

@@ -1,13 +1,13 @@
 import os
 
-from hashstore.kernel.bakery import CakeRole
+from hashkernel.bakery import CakeRole
 from hashstore.bakery.lite import dal
 from hashstore.bakery.lite.node import (
     ServerConfigBase, GlueBase,  CakeShardBase, User, UserType,
     UserState, Permission, Portal, ServerKey, PermissionType as PT)
 from hashstore.bakery.lite.node.blobs import BlobStore
 from hashstore.utils.db import Dbf
-from hashstore.kernel.hashing import shard_name_int, SaltedSha
+from hashkernel.hashing import shard_name_int, SaltedSha
 
 
 class CakeStore:

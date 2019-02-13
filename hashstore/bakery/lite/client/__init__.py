@@ -7,7 +7,7 @@ from sqlalchemy import Column, String, Integer, ForeignKey, Boolean
 
 from typing import Any
 
-from hashstore.kernel.bakery import Cake, CakePath
+from hashkernel.bakery import Cake, CakePath
 from hashstore.utils.db import IntCast,StringCast
 import enum
 

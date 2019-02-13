@@ -3,8 +3,8 @@ import enum
 
 from sqlalchemy.orm import relationship
 
-from hashstore.kernel.bakery import Cake
-from hashstore.kernel import Stringable, EnsureIt
+from hashkernel.bakery import Cake
+from hashkernel import Stringable, EnsureIt
 from hashstore.utils.db import StringCast, IntCast
 from hashstore.bakery.lite.mixins import (
     ReprIt, NameIt, Cdt, Udt, CakePk,  PortalPkWithSynapseDefault,
@@ -15,7 +15,7 @@ from sqlalchemy import (
     Index, and_)
 from typing import (Union, Any, Tuple, Set)
 
-from hashstore.kernel.hashing import (
+from hashkernel.hashing import (
     HashBytes, B36, shard_num, shard_name_int, SaltedSha, InetAddress)
 
 MAX_NUM_OF_SHARDS = 8192
@@ -25,7 +25,7 @@ class ContentAddress(Stringable, EnsureIt):
     """
     case-insensitive address that used to store blobs
     of data in file system and in db
-    >>> from hashstore.kernel.bakery import Cake
+    >>> from hashkernel.bakery import Cake
     >>> a46 = Cake.from_bytes(b'a' * 46)
     >>> str(a46)
     '2lEWHXV2XeYyZnKNyQyGPt4poJhV7VeYCfeszHnLyFtx'

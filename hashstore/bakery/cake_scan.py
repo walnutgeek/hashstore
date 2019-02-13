@@ -1,10 +1,10 @@
-from hashstore.kernel import (
+from hashkernel import (
     reraise_with_msg, ensure_string, utf8_reader)
 from hashstore.utils import failback
 from hashstore.utils.fio import (ensure_directory, read_in_chunks)
 from hashstore.utils.ignore_file import (
     ignore_files, parse_ignore_specs, check_if_path_should_be_ignored)
-from hashstore.kernel.bakery import (
+from hashkernel.bakery import (
     Cake, process_stream, CakeRack, CakePath)
 from hashstore.bakery.lite.client import (
     ScanBase, DirEntry, DirKey, FileType)

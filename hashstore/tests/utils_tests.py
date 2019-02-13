@@ -1,6 +1,6 @@
 
 from hs_build_tools.nose import eq_,ok_
-from hashstore.kernel import exception_message
+from hashkernel import exception_message
 from hashstore.tests import TestSetup, assert_text
 import hashstore.utils.fio as fio
 from hashstore.utils.args import CommandArgs

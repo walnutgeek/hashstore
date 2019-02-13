@@ -1,12 +1,12 @@
 import os
 import datetime
-from hashstore.kernel.bakery import (
+from hashkernel.bakery import (
     NotAuthorizedError, CredentialsError, Cake, CakeRack,
     CakePath, CakeType, CakeRole, PatchAction, Content)
-from hashstore.kernel import reraise_with_msg, utf8_reader
+from hashkernel import reraise_with_msg, utf8_reader
 from hashstore.utils import tuple_mapper
-from hashstore.kernel.file_types import (BINARY, guess_name, file_types)
-from hashstore.kernel.hashing import SaltedSha
+from hashkernel.file_types import (BINARY, guess_name, file_types)
+from hashkernel.hashing import SaltedSha
 from hashstore.bakery.cake_tree import CakeTree
 from hashstore.utils.db import MultiSessionContextManager
 import hashstore.bakery.lite.dal as dal

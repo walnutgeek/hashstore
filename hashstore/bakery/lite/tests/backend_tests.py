@@ -1,10 +1,10 @@
 import os
 
-from hashstore.kernel.bakery import NotFoundError
+from hashkernel.bakery import NotFoundError
 from hashstore.bakery.lite.node import ContentAddress
 from hashstore.tests import TestSetup, seed, random_bytes
 from ..node.blobs import BlobStore
-from hashstore.kernel.bakery import Cake
+from hashkernel.bakery import Cake
 from hs_build_tools.nose import eq_,ok_
 
 

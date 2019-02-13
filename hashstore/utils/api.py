@@ -1,7 +1,7 @@
 import enum
 from inspect import getfullargspec
 
-from hashstore.kernel import exception_message
+from hashkernel import exception_message
 
 import logging
 log = logging.getLogger(__name__)
