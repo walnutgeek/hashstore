@@ -13,9 +13,10 @@ def test_docs():
     import hashstore.kernel.time as time
     import hashstore.kernel.hashing as hashing
     import hashstore.kernel.typings as typings
+    import hashstore.kernel.log_box as log_box
 
     for t in (kernel, time, hashing, typings,
-              docs):
+              docs, log_box):
         r = doctest.testmod(t)
         ok_(r.attempted > 0, f'There is no doctests in module {t}')
         eq_(r.failed,0)

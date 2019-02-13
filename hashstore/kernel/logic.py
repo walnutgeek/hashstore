@@ -2,11 +2,9 @@ import inspect
 from typing import Union, Callable, List, Optional
 from hashstore.kernel.auto_wire import AutoWire, wire_names, AutoWireRoot
 from hashstore.kernel.event import Function
-from hashstore.utils.log_box import LogBox
+from hashstore.kernel.log_box import LogBox
 from hashstore.kernel.smattr import (SmAttr, AttrEntry)
 from hashstore.kernel.time import CronExp, TimeZone
-
-
 
 
 class MoldVar(AutoWire):

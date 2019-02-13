@@ -8,7 +8,7 @@ from hashstore.utils.db import Dbf
 from hashstore.utils.fio import ensure_directory
 from hashstore.kernel.hashing import (is_it_shard, Hasher)
 from sqlalchemy import func, select
-from hashstore.bakery import (NotFoundError, CakeRole,
+from hashstore.kernel.bakery import (NotFoundError, CakeRole,
                               Content, Cake)
 from . import (blob_meta, blob,
                incoming_meta, incoming,

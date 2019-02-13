@@ -1,7 +1,7 @@
 from typing import NamedTuple
 
-from hashstore.bakery import Cake
-from hashstore.bakery.logic import Task, DagMeta, EdgeMold
+from hashstore.kernel.bakery import Cake
+from hashstore.kernel.logic import Task, DagMeta, EdgeMold
 
 
 def fn(n:Cake, i:int)->Cake :

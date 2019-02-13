@@ -3,7 +3,7 @@ import enum
 
 from sqlalchemy.orm import relationship
 
-from hashstore.bakery import Cake
+from hashstore.kernel.bakery import Cake
 from hashstore.kernel import Stringable, EnsureIt
 from hashstore.utils.db import StringCast, IntCast
 from hashstore.bakery.lite.mixins import (
@@ -25,7 +25,7 @@ class ContentAddress(Stringable, EnsureIt):
     """
     case-insensitive address that used to store blobs
     of data in file system and in db
-    >>> from hashstore.bakery import Cake
+    >>> from hashstore.kernel.bakery import Cake
     >>> a46 = Cake.from_bytes(b'a' * 46)
     >>> str(a46)
     '2lEWHXV2XeYyZnKNyQyGPt4poJhV7VeYCfeszHnLyFtx'

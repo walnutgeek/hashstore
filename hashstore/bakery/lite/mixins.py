@@ -1,7 +1,7 @@
 from typing import Any, Type
 
 from hashstore.utils.db import StringCast
-from hashstore.bakery import (Cake, CakeRole, CakeType)
+from hashstore.kernel.bakery import (Cake, CakeRole, CakeType)
 import datetime
 from sqlalchemy import Column, DateTime, String, Integer
 from sqlalchemy.ext.declarative import declared_attr

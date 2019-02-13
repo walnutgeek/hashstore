@@ -1,5 +1,5 @@
 from hs_build_tools.nose import eq_,ok_
-import hashstore.bakery as ids
+import hashstore.kernel.bakery as ids
 from hashstore.tests import TestSetup
 
 from sqlalchemy import Table, Integer, MetaData, Column, types, select

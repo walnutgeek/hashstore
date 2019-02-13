@@ -4,7 +4,7 @@ from hashstore.utils import failback
 from hashstore.utils.fio import (ensure_directory, read_in_chunks)
 from hashstore.utils.ignore_file import (
     ignore_files, parse_ignore_specs, check_if_path_should_be_ignored)
-from hashstore.bakery import (
+from hashstore.kernel.bakery import (
     Cake, process_stream, CakeRack, CakePath)
 from hashstore.bakery.lite.client import (
     ScanBase, DirEntry, DirKey, FileType)

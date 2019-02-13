@@ -14,7 +14,7 @@ run_envs = ['py6', 'py7']
 
 
 mypy_modules = [
-    'hashstore.bakery.tests.logic_test_module', 'hashstore.hs']
+    'hashstore.kernel.tests.logic_test_module', 'hashstore.hs']
 
 
 def os_system_in_env(e,cmd):
@@ -57,9 +57,9 @@ def execute_some_tests(*args):
     case += ' hashstore.kernel.tests.event_tests'
     case += ' hashstore.kernel.tests.base_x_tests'
     case += ' hashstore.kernel.tests.file_types_tests'
+    case += ' hashstore.kernel.tests.bakery_tests'
+    case += ' hashstore.kernel.tests.logic_tests'
 
-    # case += ' hashstore.bakery.tests.logic_tests'
-    # case += ' hashstore.bakery.tests.init_tests'
     # case += ' hashstore.bakery.tests.cake_tree_tests'
     # case += ' hashstore.bakery.lite.tests.backend_tests'
     # case += ' hashstore.bakery.lite.tests.models_tests'

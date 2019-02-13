@@ -2,7 +2,7 @@ import os
 import requests
 import json
 from sqlalchemy import desc
-from hashstore.bakery import RemoteError, Cake, Content
+from hashstore.kernel.bakery import RemoteError, Cake, Content
 from hashstore.bakery.lite.node import ContentAddress
 from hashstore.kernel import json_encoder, json_decode
 from hashstore.kernel.file_types import BINARY_MIME

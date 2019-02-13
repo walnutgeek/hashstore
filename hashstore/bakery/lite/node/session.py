@@ -1,4 +1,4 @@
-from hashstore.bakery import (HashSession, CakePath, LookupInfo,
+from hashstore.kernel.bakery import (HashSession, CakePath, LookupInfo,
                               PathInfo, PathResolved)
 
 

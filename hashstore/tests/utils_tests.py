@@ -11,14 +11,12 @@ log = test.log
 fio.ensure_directory(test.dir)
 
 
-
 def test_docs():
     import doctest
     import hashstore.utils as utils
     import hashstore.utils.ignore_file as ignore_file
-    import hashstore.utils.log_box as log_box
 
-    for t in (utils, ignore_file, log_box):
+    for t in (utils, ignore_file):
         r = doctest.testmod(t)
         ok_(r.attempted > 0, f'There is no doctests in module {t}')
         eq_(r.failed,0)

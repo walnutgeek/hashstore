@@ -7,7 +7,7 @@ from hashstore.utils import print_pad
 from hashstore.utils.args import Switch, CommandArgs
 from hashstore.kernel.hashing import SaltedSha
 from hashstore.bakery.cake_scan import pull, backup, ScanPath
-from hashstore.bakery import ensure_cakepath
+from hashstore.kernel.bakery import ensure_cakepath
 import getpass
 
 import logging

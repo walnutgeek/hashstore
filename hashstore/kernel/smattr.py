@@ -123,13 +123,13 @@ class NoResolver(ReferenceResolver):
 
 class AttrEntry(EnsureIt, Stringable):
     """
-    >>> AttrEntry('x:Required[hashstore.bakery:Cake]')
-    AttrEntry('x:Required[hashstore.bakery:Cake]')
-    >>> e = AttrEntry('x:Required[hashstore.bakery:Cake]="0"')
+    >>> AttrEntry('x:Required[hashstore.kernel.bakery:Cake]')
+    AttrEntry('x:Required[hashstore.kernel.bakery:Cake]')
+    >>> e = AttrEntry('x:Required[hashstore.kernel.bakery:Cake]="0"')
     >>> e.default
     Cake('0')
     >>> e
-    AttrEntry('x:Required[hashstore.bakery:Cake]="0"')
+    AttrEntry('x:Required[hashstore.kernel.bakery:Cake]="0"')
     >>> AttrEntry(None)
     Traceback (most recent call last):
     ...
@@ -216,13 +216,13 @@ class AttrEntry(EnsureIt, Stringable):
 
 def typing_factory(o):
     """
-    >>> req = typing_factory('Required[hashstore.bakery:Cake]')
+    >>> req = typing_factory('Required[hashstore.kernel.bakery:Cake]')
     >>> req
-    RequiredTyping('Required[hashstore.bakery:Cake]')
+    RequiredTyping('Required[hashstore.kernel.bakery:Cake]')
     >>> Typing.ensure_it(str(req))
-    RequiredTyping('Required[hashstore.bakery:Cake]')
+    RequiredTyping('Required[hashstore.kernel.bakery:Cake]')
     >>> typing_factory(req)
-    RequiredTyping('Required[hashstore.bakery:Cake]')
+    RequiredTyping('Required[hashstore.kernel.bakery:Cake]')
     >>> Typing.ensure_it('Dict[datetime:datetime,str]')
     DictTyping('Dict[datetime:datetime,str]')
     """
@@ -519,7 +519,7 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
       a:Optional[X]
       x:datetime
       x:date
-    >>> from hashstore.bakery import Cake
+    >>> from hashstore.kernel.bakery import Cake
     >>> from datetime import date, datetime
     >>> class A(SmAttr):
     ...     x:int
@@ -553,7 +553,7 @@ class SmAttr(Jsonable, metaclass=AnnotationsProcessor):
     ...
 
     >>> B.__mold__.attrs #doctest: +NORMALIZE_WHITESPACE
-    {'x': AttrEntry('x:Required[hashstore.bakery:Cake]'),
+    {'x': AttrEntry('x:Required[hashstore.kernel.bakery:Cake]'),
     'aa': AttrEntry('aa:List[hashstore.kernel.smattr:A2]'),
     'dt': AttrEntry('dt:Dict[datetime:datetime,hashstore.kernel.smattr:A]')}
     >>> b = B({"x":"3X8X3D7svYk0rD1ncTDRTnJ81538A6ZdSPcJVsptDNYt" })

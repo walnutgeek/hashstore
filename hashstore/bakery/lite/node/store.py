@@ -1,6 +1,6 @@
 import os
 
-from hashstore.bakery import CakeRole
+from hashstore.kernel.bakery import CakeRole
 from hashstore.bakery.lite import dal
 from hashstore.bakery.lite.node import (
     ServerConfigBase, GlueBase,  CakeShardBase, User, UserType,

@@ -1,6 +1,6 @@
 import os
 import datetime
-from hashstore.bakery import (
+from hashstore.kernel.bakery import (
     NotAuthorizedError, CredentialsError, Cake, CakeRack,
     CakePath, CakeType, CakeRole, PatchAction, Content)
 from hashstore.kernel import reraise_with_msg, utf8_reader

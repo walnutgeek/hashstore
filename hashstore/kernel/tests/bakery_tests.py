@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import hashstore.bakery as bakery
+import hashstore.kernel.bakery as bakery
 from io import BytesIO
 
 from hashstore.kernel import utf8_reader

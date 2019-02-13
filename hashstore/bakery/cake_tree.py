@@ -1,6 +1,6 @@
 from enum import IntEnum
 
-from hashstore.bakery import (
+from hashstore.kernel.bakery import (
     CakePath, HasCake, Cake, CakeRack, CakeRole)
 from hashstore.kernel import Str2Bytes
 
@@ -255,7 +255,7 @@ class CakeTree(Neuron):
     AssertionError: Cannot delete itself
     >>> x.bundle().content()
     '[["a"], ["CrBXOJUepyW6bMd2Wgl"]]'
-    >>> from hashstore.bakery import Cake
+    >>> from hashstore.kernel.bakery import Cake
     >>> g=Cake('4Fm5goWjjISStoovcZaowz0heUxOv4CXbUob0CBKi46T')
     >>> y=CakeTree(g)
     >>> y

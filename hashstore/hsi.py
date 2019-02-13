@@ -3,7 +3,7 @@ import logging
 import os
 import sys
 from hashstore.bakery.cake_client import ClientUserSession, CakeClient
-from hashstore.bakery import (Cake, portal_from_name, CakeRole,
+from hashstore.kernel.bakery import (Cake, portal_from_name, CakeRole,
                               CakePath, process_stream, CakeType,
                               ensure_cakepath, PatchAction)
 from hashstore.bakery.lite.client import FileType
